@@ -35,7 +35,7 @@ export function authOnly() {
     const [, token] = authHeader.split(" ");
     try {
       const payload = jwt.verify(token, env.JWT_SECRET) as any;
-      req.user = payload; // payload já contém idUsuario, nome, email, etc
+      req.user = payload;
       next();
     } catch (err) {
       return res.status(401).json({ error: "Token inválido ou expirado" });

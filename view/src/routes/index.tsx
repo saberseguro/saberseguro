@@ -6,10 +6,16 @@ import Loading from '../components/Loading';
 
 const LoginPage = lazy(() => import('../pages/Auth/LoginPage'));
 const HomePage = lazy(() => import('../pages/Home/HomePage'));
+const EmpresaPage = lazy(() => import('../pages/Empresa/EmpresaPage'));
 
 function PrivateRoute() {
   const { user } = useAuth();
   return user ? <Outlet /> : <Navigate to="/login" />;
+}
+
+function PublicRoute() {
+  const { user } = useAuth();
+  return user ? <Navigate to="/" /> : <Outlet />;
 }
 
 export default function AppRoutes() {
@@ -22,13 +28,15 @@ export default function AppRoutes() {
       <Suspense fallback={<Loading />}>
         <Routes>
           {/* Rota pública sem layout */}
-          <Route path="/login" element={<LoginPage />} />
+          <Route element={<PublicRoute />}>
+            <Route path="/login" element={<LoginPage />} />
+          </Route>
 
           {/* Rotas privadas com layout */}
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<HomePage />} />
-              {/* Outras rotas privadas aqui */}
+              <Route path="/empresa" element={<EmpresaPage />} />
             </Route>
           </Route>
 

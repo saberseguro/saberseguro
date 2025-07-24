@@ -9,6 +9,10 @@ interface Usuario {
   email: string;
   nome: string;
   roles: string[];
+  permissoes: string[];
+  fkEmpresaId?: number;
+  fkResponsavelTecnicoId?: number;
+  fkCargoId?: number;
 }
 
 interface AuthContextType {
@@ -16,7 +20,6 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, senha: string) => Promise<void>;
   logout: () => Promise<void>;
-  permissoes: string[];
   token: string | null;
 }
 
@@ -24,7 +27,6 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Usuario | null>(null);
-  const [permissoes, setPermissoes] = useState<string[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +51,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error("Token inválido");
 
         setUser(JSON.parse(userLocal));
-        setPermissoes(JSON.parse(userLocal).permissoes || []);
       } catch {
         await logout();
       } finally {
@@ -83,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("user", JSON.stringify(data.usuario));
       setUser(data.usuario);
       setToken(data.token);
-      setPermissoes(data.usuario.permissoes);
     } catch (err: any) {
       console.error("Erro no login:", err);
       throw new Error(err.message || "Erro desconhecido");
@@ -115,14 +115,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("user");
       setToken(null);
       setUser(null);
-      setPermissoes([]);
     } catch (error) {
       console.error("Erro ao deslogar:", error);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, permissoes, token }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, token }}>
       {children}
     </AuthContext.Provider>
   );

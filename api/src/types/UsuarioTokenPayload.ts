@@ -4,4 +4,7 @@ export interface UsuarioTokenPayload {
   nome?: string;
   roles: string[];
   permissoes: string[];
+  fkEmpresaId?: number;
+  fkResponsavelTecnicoId?: number;
+  fkCargoId?: number;
 }
