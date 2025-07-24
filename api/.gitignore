@@ -1,0 +1,15 @@
+# Ignorar variáveis de ambiente
+.env
+
+# Ignorar diretório de build do TypeScript
+dist/
+
+# Ignorar dependências se necessário
+node_modules/
+
+# Ignorar arquivos do Prisma
+prisma/dev.db
+prisma/dev.db-journal
+
+# Ignorar Json de configuração do firebase
+src/infra/firebase/ava-cursos-fdbbb-firebase-adminsdk-fbsvc-e9b86042ff.json

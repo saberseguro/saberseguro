@@ -1,0 +1,1 @@
+// Utility result wrapper (Success/Failure pattern)

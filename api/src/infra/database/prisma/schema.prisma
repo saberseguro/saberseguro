@@ -1,0 +1,396 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model usuario {
+  idUsuario              Int      @id @default(autoincrement())
+  nome                   String   @db.VarChar(45)
+  email                  String   @unique(map: "email_UNIQUE") @db.VarChar(45)
+  criado_em              DateTime @default(now()) @db.DateTime(0)
+  editado_em             DateTime @default(now()) @db.DateTime(0)
+  ativo                  Int      @default(1) @db.TinyInt
+  fkEmpresaId            Int?
+  fkResponsavelTecnicoId Int?
+  fkCargoId              Int?
+  firebaseId             String   @unique
+
+  empresa empresa? @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull, map: "fk_usuario_fkEmpresaId")
+  cargo   cargo?   @relation(fields: [fkCargoId], references: [idCargo], onDelete: SetNull, map: "fk_usuario_fkCargoId")
+
+  logEvento   logEvento[]   @relation("logUsuario")
+  usuariorole usuariorole[]
+}
+
+model alternativa {
+  idAlternativa Int      @id @default(autoincrement())
+  texto         String   @db.Text
+  correta       Int      @db.TinyInt
+  criado_em     DateTime @default(now()) @db.DateTime(0)
+  editado_em    DateTime @default(now()) @db.DateTime(0)
+  ativo         Int      @default(1) @db.TinyInt
+  fkPerguntaId  Int
+}
+
+model aula {
+  idAula     Int       @id @default(autoincrement())
+  titulo     String    @db.VarChar(45)
+  descricao  String?   @db.Text
+  tipo       aula_tipo
+  duracao    Int
+  ordem      Int
+  criado_em  DateTime  @default(now()) @db.DateTime(0)
+  editado_em DateTime  @default(now()) @db.DateTime(0)
+  ativo      Int       @default(1) @db.TinyInt
+  fkModuloId Int
+}
+
+model aulausuario {
+  idAulaUsuario   Int      @id @default(autoincrement())
+  assistiuVideo   Int      @default(0) @db.TinyInt
+  baixouMateriais Int      @default(0) @db.TinyInt
+  respondeuQuiz   Int      @db.TinyInt
+  concluida       Int      @db.TinyInt
+  atualizado_em   DateTime @default(now()) @db.DateTime(0)
+  criado_em       DateTime @default(now()) @db.DateTime(0)
+  fkAulaId        Int
+  fkUsuarioId     Int
+}
+
+model aulavideo {
+  idAulaVideo Int    @id @default(autoincrement())
+  url         String @db.Text
+  fkAulaId    Int
+}
+
+model avaliacao {
+  idAvaliacao   Int                     @id @default(autoincrement())
+  fkCursoId     Int?
+  fkModuloId    Int?
+  fkAulaId      Int?
+  titulo        String                  @db.VarChar(45)
+  tempo_limite  Int
+  tipoAplicacao avaliacao_tipoAplicacao
+  criado_em     DateTime                @default(now()) @db.DateTime(0)
+  editado_em    DateTime                @default(now()) @db.DateTime(0)
+  ativo         Int                     @default(1) @db.TinyInt
+}
+
+model avaliacaousuario {
+  idAvaliacaoUsuario Int                     @id @default(autoincrement())
+  dataInicio         DateTime                @default(now()) @db.DateTime(0)
+  dataFim            DateTime?               @db.DateTime(0)
+  nota               Float?                  @db.Float
+  status             avaliacaousuario_status
+  fkUsuarioId        Int
+  fkAvaliacaoId      Int
+}
+
+model cargo {
+  idCargo    Int      @id @default(autoincrement())
+  nome       String   @db.VarChar(45)
+  descricao  String   @db.Text
+  criado_em  DateTime @default(now()) @db.DateTime(0)
+  editado_em DateTime @default(now()) @db.DateTime(0)
+  ativo      Int      @default(1) @db.TinyInt
+  fkSetorId  Int
+
+  setor setor @relation(fields: [fkSetorId], references: [idSetor], onDelete: Cascade, map: "fk_cargo_fkSetorId")
+
+  funcionarios usuario[]
+}
+
+model categoria {
+  idCategoria Int    @id @default(autoincrement())
+  nome        String @db.VarChar(45)
+  descricao   String @db.Text
+}
+
+model cnae {
+  idCnae    Int    @id @default(autoincrement())
+  subclasse String @db.VarChar(45)
+  descricao String @db.Text
+  grauRIsco Int
+}
+
+model cnaevinculo {
+  idCnaeVinculo Int  @id
+  fkCnaeId      Int?
+  fkEmpresaId   Int?
+  fkUnidadeId   Int?
+}
+
+model curso {
+  idCurso                Int      @id @default(autoincrement())
+  titulo                 String   @db.VarChar(45)
+  descricao              String?  @db.Text
+  cargaHoraria           String   @db.VarChar(45)
+  criado_em              DateTime @default(now()) @db.DateTime(0)
+  editado_em             DateTime @default(now()) @db.DateTime(0)
+  ativo                  Int      @default(1) @db.TinyInt
+  fkCategoriaId          Int
+  fkResponsavelTecnicoId Int
+  fkEmpresaId            Int?
+}
+
+model cursoacesso {
+  idCursoAcesso Int       @id @default(autoincrement())
+  fkCursoId     Int
+  fkUsuarioId   Int?
+  fkEmpresaId   Int?
+  fkUnidadeId   Int?
+  fkSetorId     Int?
+  fkCargoId     Int?
+  percentual    Float     @default(0) @db.Float
+  concluido     Int       @default(0) @db.TinyInt
+  dataConclusao DateTime? @db.DateTime(0)
+  atualizado_em DateTime  @default(now()) @db.DateTime(0)
+}
+
+model empresa {
+  idEmpresa     Int                   @id @default(autoincrement())
+  nomeFantasia  String                @db.VarChar(45)
+  razaoSocial   String                @db.VarChar(45)
+  tipoDocumento empresa_tipoDocumento
+  documento     String                @db.VarChar(20)
+  cep           String                @db.VarChar(10)
+  endereco      String                @db.VarChar(45)
+  numero        String?               @db.VarChar(10)
+  bairro        String                @db.VarChar(45)
+  cidade        String                @db.VarChar(45)
+  uf            String                @db.VarChar(2)
+  logoUrl       String?               @db.Text
+  criado_em     DateTime              @default(now()) @db.DateTime(0)
+  editado_em    DateTime              @default(now()) @db.DateTime(0)
+  ativo         Int                   @default(1) @db.TinyInt
+
+  unidades     unidade[]
+  funcionarios usuario[]
+}
+
+model materialcomplementar {
+  idMaterialComplementar Int                       @id @default(autoincrement())
+  titulo                 String                    @db.VarChar(45)
+  tipo                   materialcomplementar_tipo
+  material               String                    @db.Text
+  criado_em              DateTime                  @default(now()) @db.DateTime(0)
+  editado_em             DateTime                  @default(now()) @db.DateTime(0)
+  ativo                  Int                       @default(1) @db.TinyInt
+  fkAulaId               Int
+}
+
+model medida {
+  idMedida    Int         @id @default(autoincrement())
+  nome        String      @db.VarChar(45)
+  tipo        medida_tipo
+  descricao   String?     @db.Text
+  ativo       Int         @default(1) @db.TinyInt
+  fkEmpresaId Int?
+}
+
+model medidacurso {
+  fkMedidaId Int
+  fkCursoId  Int
+  validade   Int
+
+  @@id([fkMedidaId, fkCursoId])
+}
+
+model medidavinculo {
+  idMedidaVinculo Int  @id @default(autoincrement())
+  fkMedidaId      Int
+  fkEmpresaId     Int?
+  fkUnidadeId     Int?
+  fkSetorId       Int?
+  fkCargoId       Int?
+  fkUsuarioId     Int?
+}
+
+model modulo {
+  idModulo     Int      @id @default(autoincrement())
+  titulo       String   @db.VarChar(45)
+  cargaHoraria String   @db.VarChar(45)
+  criado_em    DateTime @default(now()) @db.DateTime(0)
+  editado_em   DateTime @default(now()) @db.DateTime(0)
+  ativo        Int      @default(1) @db.TinyInt
+  ordem        Int
+  fkCursoId    Int
+}
+
+model pergunta {
+  idPergunta    Int           @id @default(autoincrement())
+  enunciado     String        @db.Text
+  tipo          pergunta_tipo
+  criado_em     DateTime      @default(now()) @db.DateTime(0)
+  editado_em    DateTime      @default(now()) @db.DateTime(0)
+  ativo         Int           @default(1) @db.TinyInt
+  fkAvaliacaoId Int
+}
+
+model permissao {
+  idPermissao Int     @id @default(autoincrement())
+  nome        String  @db.VarChar(45)
+  descricao   String? @db.Text
+
+  rolepermissao rolepermissao[]
+}
+
+model responsaveltecnico {
+  idResponsavelTecnico Int                              @id @default(autoincrement())
+  nome                 String                           @db.VarChar(45)
+  tipoDocumento        responsaveltecnico_tipoDocumento
+  documento            String                           @db.VarChar(45)
+  registro             String                           @db.VarChar(45)
+  funcao               String                           @db.VarChar(45)
+  telefone             String                           @db.VarChar(45)
+  criado_em            DateTime                         @default(now()) @db.DateTime(0)
+  editado_em           DateTime                         @default(now()) @db.DateTime(0)
+  ativo                Int                              @default(1) @db.TinyInt
+}
+
+model resposta {
+  idResposta           Int      @id @default(autoincrement())
+  resposta             String   @db.Text
+  dataResposta         DateTime @default(now()) @db.DateTime(0)
+  fkAvaliacaoUsuarioId Int
+  fkAlternativaId      Int?
+  fkPerguntaId         Int
+}
+
+model role {
+  idRole Int    @id @default(autoincrement())
+  nome   String @db.VarChar(45)
+
+  rolepermissao rolepermissao[]
+  usuariorole   usuariorole[]
+}
+
+model rolepermissao {
+  fkRoleId      Int
+  fkPermissaoId Int
+
+  permissao permissao @relation(fields: [fkPermissaoId], references: [idPermissao], onDelete: Cascade, map: "fk_rolepermissao_fkPermissaoId")
+  role      role      @relation(fields: [fkRoleId], references: [idRole], onDelete: Cascade, map: "fk_rolepermissao_fkRoleId")
+
+  @@id([fkRoleId, fkPermissaoId])
+  @@index([fkPermissaoId], map: "fk_rolepermissao_fkPermissaoId")
+}
+
+model setor {
+  idSetor     Int      @id @default(autoincrement())
+  nome        String   @db.VarChar(45)
+  descricao   String   @db.Text
+  ambiente    String?  @db.Text
+  criado_em   DateTime @default(now()) @db.DateTime(0)
+  editado_em  DateTime @default(now()) @db.DateTime(0)
+  ativo       Int      @default(1) @db.TinyInt
+  fkUnidadeId Int
+
+  unidade unidade @relation(fields: [fkUnidadeId], references: [idUnidade], onDelete: Cascade, map: "fk_setor_fkUnidadeId")
+
+  cargos cargo[]
+}
+
+model unidade {
+  idUnidade     Int                   @id @default(autoincrement())
+  nomeFantasia  String                @db.VarChar(45)
+  razaoSocial   String                @db.VarChar(45)
+  tipoDocumento unidade_tipoDocumento
+  documento     String                @db.VarChar(20)
+  cep           String                @db.VarChar(10)
+  endereco      String                @db.VarChar(45)
+  numero        String?               @db.VarChar(10)
+  bairro        String                @db.VarChar(45)
+  cidade        String                @db.VarChar(45)
+  uf            String                @db.VarChar(2)
+  criado_em     DateTime              @default(now()) @db.DateTime(0)
+  editado_em    DateTime              @default(now()) @db.DateTime(0)
+  ativo         Int                   @default(1) @db.TinyInt
+  copiarEmpresa Int?                  @default(0) @db.TinyInt
+  fkEmpresaId   Int
+
+  empresa empresa @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: Cascade, map: "fk_unidade_fkEmpresaId")
+
+  setores setor[]
+}
+
+model usuariorole {
+  fkUsuarioId Int
+  fkRoleId    Int
+
+  role    role    @relation(fields: [fkRoleId], references: [idRole], onDelete: Cascade, map: "fk_usuariorole_fkRoleId")
+  usuario usuario @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: Cascade, map: "fk_usuariorole_fkUsuarioId")
+
+  @@id([fkUsuarioId, fkRoleId])
+  @@index([fkRoleId], map: "fk_usuariorole_fkRoleId")
+}
+
+model logEvento {
+  idLogEvento  Int      @id @default(autoincrement())
+  fkUsuarioId  Int
+  tipo         String
+  descricao    String?  @db.Text
+  entidade     String?
+  entidade_id  Int?
+  dados_antes  Json?
+  dados_depois Json?
+  criado_em    DateTime @default(now()) @db.DateTime(0)
+
+  usuario usuario @relation("logUsuario", fields: [fkUsuarioId], references: [idUsuario], map: "fk_logEvento_fkUsuarioId")
+}
+
+enum materialcomplementar_tipo {
+  pdf
+  link
+}
+
+enum medida_tipo {
+  epi
+  epc
+  adm
+  treinamneto
+  inspecao
+  geral
+}
+
+enum pergunta_tipo {
+  multipla_escolha
+  dissertativa
+  vf
+}
+
+enum responsaveltecnico_tipoDocumento {
+  cpf
+  rg
+  cnh
+}
+
+enum aula_tipo {
+  video
+  pdf
+}
+
+enum empresa_tipoDocumento {
+  cnpj
+  caepf
+}
+
+enum unidade_tipoDocumento {
+  cnpj
+  caepf
+}
+
+enum avaliacaousuario_status {
+  andamento
+  concluida
+  cancelada
+}
+
+enum avaliacao_tipoAplicacao {
+  avaliacao
+  quiz
+}
