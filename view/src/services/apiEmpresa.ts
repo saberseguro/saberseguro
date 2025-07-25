@@ -1,4 +1,4 @@
-import type { Empresa, Unidade, Setor, Cargo, Funcionario } from "../types";
+import type { Empresa, Unidade, Setor, Cargo, Funcionario } from "../types/EstruturaEmpresa";
 
 const API_URL = import.meta.env.VITE_API_URL;
 

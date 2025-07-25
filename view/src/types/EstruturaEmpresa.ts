@@ -7,6 +7,7 @@ export interface Empresa {
   cep: string;
   endereco: string;
   numero: string;
+  complemento?: string;
   bairro: string;
   cidade: string;
   uf: string;
@@ -20,10 +21,12 @@ export interface Empresa {
 export interface Unidade {
   idUnidade: number;
   nomeFantasia: string;
+  razaoSocial: string;
   tipoDocumento: string;
   documento: string;
   cep: string;
   endereco: string;
+  complemento?: string;
   numero: string;
   bairro: string;
   cidade: string;
