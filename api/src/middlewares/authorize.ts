@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
+import { prisma } from '../config/prisma-client';
+import { getDay } from 'date-fns';
 
 export function authorize(permissoesNecessarias: string[]) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Token não fornecido' });
 
@@ -19,26 +21,84 @@ export function authorize(permissoesNecessarias: string[]) {
 
       if (!temPermissao) return res.status(403).json({ error: 'Acesso negado' });
 
+      // validação de horário
+      const usuario = await prisma.usuario.findUnique({
+        where: { idUsuario: payload.idUsuario },
+        include: { usuarioHorario: true },
+      });
+
+      if (!usuario) return res.status(401).json({ error: "Usuário não encontrado" });
+
+      const agora = new Date();
+      const diaSemana = getDay(agora);
+      const horarioDoDia = usuario.usuarioHorario.find(h => h.diaSemana === diaSemana);
+
+      if (!horarioDoDia) {
+        return res.status(403).json({ error: "Acesso não permitido neste dia da semana." });
+      }
+
+      const [inicioHora, inicioMinuto] = horarioDoDia.horarioInicio.split(':').map(Number);
+      const [fimHora, fimMinuto] = horarioDoDia.horarioFim.split(':').map(Number);
+
+      const inicioPermitido = new Date(agora);
+      inicioPermitido.setHours(inicioHora, inicioMinuto, 0, 0);
+
+      const fimPermitido = new Date(agora);
+      fimPermitido.setHours(fimHora, fimMinuto, 0, 0);
+
+      if (agora < inicioPermitido || agora >= fimPermitido) {
+        return res.status(403).json({ error: "Acesso fora do horário permitido." });
+      }
+
       req.user = payload;
       next();
     } catch (err) {
-      return res.status(401).json({ error: 'Token inválido' });
+      return res.status(401).json({ error: 'Token inválido ou expirado' });
     }
   };
 }
 
-export function authOnly() {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: "Token não fornecido" });
+export async function authOnly(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: "Token não fornecido" });
 
-    const [, token] = authHeader.split(" ");
-    try {
-      const payload = jwt.verify(token, env.JWT_SECRET) as any;
-      req.user = payload; // payload já contém idUsuario, nome, email, etc
-      next();
-    } catch (err) {
-      return res.status(401).json({ error: "Token inválido ou expirado" });
+  const [, token] = authHeader.split(" ");
+  try {
+    const payload = jwt.verify(token, env.JWT_SECRET) as any;
+    req.user = payload;
+
+    // Validação de horário
+    const usuario = await prisma.usuario.findUnique({
+      where: { idUsuario: payload.idUsuario },
+      include: { usuarioHorario: true },
+    });
+
+    if (!usuario) return res.status(401).json({ error: "Usuário não encontrado" });
+
+    const agora = new Date();
+    const diaSemana = getDay(agora); // 0 = domingo, ..., 6 = sábado
+
+    const horarioDoDia = usuario.usuarioHorario.find(h => h.diaSemana === diaSemana);
+
+    if (!horarioDoDia) {
+      return res.status(403).json({ error: "Acesso não permitido neste dia da semana." });
     }
-  };
+
+    const [inicioHora, inicioMinuto] = horarioDoDia.horarioInicio.split(':').map(Number);
+    const [fimHora, fimMinuto] = horarioDoDia.horarioFim.split(':').map(Number);
+
+    const inicioPermitido = new Date(agora);
+    inicioPermitido.setHours(inicioHora, inicioMinuto, 0, 0);
+
+    const fimPermitido = new Date(agora);
+    fimPermitido.setHours(fimHora, fimMinuto, 0, 0);
+
+    if (agora < inicioPermitido || agora >= fimPermitido) {
+      return res.status(403).json({ error: "Acesso fora do horário permitido." });
+    }
+
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: "Token inválido ou expirado" });
+  }
 }

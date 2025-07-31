@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
-import { loginUser } from "../useCases/auth/loginUser";
+import { loginUser } from "../models/auth/loginUser";
 import { registrarEvento } from "../shared/utils/registrarEvento";
-import { VerifyToken } from "../useCases/auth/verifyToken";
 
 export async function login(req: Request, res: Response) {
   const { idToken } = req.body;

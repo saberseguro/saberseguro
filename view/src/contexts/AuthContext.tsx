@@ -1,32 +1,29 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "../services/firebase";
+import { apiFetch } from "../services/apiFetch";
+import type { Usuario, HorarioAcesso } from "../types/Usuario";
 
 const API_URL = import.meta.env.VITE_API_URL;
-
-interface Usuario {
-  idUsuario: number;
-  email: string;
-  nome: string;
-  roles: string[];
-}
 
 interface AuthContextType {
   user: Usuario | null;
   loading: boolean;
   login: (email: string, senha: string) => Promise<void>;
   logout: () => Promise<void>;
-  permissoes: string[];
   token: string | null;
+  handleVerificarHorarioAcesso: (email: string) => Promise<void>;
+  horarioAcesso: HorarioAcesso | null;
+  setHorarioAcesso: React.Dispatch<React.SetStateAction<HorarioAcesso | null>>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Usuario | null>(null);
-  const [permissoes, setPermissoes] = useState<string[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [horarioAcesso, setHorarioAcesso] = useState<HorarioAcesso | null>(null);
 
   useEffect(() => {
     const restaurarSessao = async () => {
@@ -49,7 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error("Token inválido");
 
         setUser(JSON.parse(userLocal));
-        setPermissoes(JSON.parse(userLocal).permissoes || []);
       } catch {
         await logout();
       } finally {
@@ -83,7 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("user", JSON.stringify(data.usuario));
       setUser(data.usuario);
       setToken(data.token);
-      setPermissoes(data.usuario.permissoes);
     } catch (err: any) {
       console.error("Erro no login:", err);
       throw new Error(err.message || "Erro desconhecido");
@@ -115,14 +110,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem("user");
       setToken(null);
       setUser(null);
-      setPermissoes([]);
     } catch (error) {
       console.error("Erro ao deslogar:", error);
     }
   };
 
+  const handleVerificarHorarioAcesso = async (email: string): Promise<void> => {
+    if (!email) return Promise.resolve();
+
+    try {
+      const data = await apiFetch<HorarioAcesso>(`/usuario/verificarHorarioAcesso`, {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+
+      setHorarioAcesso(data);
+    } catch (error) {
+      console.error("Erro ao verificar horário de acesso:", error);
+      setHorarioAcesso(null);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, permissoes, token }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, token, handleVerificarHorarioAcesso, horarioAcesso, setHorarioAcesso }}>
       {children}
     </AuthContext.Provider>
   );
