@@ -6,6 +6,6 @@ const router = Router();
 
 router.post('/login', login);
 router.post('/logout', authorize([]), logout);
-router.get("/auth/verify", authOnly(), verifyToken);
+router.get("/auth/verify", authOnly, verifyToken);
 
 export default router;

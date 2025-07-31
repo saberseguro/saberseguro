@@ -1,8 +1,40 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-  theme: {
-    extend: {},
+   theme: {
+    extend: {
+      backdropBlur: {
+        xs: '1px',
+      },
+      colors: {
+        primary: '#0069A8', // Azul
+      },
+    }
   },
-  plugins: [],
+  fontFamily: {
+    body: ['Open Sans']
+  },
+  plugins: [
+    function ({ addUtilities }) {
+      addUtilities({
+        '.custom-scrollbar': {
+          '&::-webkit-scrollbar': {
+            width: '6px',
+            height: '7px',
+          },
+          '&::-webkit-scrollbar-track': {
+            background: '#f1f1f1',
+            'border-radius': '10px',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#888',
+            'border-radius': '10px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': {
+            background: '#555',
+          },
+        },
+      })
+    }
+  ],
 };

@@ -8,22 +8,23 @@ datasource db {
 }
 
 model usuario {
-  idUsuario              Int      @id @default(autoincrement())
-  nome                   String   @db.VarChar(45)
-  email                  String   @unique(map: "email_UNIQUE") @db.VarChar(45)
-  criado_em              DateTime @default(now()) @db.DateTime(0)
-  editado_em             DateTime @default(now()) @db.DateTime(0)
-  ativo                  Int      @default(1) @db.TinyInt
+  idUsuario              Int                @id @default(autoincrement())
+  nome                   String             @db.VarChar(45)
+  email                  String             @unique(map: "email_UNIQUE") @db.VarChar(45)
+  criado_em              DateTime           @default(now()) @db.DateTime(0)
+  editado_em             DateTime           @default(now()) @db.DateTime(0)
+  ativo                  Int                @default(1) @db.TinyInt
   fkEmpresaId            Int?
   fkResponsavelTecnicoId Int?
   fkCargoId              Int?
-  firebaseId             String   @unique
+  firebaseId             String             @unique
 
-  empresa empresa? @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull, map: "fk_usuario_fkEmpresaId")
-  cargo   cargo?   @relation(fields: [fkCargoId], references: [idCargo], onDelete: SetNull, map: "fk_usuario_fkCargoId")
+  empresa                empresa?           @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull, map: "fk_usuario_fkEmpresaId")
+  cargo                  cargo?             @relation(fields: [fkCargoId], references: [idCargo], onDelete: SetNull, map: "fk_usuario_fkCargoId")
 
-  logEvento   logEvento[]   @relation("logUsuario")
-  usuariorole usuariorole[]
+  logEvento              logEvento[]        @relation("logUsuario")
+  usuariorole            usuariorole[]
+  usuarioHorario         usuarioHorario[]
 }
 
 model alternativa {
@@ -132,9 +133,14 @@ model curso {
   criado_em              DateTime @default(now()) @db.DateTime(0)
   editado_em             DateTime @default(now()) @db.DateTime(0)
   ativo                  Int      @default(1) @db.TinyInt
+
   fkCategoriaId          Int
   fkResponsavelTecnicoId Int
   fkEmpresaId            Int?
+
+  categoria              categoria            @relation(fields: [fkCategoriaId], references: [idCategoria], onDelete: Restrict, map: "fk_curso_fkCategoriaId")
+  responsavelTecnico     responsaveltecnico   @relation(fields: [fkResponsavelTecnicoId], references: [idResponsavelTecnico], onDelete: Restrict, map: "fk_curso_fkResponsavelTecnicoId")
+  empresa                empresa?             @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull, map: "fk_curso_fkEmpresaId")
 }
 
 model cursoacesso {
@@ -160,6 +166,7 @@ model empresa {
   cep           String                @db.VarChar(10)
   endereco      String                @db.VarChar(45)
   numero        String?               @db.VarChar(10)
+  complemento   String?               @db.VarChar(50)
   bairro        String                @db.VarChar(45)
   cidade        String                @db.VarChar(45)
   uf            String                @db.VarChar(2)
@@ -304,6 +311,7 @@ model unidade {
   cep           String                @db.VarChar(10)
   endereco      String                @db.VarChar(45)
   numero        String?               @db.VarChar(10)
+  complemento   String?               @db.VarChar(50)
   bairro        String                @db.VarChar(45)
   cidade        String                @db.VarChar(45)
   uf            String                @db.VarChar(2)
@@ -341,6 +349,18 @@ model logEvento {
   criado_em    DateTime @default(now()) @db.DateTime(0)
 
   usuario usuario @relation("logUsuario", fields: [fkUsuarioId], references: [idUsuario], map: "fk_logEvento_fkUsuarioId")
+}
+
+model usuarioHorario {
+  id               Int      @id @default(autoincrement())
+  diaSemana        Int
+  horarioInicio    String
+  horarioFim       String
+  fkUsuarioId      Int
+  
+  @@unique([fkUsuarioId, diaSemana])
+
+  usuario          usuario  @relation(fields: [fkUsuarioId], references: [idUsuario])
 }
 
 enum materialcomplementar_tipo {
