@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Empresa, Unidade, Setor, Cargo, Funcionario } from "../../types/EstruturaEmpresa";
-import { getEmpresa, getUnidades, getSetores, getCargos, getFuncionarios } from "../../services/apiEmpresa";
+import { searchEmpresas, getEmpresa, getUnidades, getSetores, getCargos, getFuncionarios } from "../../services/apiEmpresa";
 import { useAuth } from "../../contexts/AuthContext";
 import { formatarDocumento } from "../../auxiliares/formatters";
 import { temPermissao } from "../../auxiliares/permissoes";
@@ -16,12 +16,16 @@ import FormFuncionario from "../../components/Formularios/FormFuncionario";
 // Icons
 import { ChevronDown, ChevronUp, Pencil, PencilOff, CirclePlus, CircleCheck, CircleX } from 'lucide-react';
 import ToolTip from "../../components/Auxiliares/ToolTip";
+import { SearchDropdown } from "../../components/SearchDropDown";
 
 export default function GerenciaEmpresa() {
 
   const { user } = useAuth();
 
+  const isAdmin = Array.isArray(user?.role) && user.role.includes("admin");
+
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [idEmpresaSelecionada, setIdEmpresaSelecionada] = useState<number | null>(null);
 
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [unidadeSelecionada, setUnidadeSelecionada] = useState<Unidade | null>(null);
@@ -41,19 +45,26 @@ export default function GerenciaEmpresa() {
   const [isOpenCargo, setIsOpenCargo] = useState(false);
   const [isOpenFuncionario, setIsOpenFuncionario] = useState(false);
 
+  const podeEditar = temPermissao(user, ["editar_empresas"]);
 
-  const podeEditar = temPermissao(user, ["gerenciar_empresa"]);
+  const [buscaEmpresa, setBuscaEmpresa] = useState("");
+
+  useEffect(() => {
+    if (!isAdmin && user?.fkEmpresaId) {
+      setIdEmpresaSelecionada(user.fkEmpresaId);
+    }
+  }, [user, isAdmin]);
 
   const fetchEmpresa = async () => {
-    if (user?.fkEmpresaId) {
-      const empresaData = await getEmpresa(user.fkEmpresaId);
+    if (idEmpresaSelecionada) {
+      const empresaData = await getEmpresa(idEmpresaSelecionada);
       setEmpresa(empresaData);
     }
   };
 
   const fetchUnidades = async () => {
-    if (user?.fkEmpresaId) {
-      const unidadesData = await getUnidades(user.fkEmpresaId);
+    if (idEmpresaSelecionada) {
+      const unidadesData = await getUnidades(idEmpresaSelecionada);
       setUnidades(unidadesData);
 
       if (unidadeSelecionada) {
@@ -97,9 +108,11 @@ export default function GerenciaEmpresa() {
   };
 
   useEffect(() => {
-    fetchEmpresa();
-    fetchUnidades();
-  }, [user?.fkEmpresaId]);
+    if (idEmpresaSelecionada) {
+      fetchEmpresa();
+      fetchUnidades();
+    }
+  }, [idEmpresaSelecionada]);
 
   useEffect(() => {
     fetchSetores();
@@ -166,6 +179,27 @@ export default function GerenciaEmpresa() {
   return (
     <>
       <div className="flex flex-col h-full shadow-md rounded-md bg-white">
+        {isAdmin && (
+          <div className="p-4 border-b border-gray-300">
+            <SearchDropdown<Empresa>
+              placeholder="Buscar empresa..."
+              valor={buscaEmpresa}
+              onChange={setBuscaEmpresa}
+              onSelect={(empresa) => {
+                setIdEmpresaSelecionada(empresa.idEmpresa);
+                setBuscaEmpresa("");
+                setUnidadeSelecionada(null);
+                setSetorSelecionado(null);
+                setCargoSelecionado(null);
+                setFuncionarios([]);
+              }}
+              buscar={searchEmpresas}
+              renderItem={(e) => <span>{e.nomeFantasia}</span>}
+              chaveUnica={(e) => e.idEmpresa}
+            />
+          </div>
+        )}
+
         {/* Card Empresa */}
         {empresa && (
           <div className="p-4 border-b border-gray-300 text-sm">
@@ -532,7 +566,7 @@ export default function GerenciaEmpresa() {
         largura="max-w-8/12"
       >
         <FormCadastroUnidade
-          fkEmpresaId={empresa?.idEmpresa}
+          fkEmpresaId={idEmpresaSelecionada ?? user?.fkEmpresaId ?? undefined}
           fetchUnidades={fetchUnidades}
           onEdit={unidadeSelecionada ?? undefined}
           setIsOpenUnidade={setIsOpenUnidade}
@@ -574,6 +608,7 @@ export default function GerenciaEmpresa() {
         largura="max-w-8/12"
       >
         <FormFuncionario
+          fkEmpresaId={idEmpresaSelecionada ?? user?.fkEmpresaId ?? undefined}
           fkCargoId={cargoSelecionado?.idCargo}
           onEdit={funcionarioSelecionado ?? undefined}
           setIsOpenFuncionario={setIsOpenFuncionario}

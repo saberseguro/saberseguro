@@ -11,10 +11,11 @@ interface FormFuncionarioProps {
   setIsOpenFuncionario: (isOpen: boolean) => void;
   fetchFuncionarios: () => void;
   fkCargoId?: number;
+  fkEmpresaId?: number;
   isOpen: boolean;
 }
 
-export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFuncionario, fetchFuncionarios, fkCargoId, isOpen }: FormFuncionarioProps) {
+export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFuncionario, fetchFuncionarios, fkCargoId, isOpen, fkEmpresaId }: FormFuncionarioProps) {
 
   const diasSemana = ["Domingo", "Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado"];
 
@@ -110,6 +111,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
           nome: form.nome,
           ativo: Number(form.ativo),
           fkCargoId: form.fkCargoId,
+          fkEmpresaId: fkEmpresaId,
           roles: form.roles,
           horarios: horarios,
         }

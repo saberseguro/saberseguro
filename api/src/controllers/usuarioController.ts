@@ -65,13 +65,15 @@ export const editarUsuarioController = async (req: Request, res: Response) => {
     const editadoPor = (req.user as any)?.idUsuario;
     const idUsuario = parseInt(req.params.id);
 
-    const { nome, ativo, fkCargoId, roles, horarios } = req.body;
+    const { nome, ativo, fkCargoId, fkEmpresaId, fkResponsavelTecnicoId, roles, horarios } = req.body;
 
     await editarUsuario({
       idUsuario,
       nome,
       ativo,
       fkCargoId,
+      fkEmpresaId,
+      fkResponsavelTecnicoId,
       roles,
       editadoPor,
       horarios,

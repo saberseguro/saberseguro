@@ -216,6 +216,8 @@ export async function editarUsuario(data: EditarUsuarioDTO) {
     nome,
     ativo,
     fkCargoId,
+    fkEmpresaId,
+    fkResponsavelTecnicoId,
     roles,
     editadoPor,
   } = data;
@@ -229,6 +231,8 @@ export async function editarUsuario(data: EditarUsuarioDTO) {
       nome,
       ativo,
       fkCargoId,
+      fkEmpresaId,
+      fkResponsavelTecnicoId,
       editado_em: new Date(),
     },
   });

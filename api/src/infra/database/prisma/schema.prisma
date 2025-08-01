@@ -133,14 +133,9 @@ model curso {
   criado_em              DateTime @default(now()) @db.DateTime(0)
   editado_em             DateTime @default(now()) @db.DateTime(0)
   ativo                  Int      @default(1) @db.TinyInt
-
   fkCategoriaId          Int
   fkResponsavelTecnicoId Int
   fkEmpresaId            Int?
-
-  categoria              categoria            @relation(fields: [fkCategoriaId], references: [idCategoria], onDelete: Restrict, map: "fk_curso_fkCategoriaId")
-  responsavelTecnico     responsaveltecnico   @relation(fields: [fkResponsavelTecnicoId], references: [idResponsavelTecnico], onDelete: Restrict, map: "fk_curso_fkResponsavelTecnicoId")
-  empresa                empresa?             @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull, map: "fk_curso_fkEmpresaId")
 }
 
 model cursoacesso {

@@ -2,7 +2,7 @@ export interface Usuario {
   idUsuario: number;
   email: string;
   nome: string;
-  roles: string[];
+  role: string[];
   permissoes: string[];
   fkEmpresaId?: number;
   fkResponsavelTecnicoId?: number;
