@@ -160,6 +160,7 @@ export const buscarFuncionariosDoCargo = {
       return {
         idUsuario: f.idUsuario,
         nome: f.nome,
+        cpf: f.cpf,
         email: f.email,
         ativo: f.ativo,
         fkEmpresaId: f.fkEmpresaId,

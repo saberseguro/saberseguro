@@ -28,7 +28,7 @@ export async function authOnly(req: Request, res: Response, next: NextFunction) 
       const agora = new Date();
       const diaSemana = getDay(agora);
 
-      const horarioDoDia = usuario.usuarioHorario.find(h => h.diaSemana === diaSemana);
+      const horarioDoDia = usuario.usuarioHorario.find(h => h.diaSemana === diaSemana && h.permitido);
 
       if (!horarioDoDia) {
         return res.status(403).json({ error: "Acesso não permitido neste dia da semana." });
@@ -84,7 +84,7 @@ export function authorize(permissoesNecessarias: string[]) {
 
         const agora = new Date();
         const diaSemana = getDay(agora);
-        const horarioDoDia = usuario.usuarioHorario.find(h => h.diaSemana === diaSemana);
+        const horarioDoDia = usuario.usuarioHorario.find(h => h.diaSemana === diaSemana && h.permitido);
 
         if (!horarioDoDia) {
           return res.status(403).json({ error: "Acesso não permitido neste dia da semana." });

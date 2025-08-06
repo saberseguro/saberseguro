@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Unidade } from "../../types/EstruturaEmpresa";
 import { Input, SelectInput } from "./Inputs";
 import toast from "react-hot-toast";
+import Spinner from "../Spinner";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -14,6 +15,7 @@ interface FormUnidadeProps {
 }
 
 export default function FormUnidade({ initialData = {}, onEdit, fkEmpresaId, setIsOpenUnidade, fetchUnidades }: FormUnidadeProps) {
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     nomeFantasia: initialData.nomeFantasia || "",
     razaoSocial: initialData.razaoSocial || "",
@@ -61,12 +63,13 @@ export default function FormUnidade({ initialData = {}, onEdit, fkEmpresaId, set
     e.preventDefault();
 
     try {
+      setLoading(true);
       const token = localStorage.getItem("token");
 
       if (!token) {
         throw new Error("Token de autenticação não encontrado.");
       }
-      
+
       const response = await fetch(`${API_URL}/unidade${onEdit ? `/${onEdit.idUnidade}` : ""}`, {
         method: onEdit ? "PUT" : "POST",
         headers: {
@@ -84,7 +87,9 @@ export default function FormUnidade({ initialData = {}, onEdit, fkEmpresaId, set
       setIsOpenUnidade(false);
       handleClear();
       fetchUnidades();
+      setLoading(false);
     } catch (err: any) {
+      setLoading(false);
       console.error(err);
       toast.error(err.message || "Erro ao salvar");
     }
@@ -155,8 +160,8 @@ export default function FormUnidade({ initialData = {}, onEdit, fkEmpresaId, set
       </div>
 
       <div className="flex justify-end">
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-          Salvar
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-400" disabled={loading}>
+          {loading ? <Spinner /> : "Salvar"}
         </button>
       </div>
     </form>

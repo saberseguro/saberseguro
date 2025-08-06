@@ -69,7 +69,7 @@ export async function loginUser(idToken: string) {
     const diaSemana = getDay(agora);
 
     const horarioDoDia = usuario.usuarioHorario.find(
-      (h) => h.diaSemana === diaSemana
+      (h) => h.diaSemana === diaSemana && h.permitido
     );
 
     if (!horarioDoDia) {
@@ -100,6 +100,7 @@ export async function loginUser(idToken: string) {
       idUsuario: usuario.idUsuario,
       email: usuario.email,
       nome: usuario.nome ?? "",
+      cpf: usuario.cpf ?? "",
       roles: nomesRoles,
       permissoes,
       fkEmpresaId: usuario.fkEmpresaId ?? undefined,
@@ -124,6 +125,7 @@ export async function loginUser(idToken: string) {
       idUsuario: usuario.idUsuario,
       email: usuario.email,
       nome: usuario.nome,
+      cpf: usuario.cpf,
       role: nomesRoles,
       permissoes,
       fkEmpresaId: usuario.fkEmpresaId,
