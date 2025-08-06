@@ -10,10 +10,10 @@ import {
 
 const router = Router();
 
-router.get('/:id', authorize(['visualizar_setor']), buscarSetoreController);
-router.get('/setoresUnidade/:id', authorize(['visualizar_setor']), buscarSetoresUnidadeController);
-router.get('/cargosSetor/:id', authorize(['visualizar_cargo']), buscarCargosSetorController);
-router.post('/', authorize(['gerenciar_empresa']), criarSetorController);
-router.put('/:id', authorize(['gerenciar_empresa']), editarSetorController);
+router.get('/:id', authorize(['ver_empresas']), buscarSetoreController);
+router.get('/setoresUnidade/:id', authorize(['ver_empresas']), buscarSetoresUnidadeController);
+router.get('/cargosSetor/:id', authorize(['ver_empresas']), buscarCargosSetorController);
+router.post('/', authorize(['criar_empresas']), criarSetorController);
+router.put('/:id', authorize(['editar_empresas']), editarSetorController);
 
 export default router;

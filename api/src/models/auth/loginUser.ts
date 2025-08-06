@@ -35,36 +35,6 @@ export async function loginUser(idToken: string) {
   if (!usuario) throw new Error("Usuário não encontrado.");
   if (usuario.ativo === 0) throw new Error("Usuário inativo.");
 
-  // Verificação de horário
-  const agora = new Date();
-  const diaSemana = getDay(agora); // 0 = domingo, 1 = segunda, ..., 6 = sábado
-
-  const horarioDoDia = usuario.usuarioHorario.find(
-    (h) => h.diaSemana === diaSemana
-  );
-
-  if (!horarioDoDia) {
-    throw new Error("Acesso não permitido neste dia.");
-  }
-
-  const [inicioHora, inicioMinuto] = horarioDoDia.horarioInicio.split(':').map(Number);
-  const [fimHora, fimMinuto] = horarioDoDia.horarioFim.split(':').map(Number);
-
-  const inicioPermitido = new Date(agora);
-  inicioPermitido.setHours(inicioHora, inicioMinuto, 0, 0);
-
-  const fimPermitido = new Date(agora);
-  fimPermitido.setHours(fimHora, fimMinuto, 0, 0);
-
-  if (agora < inicioPermitido || agora >= fimPermitido) {
-    throw new Error("Acesso não permitido neste horário.");
-  }
-
-  const tempoRestanteSegundos = Math.floor((fimPermitido.getTime() - agora.getTime()) / 1000);
-  if (tempoRestanteSegundos <= 0) {
-    throw new Error("Tempo de sessão insuficiente. Acesso negado.");
-  }
-
   // Buscar roles e permissões
   const rolesDoUsuario: UsuarioRoleComPermissoes[] = await prisma.usuariorole.findMany({
     where: { fkUsuarioId: usuario.idUsuario },
@@ -89,12 +59,49 @@ export async function loginUser(idToken: string) {
     )
   );
 
+  const nomesRoles = rolesDoUsuario.map((r) => r.role.nome);
+  const isAdmin = nomesRoles.includes("admin");
+
+  let tempoRestanteSegundos = 3600;
+
+  if (!isAdmin) {
+    const agora = new Date();
+    const diaSemana = getDay(agora);
+
+    const horarioDoDia = usuario.usuarioHorario.find(
+      (h) => h.diaSemana === diaSemana && h.permitido
+    );
+
+    if (!horarioDoDia) {
+      throw new Error("Acesso não permitido neste dia.");
+    }
+
+    const [inicioHora, inicioMinuto] = horarioDoDia.horarioInicio.split(':').map(Number);
+    const [fimHora, fimMinuto] = horarioDoDia.horarioFim.split(':').map(Number);
+
+    const inicioPermitido = new Date(agora);
+    inicioPermitido.setHours(inicioHora, inicioMinuto, 0, 0);
+
+    const fimPermitido = new Date(agora);
+    fimPermitido.setHours(fimHora, fimMinuto, 0, 0);
+
+    if (agora < inicioPermitido || agora >= fimPermitido) {
+      throw new Error("Acesso não permitido neste horário.");
+    }
+
+    tempoRestanteSegundos = Math.floor((fimPermitido.getTime() - agora.getTime()) / 1000);
+    if (tempoRestanteSegundos <= 0) {
+      throw new Error("Tempo de sessão insuficiente. Acesso negado.");
+    }
+  }
+
   const token = generateToken(
     {
       idUsuario: usuario.idUsuario,
       email: usuario.email,
       nome: usuario.nome ?? "",
-      roles: rolesDoUsuario.map((r) => r.role.nome),
+      cpf: usuario.cpf ?? "",
+      roles: nomesRoles,
       permissoes,
       fkEmpresaId: usuario.fkEmpresaId ?? undefined,
       fkResponsavelTecnicoId: usuario.fkResponsavelTecnicoId ?? undefined,
@@ -118,7 +125,8 @@ export async function loginUser(idToken: string) {
       idUsuario: usuario.idUsuario,
       email: usuario.email,
       nome: usuario.nome,
-      role: rolesDoUsuario.map((r) => r.role.nome),
+      cpf: usuario.cpf,
+      role: nomesRoles,
       permissoes,
       fkEmpresaId: usuario.fkEmpresaId,
       fkResponsavelTecnicoId: usuario.fkResponsavelTecnicoId,

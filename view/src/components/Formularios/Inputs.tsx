@@ -31,7 +31,7 @@ export const Input = ({
 }: InputProps) => (
   <div className="w-full">
     <label htmlFor={name} className="block mb-1 text-sm font-medium text-gray-900">
-      {label}{required && '*'}
+      {label}{required && ' *'}
     </label>
     <input
       type={name === 'senha' ? 'password' : type}
@@ -71,7 +71,7 @@ export const SelectInput = ({
   <div className="w-full">
     {label && (
       <label htmlFor={name} className="block mb-1 text-sm font-medium text-gray-900">
-        {label}{required && '*'}
+        {label}{required && ' *'}
       </label>
     )}
     <select
@@ -81,9 +81,7 @@ export const SelectInput = ({
       onChange={onChange}
       required={required}
       disabled={disable}
-      className={`border border-gray-300 text-sm rounded-md block w-full p-2.5 focus:border-2 focus:border-blue-500 focus:outline-none
-        ${value ? "bg-gray-100" : "bg-white"}
-      `}
+      className={`border border-gray-300 text-sm rounded-md block w-full p-2.5 focus:border-2 focus:border-blue-500 focus:outline-none`}
     >
       <option value="">{placeholder}</option>
       {options.map((opt) => (
@@ -127,7 +125,7 @@ export const SelectMultiInput = <T extends string | number>({
     <div className="w-full">
       <label htmlFor={name} className="block mb-1 text-sm font-medium text-gray-900">
         {label}
-        {required && "*"}
+        {required && " *"}
       </label>
       <Select
         inputId={name}
@@ -167,7 +165,7 @@ export const TextArea = ({
 }: TextAreaProps) => (
   <div className="w-full">
     <label htmlFor={name} className="block mb-1 text-sm font-medium text-gray-900">
-      {label}{required && '*'}
+      {label}{required && ' *'}
     </label>
     <textarea
       id={name}

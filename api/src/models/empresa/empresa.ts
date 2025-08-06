@@ -31,6 +31,23 @@ export const buscarEmpresa = {
   },
 };
 
+export const buscarEmpresas = {
+  async execute(termo: string) {
+    return await prisma.empresa.findMany({
+      where: {
+        OR: [
+          { nomeFantasia: { contains: termo } },
+          { razaoSocial: { contains: termo } }
+        ]
+      },
+      include: {
+        funcionarios: true,
+      },
+      take: 10
+    });
+  }
+};
+
 export const criarEmpresa = {
   async execute(data: EmpresaInput) {
     try {

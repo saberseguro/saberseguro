@@ -4,9 +4,9 @@ import { buscarUnidadeController, buscarUnidadesEmpresaController, criarUnidadeC
 
 const router = Router();
 
-router.get('/:id', authorize(['visualizar_unidade']), buscarUnidadeController);
-router.get('/unidadesEmpresa/:id', authorize(['visualizar_unidade']), buscarUnidadesEmpresaController);
-router.post('/', authorize(['gerenciar_empresa']), criarUnidadeController);
-router.put('/:id', authorize(['gerenciar_empresa']), editarUnidadeController);
+router.get('/:id', authorize(['ver_empresas']), buscarUnidadeController);
+router.get('/unidadesEmpresa/:id', authorize(['ver_empresas']), buscarUnidadesEmpresaController);
+router.post('/', authorize(['criar_empresas']), criarUnidadeController);
+router.put('/:id', authorize(['editar_empresas']), editarUnidadeController);
 
 export default router;

@@ -42,11 +42,11 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
   const menuItems = [
     { label: "Home", icon: <Home />, path: "/", permissoes: [] },
-    { label: "Empresa", icon: <Boxes />, path: "/empresa", permissoes: [] },
+    { label: "Empresa", icon: <Boxes />, path: "/empresa", permissoes: ['ver_empresas'] },
     {
       label: "Cursos",
       icon: <HeartHandshake />,
-      permissoes: ["visualizar_cursos"],
+      permissoes: ['ver_cursos'],
       children: [
         { label: "Todos os Cursos", path: "/cursos/todos" },
         { label: "Meus Cursos", path: "/cursos/meus" },

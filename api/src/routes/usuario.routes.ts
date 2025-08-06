@@ -10,10 +10,10 @@ import {
 
 const router = Router();
 
-router.get('/', authorize(['visualizar_usuarios']), buscarUsuarioController);
-router.post('/', authorize(['gerenciar_usuarios']), criarUsuarioController);
-router.put('/:id', authorize(['gerenciar_usuarios']), editarUsuarioController);
-router.get('/roles', authorize(['gerenciar_usuarios']), buscarRoleComPermissoes);
+router.get('/', authorize(['ver_usuarios']), buscarUsuarioController);
+router.post('/', authorize(['criar_usuarios']), criarUsuarioController);
+router.put('/:id', authorize(['editar_usuarios']), editarUsuarioController);
+router.get('/roles', authorize(['ver_usuarios']), buscarRoleComPermissoes);
 router.post('/verificarHorarioAcesso', verificarHorarioAcessoController);
 
 export default router;

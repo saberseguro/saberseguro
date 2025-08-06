@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Empresa } from "../../types/EstruturaEmpresa";
 import { Input, SelectInput } from "./Inputs";
 import toast from "react-hot-toast";
+import Spinner from "../Spinner";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -13,6 +14,7 @@ interface FormEmpresaProps {
 }
 
 export default function FormEmpresa({ initialData = {}, onEdit, setIsOpenEmpresa, fetchEmpresa }: FormEmpresaProps) {
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     nomeFantasia: initialData.nomeFantasia || "",
     razaoSocial: initialData.razaoSocial || "",
@@ -58,12 +60,13 @@ export default function FormEmpresa({ initialData = {}, onEdit, setIsOpenEmpresa
     e.preventDefault();
 
     try {
+      setLoading(true);
       const token = localStorage.getItem("token");
 
       if (!token) {
         throw new Error("Token de autenticação não encontrado.");
       }
-      
+
       const response = await fetch(`${API_URL}/empresa${onEdit ? `/${onEdit.idEmpresa}` : ""}`, {
         method: onEdit ? "PUT" : "POST",
         headers: {
@@ -81,7 +84,9 @@ export default function FormEmpresa({ initialData = {}, onEdit, setIsOpenEmpresa
       setIsOpenEmpresa(false);
       handleClear();
       fetchEmpresa();
+      setLoading(false);
     } catch (err: any) {
+      setLoading(false);
       console.error(err);
       toast.error(err.message || "Erro ao salvar");
     }
@@ -150,8 +155,8 @@ export default function FormEmpresa({ initialData = {}, onEdit, setIsOpenEmpresa
       </div>
 
       <div className="flex justify-end">
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-          Salvar
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-400" disabled={loading}>
+          {loading ? <Spinner /> : "Salvar"}
         </button>
       </div>
     </form>

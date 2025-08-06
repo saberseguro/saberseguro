@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Empresa, Unidade, Setor, Cargo, Funcionario } from "../../types/EstruturaEmpresa";
-import { getEmpresa, getUnidades, getSetores, getCargos, getFuncionarios } from "../../services/apiEmpresa";
+import { searchEmpresas, getEmpresa, getUnidades, getSetores, getCargos, getFuncionarios } from "../../services/apiEmpresa";
 import { useAuth } from "../../contexts/AuthContext";
 import { formatarDocumento } from "../../auxiliares/formatters";
 import { temPermissao } from "../../auxiliares/permissoes";
@@ -16,12 +16,17 @@ import FormFuncionario from "../../components/Formularios/FormFuncionario";
 // Icons
 import { ChevronDown, ChevronUp, Pencil, PencilOff, CirclePlus, CircleCheck, CircleX } from 'lucide-react';
 import ToolTip from "../../components/Auxiliares/ToolTip";
+import { SearchDropdown } from "../../components/SearchDropDown";
+import Spinner from "../../components/Spinner";
 
 export default function GerenciaEmpresa() {
 
   const { user } = useAuth();
 
+  const isAdmin = Array.isArray(user?.role) && user.role.includes("admin");
+
   const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [idEmpresaSelecionada, setIdEmpresaSelecionada] = useState<number | null>(null);
 
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [unidadeSelecionada, setUnidadeSelecionada] = useState<Unidade | null>(null);
@@ -41,65 +46,123 @@ export default function GerenciaEmpresa() {
   const [isOpenCargo, setIsOpenCargo] = useState(false);
   const [isOpenFuncionario, setIsOpenFuncionario] = useState(false);
 
+  const [loadingEmpresa, setLoadingEmpresa] = useState(false);
+  const [loadingUnidade, setLoadingUnidade] = useState(false);
+  const [loadingSetor, setLoadingSetor] = useState(false);
+  const [loadingCargo, setLoadingCargo] = useState(false);
+  const [loadingFuncionario, setLoadingFuncionario] = useState(false);
 
-  const podeEditar = temPermissao(user, ["gerenciar_empresa"]);
+  const podeEditar = temPermissao(user, ["editar_empresas"]);
+
+  const [buscaEmpresa, setBuscaEmpresa] = useState("");
+
+  useEffect(() => {
+    if (!isAdmin && user?.fkEmpresaId) {
+      setIdEmpresaSelecionada(user.fkEmpresaId);
+    }
+  }, [user, isAdmin]);
 
   const fetchEmpresa = async () => {
-    if (user?.fkEmpresaId) {
-      const empresaData = await getEmpresa(user.fkEmpresaId);
+    if (!idEmpresaSelecionada) return;
+
+    setLoadingEmpresa(true);
+    try {
+      const empresaData = await getEmpresa(idEmpresaSelecionada);
       setEmpresa(empresaData);
+    } catch (error) {
+      console.error("Erro ao buscar empresa:", error);
+      setEmpresa(null);
+    } finally {
+      setLoadingEmpresa(false);
     }
   };
 
   const fetchUnidades = async () => {
-    if (user?.fkEmpresaId) {
-      const unidadesData = await getUnidades(user.fkEmpresaId);
+    if (!idEmpresaSelecionada) return;
+
+    setLoadingUnidade(true);
+    try {
+      const unidadesData = await getUnidades(idEmpresaSelecionada);
       setUnidades(unidadesData);
 
       if (unidadeSelecionada) {
         const atualizada = unidadesData.find(u => u.idUnidade === unidadeSelecionada.idUnidade);
-        if (atualizada) setUnidadeSelecionada(atualizada);
+        setUnidadeSelecionada(atualizada ?? null);
       }
+    } catch (error) {
+      console.error("Erro ao buscar unidades:", error);
+      setUnidades([]);
+      setUnidadeSelecionada(null);
+    } finally {
+      setLoadingUnidade(false);
     }
   };
 
   const fetchSetores = async () => {
-    if (unidadeSelecionada) {
+    if (!unidadeSelecionada) return;
+
+    setLoadingSetor(true);
+    try {
       const setoresData = await getSetores(unidadeSelecionada.idUnidade);
       setSetores(setoresData);
 
       if (setorSelecionado) {
         const atualizada = setoresData.find(s => s.idSetor === setorSelecionado.idSetor);
-        if (atualizada) setSetorSelecionado(atualizada);
+        setSetorSelecionado(atualizada ?? null);
       }
+    } catch (error) {
+      console.error("Erro ao buscar setores:", error);
+      setSetores([]);
+      setSetorSelecionado(null);
+    } finally {
+      setLoadingSetor(false);
     }
   };
 
   const fetchCargos = async () => {
-    if (setorSelecionado) {
+    if (!setorSelecionado) return;
+
+    setLoadingCargo(true);
+    try {
       const cargosData = await getCargos(setorSelecionado.idSetor);
       setCargos(cargosData);
 
       if (cargoSelecionado) {
         const atualizada = cargosData.find(c => c.idCargo === cargoSelecionado.idCargo);
-        if (atualizada) setCargoSelecionado(atualizada);
+        setCargoSelecionado(atualizada ?? null);
       }
+    } catch (error) {
+      console.error("Erro ao buscar cargos:", error);
+      setCargos([]);
+      setCargoSelecionado(null);
+    } finally {
+      setLoadingCargo(false);
     }
   };
 
   const fetchFuncionarios = async () => {
-    if (cargoSelecionado) {
-      const funcionariosData = await getFuncionarios(cargoSelecionado.idCargo);
-      setFuncionarios(funcionariosData);
-    } else {
+    setLoadingFuncionario(true);
+    try {
+      if (cargoSelecionado) {
+        const funcionariosData = await getFuncionarios(cargoSelecionado.idCargo);
+        setFuncionarios(funcionariosData);
+      } else {
+        setFuncionarios([]);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar funcionários:", error);
       setFuncionarios([]);
+    } finally {
+      setLoadingFuncionario(false);
     }
   };
 
   useEffect(() => {
-    fetchEmpresa();
-    fetchUnidades();
-  }, [user?.fkEmpresaId]);
+    if (idEmpresaSelecionada) {
+      fetchEmpresa();
+      fetchUnidades();
+    }
+  }, [idEmpresaSelecionada]);
 
   useEffect(() => {
     fetchSetores();
@@ -166,32 +229,62 @@ export default function GerenciaEmpresa() {
   return (
     <>
       <div className="flex flex-col h-full shadow-md rounded-md bg-white">
-        {/* Card Empresa */}
-        {empresa && (
-          <div className="p-4 border-b border-gray-300 text-sm">
-            <div className="w-full flex justify-between items-center">
-              <h1 className="text-2xl font-bold mb-2">{empresa.nomeFantasia}</h1>
-              <div>
-                {podeEditar ? (
-                  <ToolTip text="Editar" position="left">
-                    <button className="text-sky-500 hover:text-sky-700 cursor-pointer" onClick={() => setIsOpenEmpresa(true)}>
-                      <Pencil size={18} className="mr-2" />
-                    </button>
-                  </ToolTip>
-                ) : (
-                  <ToolTip text="Sem permissão" position="left">
-                    <button className="text-gray-400 cursor-not-allowed">
-                      <PencilOff size={18} className="mr-2" />
-                    </button>
-                  </ToolTip>
-                )}
-              </div>
-            </div>
-            <p><strong>Razão Social:</strong> {empresa.razaoSocial}</p>
-            <p><strong>CNPJ:</strong> {formatarDocumento(empresa.documento, 'cnpj')}</p>
-            <p><strong>Endereço:</strong> {empresa.endereco}, {empresa.numero} {empresa.complemento} - {empresa.bairro}, {empresa.cidade}/{empresa.uf} - {formatarDocumento(empresa.cep, 'cep')}</p>
+        {isAdmin && (
+          <div className="p-4 border-b border-gray-300">
+            <SearchDropdown<Empresa>
+              placeholder="Buscar empresa..."
+              valor={buscaEmpresa}
+              onChange={setBuscaEmpresa}
+              onSelect={(empresa) => {
+                setIdEmpresaSelecionada(empresa.idEmpresa);
+                setBuscaEmpresa("");
+                setUnidadeSelecionada(null);
+                setSetorSelecionado(null);
+                setCargoSelecionado(null);
+                setFuncionarios([]);
+              }}
+              buscar={searchEmpresas}
+              renderItem={(e) => <span>{e.nomeFantasia}</span>}
+              chaveUnica={(e) => e.idEmpresa}
+            />
           </div>
         )}
+
+        {/* Card Empresa */}
+        {loadingEmpresa ? (
+          <div className="p-4 border-b border-gray-300 text-sm animate-pulse space-y-2">
+            <div className="h-6 bg-gray-200 rounded w-1/3"></div>
+            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+          </div>
+        ) : (
+          empresa && (
+            <div className="p-4 border-b border-gray-300 text-sm">
+              <div className="w-full flex justify-between items-center">
+                <h1 className="text-2xl font-bold mb-2">{empresa.nomeFantasia}</h1>
+                <div>
+                  {podeEditar ? (
+                    <ToolTip text="Editar" position="left">
+                      <button className="text-sky-500 hover:text-sky-700 cursor-pointer" onClick={() => setIsOpenEmpresa(true)}>
+                        <Pencil size={18} className="mr-2" />
+                      </button>
+                    </ToolTip>
+                  ) : (
+                    <ToolTip text="Sem permissão" position="left">
+                      <button className="text-gray-400 cursor-not-allowed">
+                        <PencilOff size={18} className="mr-2" />
+                      </button>
+                    </ToolTip>
+                  )}
+                </div>
+              </div>
+              <p><strong>Razão Social:</strong> {empresa.razaoSocial}</p>
+              <p><strong>CNPJ:</strong> {formatarDocumento(empresa.documento, 'cnpj')}</p>
+              <p><strong>Endereço:</strong> {empresa.endereco}, {empresa.numero} {empresa.complemento} - {empresa.bairro}, {empresa.cidade}/{empresa.uf} - {formatarDocumento(empresa.cep, 'cep')}</p>
+            </div>
+          )
+        )}
+
 
         {/* Tabs com as unidades */}
         <div className="flex items-center px-4 py-2 bg-white min-h-14 border-b border-gray-300 overflow-x-auto custom-scrollbar text-sm gap-2">
@@ -208,7 +301,13 @@ export default function GerenciaEmpresa() {
             </ToolTip>
           )}
 
-          {unidades.length > 0 ? (
+          {loadingUnidade ? (
+            <div className="flex gap-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-9 w-40 bg-gray-200 rounded animate-pulse" />
+              ))}
+            </div>
+          ) : unidades.length > 0 ? (
             <div className="flex gap-2">
               {unidades
                 .sort((a, b) => {
@@ -298,39 +397,38 @@ export default function GerenciaEmpresa() {
             </div>
 
             {unidadeSelecionada ?
-              (setores.length > 0 ? (
-                <>
-                  <ul className="space-y-6">
-                    {setores
-                      .sort((a, b) => {
-                        const ativoDiff = (b.ativo ?? 0) - (a.ativo ?? 0);
-                        if (ativoDiff !== 0) return ativoDiff;
-                        return (b.idSetor ?? 0) - (a.idSetor ?? 0);
-                      })
-                      .map((setor) => (
-                        <li
-                          key={setor.idSetor}
-                          className={`flex items-center gap-2 text-center mb-2 px-4 py-2 rounded hover:shadow-sm cursor-pointer border border-gray-200 hover:border-gray-300 ${setorSelecionado?.idSetor === setor.idSetor ? "bg-blue-600 text-white" : "bg-white"}`}
-                          onClick={() => handleSelectSetor(setor)}
-                        >
-                          {setor.ativo === 1 ? (
-                            <CircleCheck size={16} className={`${setorSelecionado?.idSetor === setor.idSetor ? "text-white" : "text-green-600"}`} />
-                          ) : (
-                            <CircleX size={16} className={`${setorSelecionado?.idSetor === setor.idSetor ? "text-white" : "text-red-600"}`} />
-                          )}
-                          <h1 className="font-semibold">{setor.nome}</h1>
-                        </li>
-                      ))}
-                  </ul>
-                </>
+              (loadingSetor ? (
+                <ul className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <li key={i} className="h-10 bg-gray-200 rounded animate-pulse" />
+                  ))}
+                </ul>
+              ) : setores.length > 0 ? (
+                <ul className="space-y-6">
+                  {setores
+                    .sort((a, b) => {
+                      const ativoDiff = (b.ativo ?? 0) - (a.ativo ?? 0);
+                      if (ativoDiff !== 0) return ativoDiff;
+                      return (b.idSetor ?? 0) - (a.idSetor ?? 0);
+                    })
+                    .map((setor) => (
+                      <li
+                        key={setor.idSetor}
+                        className={`flex items-center gap-2 text-center mb-2 px-4 py-2 rounded hover:shadow-sm cursor-pointer border border-gray-200 hover:border-gray-300 ${setorSelecionado?.idSetor === setor.idSetor ? "bg-blue-600 text-white" : "bg-white"}`}
+                        onClick={() => handleSelectSetor(setor)}
+                      >
+                        {setor.ativo === 1 ? (
+                          <CircleCheck size={16} className={`${setorSelecionado?.idSetor === setor.idSetor ? "text-white" : "text-green-600"}`} />
+                        ) : (
+                          <CircleX size={16} className={`${setorSelecionado?.idSetor === setor.idSetor ? "text-white" : "text-red-600"}`} />
+                        )}
+                        <h1 className="font-semibold">{setor.nome}</h1>
+                      </li>
+                    ))}
+                </ul>
               ) : (
-                <>
-                  <button className={`block w-full px-4 py-2 rounded mb-1 cursor-pointer bg-gray-200 text-gray-500 font-medium text-center text-sm`}>
-                    Nenhum setor cadastrado!
-                  </button>
-                </>
-              )
-              ) : (
+                <div className="text-center font-medium text-sm text-gray-500 p-2 bg-white border border-gray-200 rounded cursor-not-allowed">Nenhum setor encontrado!</div>
+              )) : (
                 <>
                   <button className={`block w-full px-4 py-2 rounded mb-1 cursor-pointer bg-gray-200 text-gray-500 font-medium text-center text-sm`}>
                     Selecione uma unidade para ver os setores!
@@ -388,121 +486,142 @@ export default function GerenciaEmpresa() {
               )}
             </div>
 
-
             {setorSelecionado ? (
               <div className="space-y-4">
-                {cargos
-                  .sort((a, b) => {
-                    const ativoDiff = (b.ativo ?? 0) - (a.ativo ?? 0);
-                    if (ativoDiff !== 0) return ativoDiff;
-                    return (b.idCargo ?? 0) - (a.idCargo ?? 0);
-                  })
-                  .map((cargo) => (
-                    <div key={cargo.idCargo} className="bg-white rounded hover:shadow border border-gray-200">
-                      {/* Cabeçalho do cargo */}
-                      <button
-                        className="w-full text-left px-4 py-2 font-semibold text-gray-700"
-                      >
-                        <div className="flex items-center justify-between">
-                          {cargo.nome}
-                          <div className="flex items-center gap-1">
-                            {cargo.ativo === 1 ? (
-                              <CircleCheck size={16} className="text-green-600" />
-                            ) : (
-                              <CircleX size={16} className="text-red-600" />
-                            )}
-                            {cargoSelecionado?.idCargo === cargo.idCargo ? (
-                              <>
-                                {podeEditar ? (
-                                  <ToolTip text="Editar" position="left">
-                                    <button className="text-sky-500 hover:text-sky-700 cursor-pointer" onClick={() => setIsOpenCargo(true)}>
-                                      <Pencil size={15} className="mr-2" />
-                                    </button>
-                                  </ToolTip>
-                                ) : (
-                                  <ToolTip text="Sem permissão" position="left">
-                                    <button className="text-gray-400 cursor-not-allowed">
-                                      <PencilOff size={15} className="mr-2" />
-                                    </button>
-                                  </ToolTip>
-                                )}
-                                <ChevronUp size={16} className="text-gray-400 cursor-pointer" onClick={() => setCargoSelecionado(null)} />
-                              </>
-                            ) : (
-                              <ChevronDown size={16} className="text-gray-400 cursor-pointer" onClick={() => handleSelectCargo(cargo)} />
-                            )}
+                {loadingCargo ? (
+                  <div className="space-y-4">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="h-16 bg-gray-200 rounded animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  cargos
+                    .sort((a, b) => {
+                      const ativoDiff = (b.ativo ?? 0) - (a.ativo ?? 0);
+                      if (ativoDiff !== 0) return ativoDiff;
+                      return (b.idCargo ?? 0) - (a.idCargo ?? 0);
+                    })
+                    .map((cargo) => (
+                      <div key={cargo.idCargo} className="bg-white rounded hover:shadow border border-gray-200">
+                        {/* Cabeçalho do cargo */}
+                        <button
+                          className="w-full text-left px-4 py-2 font-semibold text-gray-700"
+                        >
+                          <div className="flex items-center justify-between">
+                            {cargo.nome}
+                            <div className="flex items-center gap-1">
+                              {cargo.ativo === 1 ? (
+                                <CircleCheck size={16} className="text-green-600" />
+                              ) : (
+                                <CircleX size={16} className="text-red-600" />
+                              )}
+                              {cargoSelecionado?.idCargo === cargo.idCargo ? (
+                                <>
+                                  {podeEditar ? (
+                                    <ToolTip text="Editar" position="left">
+                                      <button className="text-sky-500 hover:text-sky-700 cursor-pointer" onClick={() => setIsOpenCargo(true)}>
+                                        <Pencil size={15} className="mr-2" />
+                                      </button>
+                                    </ToolTip>
+                                  ) : (
+                                    <ToolTip text="Sem permissão" position="left">
+                                      <button className="text-gray-400 cursor-not-allowed">
+                                        <PencilOff size={15} className="mr-2" />
+                                      </button>
+                                    </ToolTip>
+                                  )}
+                                  <ChevronUp size={16} className="text-gray-400 cursor-pointer" onClick={() => setCargoSelecionado(null)} />
+                                </>
+                              ) : (
+                                <ChevronDown size={16} className="text-gray-400 cursor-pointer" onClick={() => handleSelectCargo(cargo)} />
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </button>
+                        </button>
 
-                      {/* Se estiver selecionado, mostra a tabela de funcionários */}
-                      {cargoSelecionado?.idCargo === cargo.idCargo && (
-                        <div className="p-4">
-                          <div className="flex items-center justify-end mb-2">
-                            {podeEditar && setorSelecionado && (
-                              <ToolTip text="Adicionar" position="left">
-                                <button
-                                  className="text-sm text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 hover:border-gray-300 rounded p-2 cursor-pointer"
-                                  onClick={() => { setFuncionarioSelecionado(null); setIsOpenFuncionario(true) }}
-                                >
-                                  <div className="flex items-center justify-center gap-1">
-                                    <CirclePlus size={14} />
-                                    <p className="text-xs font-medium">Novo Funcionário</p>
-                                  </div>
-                                </button>
-                              </ToolTip>
-                            )}
-                          </div>
-                          <table className="w-full text-xs border border-gray-200 text-center">
-                            <thead>
-                              <tr className="bg-gray-100">
-                                <th className="px-3 py-2">Nome</th>
-                                <th className="px-3 py-2">Email</th>
-                                <th className="px-3 py-2">Ações</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {funcionarios.length > 0 ? (
-                                funcionarios.map((f) => (
-                                  <tr key={f.idUsuario} className="border-t border-gray-300">
-                                    <td className="px-3 py-2">{f.nome}</td>
-                                    <td className="px-3 py-2">{f.email}</td>
-                                    <td className="px-3 py-2 flex items-center justify-center gap-4">
-                                      {podeEditar ? (
-                                        <ToolTip text="Editar" position="left">
-                                          <button
-                                            className="text-sky-500 hover:text-sky-700 cursor-pointer"
-                                            onClick={() => {
-                                              setFuncionarioSelecionado(f);
-                                              setIsOpenFuncionario(true);
-                                            }}
-                                          >
-                                            <Pencil size={15} />
-                                          </button>
-                                        </ToolTip>
-                                      ) : (
-                                        <ToolTip text="Sem permissão" position="left">
-                                          <button className="text-gray-400 cursor-not-allowed">
-                                            <PencilOff size={15} />
-                                          </button>
-                                        </ToolTip>
-                                      )}
+                        {/* Se estiver selecionado, mostra a tabela de funcionários */}
+                        {cargoSelecionado?.idCargo === cargo.idCargo && (
+                          <div className="p-4">
+                            <div className="flex items-center justify-end mb-2">
+                              {podeEditar && setorSelecionado && (
+                                <ToolTip text="Adicionar" position="left">
+                                  <button
+                                    className="text-sm text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 hover:border-gray-300 rounded p-2 cursor-pointer"
+                                    onClick={() => { setFuncionarioSelecionado(null); setIsOpenFuncionario(true) }}
+                                  >
+                                    <div className="flex items-center justify-center gap-1">
+                                      <CirclePlus size={14} />
+                                      <p className="text-xs font-medium">Novo Funcionário</p>
+                                    </div>
+                                  </button>
+                                </ToolTip>
+                              )}
+                            </div>
+                            <table className="w-full text-xs border border-gray-200 text-center">
+                              <thead>
+                                <tr className="bg-gray-100">
+                                  <th className="px-3 py-2">Nome</th>
+                                  <th className="px-3 py-2">Email</th>
+                                  <th className="px-3 py-2">Ações</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {loadingFuncionario ? (
+                                  Array.from({ length: 3 }).map((_, i) => (
+                                    <tr key={i} className="border-t border-gray-300 animate-pulse">
+                                      <td className="px-3 py-3">
+                                        <div className="h-4 bg-gray-200 rounded w-24 mx-auto" />
+                                      </td>
+                                      <td className="px-3 py-3">
+                                        <div className="h-4 bg-gray-200 rounded w-32 mx-auto" />
+                                      </td>
+                                      <td className="px-3 py-3">
+                                        <div className="h-4 bg-gray-200 rounded w-20 mx-auto" />
+                                      </td>
+                                    </tr>
+                                  ))
+                                ) : funcionarios.length > 0 ? (
+                                  funcionarios.map((f) => (
+                                    <tr key={f.idUsuario} className="border-t border-gray-300">
+                                      <td className="px-3 py-2">{f.nome}</td>
+                                      <td className="px-3 py-2">{f.email}</td>
+                                      <td className="px-3 py-2 flex items-center justify-center gap-4">
+                                        {podeEditar ? (
+                                          <ToolTip text="Editar" position="left">
+                                            <button
+                                              className="text-sky-500 hover:text-sky-700 cursor-pointer"
+                                              onClick={() => {
+                                                setFuncionarioSelecionado(f);
+                                                setIsOpenFuncionario(true);
+                                              }}
+                                            >
+                                              <Pencil size={15} />
+                                            </button>
+                                          </ToolTip>
+                                        ) : (
+                                          <ToolTip text="Sem permissão" position="left">
+                                            <button className="text-gray-400 cursor-not-allowed">
+                                              <PencilOff size={15} />
+                                            </button>
+                                          </ToolTip>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan={3} className="px-3 py-4 text-gray-500 italic">
+                                      Nenhum funcionário cadastrado.
                                     </td>
                                   </tr>
-                                ))
-                              ) : (
-                                <tr>
-                                  <td colSpan={3} className="px-3 py-4 text-gray-500 italic">
-                                    Nenhum funcionário cadastrado.
-                                  </td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                )}
               </div>
             ) : (
               <p className="text-sm text-gray-500">Selecione um setor para ver os cargos.</p>
@@ -532,7 +651,7 @@ export default function GerenciaEmpresa() {
         largura="max-w-8/12"
       >
         <FormCadastroUnidade
-          fkEmpresaId={empresa?.idEmpresa}
+          fkEmpresaId={idEmpresaSelecionada ?? user?.fkEmpresaId ?? undefined}
           fetchUnidades={fetchUnidades}
           onEdit={unidadeSelecionada ?? undefined}
           setIsOpenUnidade={setIsOpenUnidade}
@@ -574,6 +693,7 @@ export default function GerenciaEmpresa() {
         largura="max-w-8/12"
       >
         <FormFuncionario
+          fkEmpresaId={idEmpresaSelecionada ?? user?.fkEmpresaId ?? undefined}
           fkCargoId={cargoSelecionado?.idCargo}
           onEdit={funcionarioSelecionado ?? undefined}
           setIsOpenFuncionario={setIsOpenFuncionario}

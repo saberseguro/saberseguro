@@ -11,6 +11,7 @@ model usuario {
   idUsuario              Int                @id @default(autoincrement())
   nome                   String             @db.VarChar(45)
   email                  String             @unique(map: "email_UNIQUE") @db.VarChar(45)
+  cpf                    String?            @unique(map: "cpf_UNIQUE") @db.VarChar(12)
   criado_em              DateTime           @default(now()) @db.DateTime(0)
   editado_em             DateTime           @default(now()) @db.DateTime(0)
   ativo                  Int                @default(1) @db.TinyInt
@@ -133,14 +134,9 @@ model curso {
   criado_em              DateTime @default(now()) @db.DateTime(0)
   editado_em             DateTime @default(now()) @db.DateTime(0)
   ativo                  Int      @default(1) @db.TinyInt
-
   fkCategoriaId          Int
   fkResponsavelTecnicoId Int
   fkEmpresaId            Int?
-
-  categoria              categoria            @relation(fields: [fkCategoriaId], references: [idCategoria], onDelete: Restrict, map: "fk_curso_fkCategoriaId")
-  responsavelTecnico     responsaveltecnico   @relation(fields: [fkResponsavelTecnicoId], references: [idResponsavelTecnico], onDelete: Restrict, map: "fk_curso_fkResponsavelTecnicoId")
-  empresa                empresa?             @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull, map: "fk_curso_fkEmpresaId")
 }
 
 model cursoacesso {
@@ -354,6 +350,7 @@ model logEvento {
 model usuarioHorario {
   id               Int      @id @default(autoincrement())
   diaSemana        Int
+  permitido        Boolean  @default(true)
   horarioInicio    String
   horarioFim       String
   fkUsuarioId      Int

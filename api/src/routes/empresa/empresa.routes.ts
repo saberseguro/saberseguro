@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { authorize } from '../../middlewares/authorize';
-import { buscarEmpresaController, criarEmpresaController, editarEmpresaController } from '../../controllers/empresa/empresaController';
+import { buscarEmpresaController, buscarEmpresasController, criarEmpresaController, editarEmpresaController } from '../../controllers/empresa/empresaController';
 
 const router = Router();
 
-router.get('/:id', authorize(['visualizar_empresa']), buscarEmpresaController);
-router.post('/', authorize(['gerenciar_empresa']), criarEmpresaController);
-router.put('/:id', authorize(['gerenciar_empresa']), editarEmpresaController);
+router.get('/:id', authorize(['ver_empresas']), buscarEmpresaController);
+router.get('/', authorize(['ver_empresas']), buscarEmpresasController);
+router.post('/', authorize(['criar_empresas']), criarEmpresaController);
+router.put('/:id', authorize(['editar_empresas']), editarEmpresaController);
 
 export default router;
