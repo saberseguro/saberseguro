@@ -3,17 +3,6 @@ import { Prisma } from '@prisma/client';
 import { registrarEvento } from "../shared/utils/registrarEvento";
 import { auth } from "firebase-admin";
 
-interface UsuarioInput {
-  nome: string;
-  email: string;
-  ativo?: number;
-  fkEmpresaId?: number;
-  fkCargoId?: number;
-  fkResponsavelTecnicoId?: number;
-  roles: number[];
-  firebaseId: string;
-}
-
 type UsuarioRoleComPermissoes = Prisma.usuarioroleGetPayload<{
   include: {
     role: {
@@ -102,10 +91,12 @@ interface HorarioDTO {
   diaSemana: number;
   horarioInicio: string;
   horarioFim: string;
+  permitido?: boolean;
 }
 
 interface NovoUsuarioDTO {
   nome: string;
+  cpf: string;
   email: string;
   senha: string;
   ativo?: number;
@@ -121,6 +112,7 @@ export async function criarUsuario(data: NovoUsuarioDTO) {
   try {
     const {
       nome,
+      cpf,
       email,
       senha,
       ativo = 1,
@@ -144,6 +136,7 @@ export async function criarUsuario(data: NovoUsuarioDTO) {
     const novoUsuario = await prisma.usuario.create({
       data: {
         nome,
+        cpf,
         email,
         firebaseId,
         ativo,
@@ -158,6 +151,7 @@ export async function criarUsuario(data: NovoUsuarioDTO) {
         await prisma.usuarioHorario.create({
           data: {
             diaSemana: h.diaSemana,
+            permitido: h.permitido ?? true,
             horarioInicio: h.horarioInicio,
             horarioFim: h.horarioFim,
             fkUsuarioId: novoUsuario.idUsuario,
@@ -201,6 +195,7 @@ export async function criarUsuario(data: NovoUsuarioDTO) {
 interface EditarUsuarioDTO {
   idUsuario: number;
   nome?: string;
+  cpf?: string;
   ativo?: number;
   fkEmpresaId?: number;
   fkCargoId?: number;
@@ -214,6 +209,7 @@ export async function editarUsuario(data: EditarUsuarioDTO) {
   const {
     idUsuario,
     nome,
+    cpf,
     ativo,
     fkCargoId,
     fkEmpresaId,
@@ -229,6 +225,7 @@ export async function editarUsuario(data: EditarUsuarioDTO) {
     where: { idUsuario },
     data: {
       nome,
+      cpf,
       ativo,
       fkCargoId,
       fkEmpresaId,
@@ -261,6 +258,7 @@ export async function editarUsuario(data: EditarUsuarioDTO) {
       await prisma.usuarioHorario.create({
         data: {
           diaSemana: h.diaSemana,
+          permitido: h.permitido ?? true,
           horarioInicio: h.horarioInicio,
           horarioFim: h.horarioFim,
           fkUsuarioId: idUsuario,
@@ -292,27 +290,32 @@ export const buscarRolesComPermissoes = async () => {
 }
 
 export async function verificarHorarioAcesso(email: string) {
-  const diaAtual = new Date().getDay();
-
   const usuario = await prisma.usuario.findUnique({
     where: { email },
+    include: {
+      usuarioHorario: true,
+    },
   });
 
   if (!usuario) return null;
 
-  const diasSemana = ["Domingo", "Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado"];
+  const diasSemana = [
+    "Domingo",
+    "Segunda-Feira",
+    "Terça-Feira",
+    "Quarta-Feira",
+    "Quinta-Feira",
+    "Sexta-Feira",
+    "Sábado"
+  ];
 
-  const horario = await prisma.usuarioHorario.findFirst({
-    where: {
-      fkUsuarioId: usuario.idUsuario,
-      diaSemana: diaAtual,
-    },
-    select: {
-      diaSemana: true,
-      horarioInicio: true,
-      horarioFim: true,
-    },
-  });
+  const horarios = usuario.usuarioHorario.map((h) => ({
+    diaSemanaNumero: h.diaSemana,
+    diaSemana: diasSemana[h.diaSemana],
+    permitido: h.permitido,
+    horarioInicio: h.horarioInicio,
+    horarioFim: h.horarioFim,
+  }));
 
-  return { ...horario, diaSemana: diasSemana[horario?.diaSemana || 0] };
+  return horarios;
 }

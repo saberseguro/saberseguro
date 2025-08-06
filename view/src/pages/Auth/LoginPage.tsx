@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "react-hot-toast";
+import ModalAcesso from "../../components/Modais/ModalAcesso";
 
 export default function LoginPage() {
   const { login, handleVerificarHorarioAcesso, horarioAcesso, setHorarioAcesso } = useAuth();
@@ -9,6 +10,8 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+
+  const [modalAberto, setModalAberto] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,21 +70,30 @@ export default function LoginPage() {
             Entrar
           </button>
 
-          <div className="flex flex-wrap items-center gap-2 w-full justify-center">
+          <div className="w-full flex justify-center">
             <button
               type="button"
-              className="cursor-pointer text-center text-sm text-gray-500 hover:text-blue-600 hover:underline"
-              onClick={() => {if (!email) return (setHorarioAcesso(null), toast.error("Por favor, insira um e-mail")); handleVerificarHorarioAcesso(email)}}
+              className="cursor-pointer text-sm text-gray-600 hover:text-blue-600 hover:underline"
+              onClick={() => {
+                if (!email) {
+                  setHorarioAcesso(null);
+                  toast.error("Por favor, insira um e-mail");
+                  return;
+                }
+                setModalAberto(true);
+                handleVerificarHorarioAcesso(email);
+              }}
             >
               Verificar horários de acesso
             </button>
-
-            {horarioAcesso && (
-              <div className="text-center font-medium text-sm text-gray-600 capitalize">
-                {horarioAcesso.diaSemana}: Entrada: {horarioAcesso.horarioInicio} - Saída: {horarioAcesso.horarioFim}
-              </div>
-            )}
           </div>
+
+          <ModalAcesso
+            aberto={modalAberto}
+            onClose={() => setModalAberto(false)}
+            horarios={horarioAcesso || []}
+          />
+
         </form>
       </div>
 

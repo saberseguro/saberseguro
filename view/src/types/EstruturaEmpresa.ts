@@ -73,6 +73,7 @@ export interface HorarioAcesso {
 export interface Funcionario {
   idUsuario: number;
   nome: string;
+  cpf: string;
   email: string;
   senha: string;
   ativo: number;

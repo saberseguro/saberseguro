@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Cargo } from "../../types/EstruturaEmpresa";
 import { Input, SelectInput, TextArea } from "./Inputs";
 import toast from "react-hot-toast";
+import Spinner from "../Spinner";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -14,6 +15,7 @@ interface FormCargoProps {
 }
 
 export default function FormSetor({ initialData = {}, onEdit, fkSetorId, setIsOpenCargo, fetchCargos }: FormCargoProps) {
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     nome: initialData.nome || "",
     descricao: initialData.descricao || "",
@@ -23,7 +25,6 @@ export default function FormSetor({ initialData = {}, onEdit, fkSetorId, setIsOp
 
   useEffect(() => {
     if (onEdit) {
-      console.log(onEdit)
       setForm({
         nome: onEdit.nome || "",
         descricao: onEdit.descricao || "",
@@ -35,13 +36,14 @@ export default function FormSetor({ initialData = {}, onEdit, fkSetorId, setIsOp
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));  
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
+      setLoading(true);
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -65,7 +67,9 @@ export default function FormSetor({ initialData = {}, onEdit, fkSetorId, setIsOp
       setIsOpenCargo(false);
       handleClear();
       fetchCargos();
+      setLoading(false);
     } catch (err: any) {
+      setLoading(false);
       console.error(err);
       toast.error(err.message || "Erro ao salvar");
     }
@@ -101,8 +105,8 @@ export default function FormSetor({ initialData = {}, onEdit, fkSetorId, setIsOp
       </div>
 
       <div className="flex justify-end">
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 cursor-pointer">
-          Salvar
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-400" disabled={loading}>
+          {loading ? <Spinner /> : "Salvar"}
         </button>
       </div>
     </form>

@@ -11,6 +11,7 @@ model usuario {
   idUsuario              Int                @id @default(autoincrement())
   nome                   String             @db.VarChar(45)
   email                  String             @unique(map: "email_UNIQUE") @db.VarChar(45)
+  cpf                    String?            @unique(map: "cpf_UNIQUE") @db.VarChar(12)
   criado_em              DateTime           @default(now()) @db.DateTime(0)
   editado_em             DateTime           @default(now()) @db.DateTime(0)
   ativo                  Int                @default(1) @db.TinyInt
@@ -349,6 +350,7 @@ model logEvento {
 model usuarioHorario {
   id               Int      @id @default(autoincrement())
   diaSemana        Int
+  permitido        Boolean  @default(true)
   horarioInicio    String
   horarioFim       String
   fkUsuarioId      Int
