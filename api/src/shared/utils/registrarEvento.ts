@@ -5,7 +5,7 @@ interface RegistrarEventoParams {
   tipo: string;
   descricao?: string;
   entidade?: string;
-  entidadeId?: number;
+  entidadeId?: any;
   dadosAntes?: any;
   dadosDepois?: any;
 }
@@ -26,7 +26,7 @@ export async function registrarEvento({
         tipo,
         descricao,
         entidade,
-        entidade_id: entidadeId,
+        entidade_id: entidadeId as any,
         dados_antes: dadosAntes,
         dados_depois: dadosDepois,
       },

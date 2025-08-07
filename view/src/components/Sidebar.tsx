@@ -48,8 +48,8 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
       icon: <HeartHandshake />,
       permissoes: ['ver_cursos'],
       children: [
-        { label: "Todos os Cursos", path: "/cursos/todos" },
-        { label: "Meus Cursos", path: "/cursos/meus" },
+        { label: "Todos os Cursos", path: "/cursos/todos", permissoes: ['criar_cursos'] },
+        { label: "Meus Cursos", path: "/cursos/meus", permissoes: ['ver_cursos'] },
       ],
     },
   ];
@@ -69,18 +69,33 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         <SidebarContext.Provider value={{ isOpen }}>
           <ul className="flex-1 space-y-1 px-2 py-4">
             {menuItems
-              .filter((item) => item.permissoes.length === 0 || (user?.permissoes && item.permissoes.some(p => user.permissoes!.includes(p))))
-              .map((item) => (
-                <SidebarItem
-                  key={item.label}
-                  icon={item.icon}
-                  text={item.label}
-                  path={item.path}
-                  children={item.children}
-                  isOpenSubmenu={openMenuKey === item.label}
-                  onToggle={() => setOpenMenuKey(openMenuKey === item.label ? null : item.label)}
-                />
-              ))}
+              .filter(item =>
+                item.permissoes.length === 0 ||
+                (user?.permissoes && item.permissoes.some(p => user.permissoes!.includes(p)))
+              )
+              .map(item => {
+                const filteredChildren = item.children?.filter(
+                  child =>
+                    !child.permissoes ||
+                    child.permissoes.length === 0 ||
+                    child.permissoes.some(p => user?.permissoes?.includes(p))
+                );
+
+                // Se o item tem filhos mas nenhum filho autorizado, não renderiza o item
+                if (item.children && (!filteredChildren || filteredChildren.length === 0)) return null;
+
+                return (
+                  <SidebarItem
+                    key={item.label}
+                    icon={item.icon}
+                    text={item.label}
+                    path={item.path}
+                    children={filteredChildren} // pode ser undefined
+                    isOpenSubmenu={openMenuKey === item.label}
+                    onToggle={() => setOpenMenuKey(openMenuKey === item.label ? null : item.label)}
+                  />
+                );
+              })}
           </ul>
         </SidebarContext.Provider>
 

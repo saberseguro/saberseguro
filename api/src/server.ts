@@ -23,6 +23,9 @@ import aulaUsuarioRoutes from './routes/curso/aulausuario.routes';
 import aulaVideoRoutes from './routes/curso/aulavideo.routes';
 import materialComplementarRoutes from './routes/curso/materialcomplementar.routes';
 
+// Avaliação
+import avaliacaoRoutes from './routes/curso/avaliacao.routes';
+
 const app = express();
 
 app.use(cors({
@@ -44,6 +47,9 @@ app.use("/api/unidade", unidadeRoutes);
 app.use("/api/setor", setorRoutes);
 app.use("/api/cargo", cargoRoutes);
 
+// Categoria
+app.use("/api/categoria", categoriaRoutes);
+
 // Curso
 app.use("/api/curso", cursoRoutes);
 app.use("/api/curso/modulo", moduloRoutes);
@@ -52,8 +58,8 @@ app.use("/api/curso/aula/aulavideo", aulaVideoRoutes);
 app.use("/api/curso/aula/materialcomplementar", materialComplementarRoutes);
 app.use("/api/curso/aulausuario", aulaUsuarioRoutes);
 
-// Categoria
-app.use("/api/categoria", categoriaRoutes);
+// Avaliação
+app.use("/api/avaliacao", avaliacaoRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Servidor rodando na porta ${env.PORT}`);
