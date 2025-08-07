@@ -144,6 +144,7 @@ model categoria {
   idCategoria Int              @id @default(autoincrement())
   nome        String           @db.VarChar(45)
   descricao   String           @db.Text
+
   cursos      categoriacurso[]
 }
 
@@ -152,8 +153,8 @@ model categoriacurso {
   fkCursoId        Int
   fkCategoriaId    Int
 
-  curso     curso     @relation(fields: [fkCursoId], references: [idCurso])
-  categoria categoria @relation(fields: [fkCategoriaId], references: [idCategoria])
+  curso     curso     @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade)
+  categoria categoria @relation(fields: [fkCategoriaId], references: [idCategoria], onDelete: Cascade)
 
   @@unique([fkCursoId, fkCategoriaId])
 }
@@ -472,7 +473,11 @@ model usuarioHorario {
 
 enum materialcomplementar_tipo {
   pdf
+  doc
+  ppt
   link
+  video
+  outro
 }
 
 enum medida_tipo {

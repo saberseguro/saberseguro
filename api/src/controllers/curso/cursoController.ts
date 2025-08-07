@@ -28,24 +28,44 @@ export const criarCursoController = async (req: Request, res: Response) => {
     const curso = await criarCurso.execute(req.body, req.user as any);
     return res.status(201).json(curso);
   } catch (err: any) {
+    if (err.message?.includes("O curso precisa de pelo menos uma categoria válida")) {
+      return res.status(404).json({ error: err.message });
+    }
     return res.status(400).json({ error: err.message });
   }
 };
 
 export const editarCursoController = async (req: Request, res: Response) => {
   try {
-    const curso = await editarCurso.execute(Number(req.params.id), req.body);
+    const id = Number(req.params.id);
+
+    if (isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: 'ID inválido.' });
+    }
+
+    const curso = await editarCurso.execute(id, req.body, req.user as any);
     return res.json(curso);
   } catch (err: any) {
+    if (err.message?.includes("Nenhum curso encontrado")) {
+      return res.status(404).json({ error: err.message });
+    }
     return res.status(400).json({ error: err.message });
   }
 };
 
 export const excluirCursoController = async (req: Request, res: Response) => {
   try {
-    await excluirCurso.execute(Number(req.params.id));
-    return res.status(204).send();
+    const id = Number(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID inválido.' });
+    }
+
+    await excluirCurso.execute(id, req.user as any);
+    return res.status(200).json({ message: 'Curso excluído com sucesso.' });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    if (err.message?.includes("Nenhum curso encontrado")) {
+      return res.status(404).json({ error: err.message });
+    }
+    return res.status(400).json({ error: err.message });
   }
 };

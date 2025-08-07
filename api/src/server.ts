@@ -20,6 +20,8 @@ import aulaRoutes from './routes/curso/aula.routes';
 import moduloRoutes from './routes/curso/modulo.routes';
 import categoriaRoutes from './routes/curso/categoria.routes';
 import aulaUsuarioRoutes from './routes/curso/aulausuario.routes';
+import aulaVideoRoutes from './routes/curso/aulavideo.routes';
+import materialComplementarRoutes from './routes/curso/materialcomplementar.routes';
 
 const app = express();
 
@@ -44,10 +46,14 @@ app.use("/api/cargo", cargoRoutes);
 
 // Curso
 app.use("/api/curso", cursoRoutes);
-app.use("/api/aula", aulaRoutes);
-app.use("/api/modulo", moduloRoutes);
+app.use("/api/curso/modulo", moduloRoutes);
+app.use("/api/curso/aula", aulaRoutes);
+app.use("/api/curso/aula/aulavideo", aulaVideoRoutes);
+app.use("/api/curso/aula/materialcomplementar", materialComplementarRoutes);
+app.use("/api/curso/aulausuario", aulaUsuarioRoutes);
+
+// Categoria
 app.use("/api/categoria", categoriaRoutes);
-app.use("/api/aulausuario", aulaUsuarioRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Servidor rodando na porta ${env.PORT}`);
