@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authorize } from '../../middlewares/authorize';
-import { adicionarMedidasAoCursoController, buscarCursoAcessosController, buscarCursoController, buscarCursosController, criarCursoAcessoController, criarCursoController, editarCursoController, excluirCursoAcessoController, excluirCursoController, removerMedidaDoCursoController } from '../../controllers/curso/cursoController';
+import { adicionarMedidasAoCursoController, buscarCursoAcessosController, buscarCursoController, buscarCursosController, criarCursoAcessoController, criarCursoController, editarCursoController, excluirCursoAcessoController, excluirCursoController, removerMedidaDoCursoController, syncCursoController } from '../../controllers/curso/cursoController';
 
 const router = Router();
 
@@ -18,5 +18,9 @@ router.delete('/curso/:id/medida/:idMedida', authorize(['criar_cursos']), remove
 router.post('/curso/:id/acesso', authorize(['criar_cursos']), criarCursoAcessoController);
 router.get('/curso/:id/acessos', authorize(['criar_cursos']), buscarCursoAcessosController);
 router.delete('/curso/acesso/:id', authorize(['criar_cursos']), excluirCursoAcessoController);
+
+// Sincronização
+router.put('/:id/sync', authorize(['editar_cursos']), syncCursoController);
+router.post('/sync', authorize(['criar_cursos']), syncCursoController);
 
 export default router;

@@ -2,27 +2,103 @@ export interface Curso {
   idCurso: number;
   titulo: string;
   descricao?: string;
-  cargaHoraria: string;
-  ativo: number;
+  cargaHoraria: number;
+  Ordem?: number;
+  ativo?: number;
+  criado_em: string;
+  editado_em: string;
   fkResponsavelTecnicoId: number;
   fkEmpresaId?: number;
+
+  responsaveltecnico?: ResponsavelTecnico;
+  categorias?: CategoriaCurso[];
   modulos: Modulo[];
+  avaliacoes?: Avaliacao[];
 }
 
 export interface Modulo {
   idModulo?: number;
   titulo: string;
-  descricao?: string;
+  cargaHoraria?: number;
+  ordem?: number;
+  ativo?: number;
+
   aulas: Aula[];
+  avaliacoes?: Avaliacao[];
 }
 
 export interface Aula {
   idAula?: number;
   titulo: string;
   descricao?: string;
+  tipo?: string;
+  duracao?: number;
+  ordem?: number;
+  ativo?: number;
+  criado_em?: string;
+  editado_em?: string;
+
+  videos?: AulaVideo[];
+  materiais?: MaterialComplementar[];
+
+  avaliacoes?: Avaliacao[];
 }
 
 export interface Categoria {
   idCategoria: number;
   nome: string;
+  descricao?: string;
+}
+
+export interface CategoriaCurso {
+  idCategoriaCurso: number;
+  fkCursoId: number;
+  fkCategoriaId: number;
+  categoria: Categoria;
+}
+
+export interface ResponsavelTecnico {
+  idResponsavelTecnico: number;
+  nome: string;
+  tipoDocumento: string;
+  documento: string;
+  registro: string;
+  funcao: string;
+  telefone: string;
+  criado_em: string;
+  editado_em: string;
+  ativo: number;
+}
+
+export interface AulaVideo {
+  idAulaVideo?: number;
+  url: string;
+}
+
+export interface MaterialComplementar {
+  idMaterialComplementar?: number;
+  titulo: string;
+  tipo: string;
+  material: string;
+  ativo: number;
+}
+
+export interface Avaliacao {
+  idAvaliacao?: number;
+  titulo: string;
+  descricao?: string;
+  tempoLimite?: number;
+  tipoAplicacao?: string;
+  ordem: number;
+  ativo: number;
+
+  fkCursoId?: number;
+  fkModuloId?: number;
+  fkAulaId?: number;
+
+  criado_em?: string;
+  editado_em?: string;
+
+  perguntas: any[];
+  avaliacoesUsuarios: any[];
 }

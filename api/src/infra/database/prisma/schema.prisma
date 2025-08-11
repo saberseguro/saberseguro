@@ -157,6 +157,7 @@ model categoriacurso {
   categoria categoria @relation(fields: [fkCategoriaId], references: [idCategoria], onDelete: Cascade)
 
   @@unique([fkCursoId, fkCategoriaId])
+  @@map("categoriacurso")
 }
 
 model cnae {
@@ -183,7 +184,7 @@ model curso {
   idCurso                Int               @id @default(autoincrement())
   titulo                 String            @db.VarChar(45)
   descricao              String?           @db.Text
-  cargaHoraria           String            @db.VarChar(45)
+  cargaHoraria           Int
   criado_em              DateTime          @default(now()) @db.DateTime(0)
   editado_em             DateTime          @updatedAt @db.DateTime(0)
   ativo                  Int               @default(1) @db.TinyInt
@@ -306,7 +307,7 @@ model medidavinculo {
 model modulo {
   idModulo     Int      @id @default(autoincrement())
   titulo       String   @db.VarChar(45)
-  cargaHoraria String   @db.VarChar(45)
+  cargaHoraria Int
   criado_em    DateTime @default(now()) @db.DateTime(0)
   editado_em   DateTime @updatedAt @db.DateTime(0)
   ativo        Int      @default(1) @db.TinyInt

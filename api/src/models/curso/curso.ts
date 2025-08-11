@@ -1,5 +1,13 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma-client';
 import { registrarEvento } from '../../shared/utils/registrarEvento';
+
+type CursoCompleto = Prisma.cursoGetPayload<{
+  include: {
+    modulos: { include: { aulas: true, avaliacoes: true } };
+    avaliacoes: true;
+  };
+}>;
 
 export const buscarCurso = {
   async execute(id: number) {
@@ -35,8 +43,6 @@ export const buscarCursos = {
     const skip = (page - 1) * take;
 
     const where: any = {};
-
-    console.log(query);
 
     if (query.ativo !== undefined && query.ativo !== "") {
       where.ativo = Number(query.ativo);
@@ -360,6 +366,217 @@ export const excluirCursoAcesso = {
       entidadeId: id,
       descricao: `Acesso ao curso ${antes.fkCursoId} removido.`,
       dadosAntes: antes
+    });
+  }
+};
+
+// Sincronização
+export const syncCurso = {
+  async execute(idCursoParam: number, payload: any, user: any): Promise<CursoCompleto> {
+    return prisma.$transaction(async (tx) => {
+      // 1) Upsert curso
+      const cursoData = {
+        titulo: payload.titulo,
+        descricao: payload.descricao,
+        cargaHoraria: Number(payload.cargaHoraria) || 0,
+        ativo: payload.ativo ?? 1,
+        fkResponsavelTecnicoId: payload.fkResponsavelTecnicoId,
+        fkEmpresaId: payload.fkEmpresaId ?? null,
+      };
+
+      let cursoBase = idCursoParam > 0
+        ? await tx.curso.update({ where: { idCurso: idCursoParam }, data: cursoData })
+        : await tx.curso.create({ data: cursoData });
+
+      const idCurso = cursoBase.idCurso;
+
+      // 2) Módulos: excluir os que sumiram
+      const modPayload = (payload.modulos ?? []);
+      const modIdsPos = modPayload.filter((m: any) => m.idModulo > 0).map((m: any) => m.idModulo);
+      const modExist = await tx.modulo.findMany({ where: { fkCursoId: idCurso }, select: { idModulo: true } });
+      const toDeleteMods = modExist.map(m => m.idModulo).filter(id => !modIdsPos.includes(id));
+      if (toDeleteMods.length) {
+        await tx.aula.deleteMany({ where: { fkModuloId: { in: toDeleteMods } } }).catch(() => { });
+        await tx.modulo.deleteMany({ where: { idModulo: { in: toDeleteMods } } });
+      }
+
+      // 3) Upsert módulos (+ordem)
+      for (const [mIdx, m] of modPayload.entries()) {
+        const modData = {
+          titulo: m.titulo,
+          descricao: m.descricao,
+          ordem: mIdx + 1,
+          ativo: m.ativo ?? 1,
+          cargaHoraria: Number(m.cargaHoraria) || 0, // era '00h'
+          fkCursoId: idCurso,
+        };
+
+        let idModulo = m.idModulo;
+        if (idModulo > 0) {
+          await tx.modulo.update({ where: { idModulo }, data: modData });
+        } else {
+          const created = await tx.modulo.create({ data: modData });
+          idModulo = created.idModulo;
+        }
+
+        // 4) Aulas do módulo
+        const aulasPayload = m.aulas ?? [];
+        const aulasIdsPos = aulasPayload.filter((a: any) => a.idAula > 0).map((a: any) => a.idAula);
+        const aulasExist = await tx.aula.findMany({ where: { fkModuloId: idModulo }, select: { idAula: true } });
+        const toDeleteAulas = aulasExist.map(a => a.idAula).filter(id => !aulasIdsPos.includes(id));
+
+        // Remove aulas que sumiram (com filhos)
+        if (toDeleteAulas.length) {
+          await tx.aulavideo.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } }).catch(() => { });
+          await tx.materialcomplementar.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } }).catch(() => { });
+          await tx.aula.deleteMany({ where: { idAula: { in: toDeleteAulas } } });
+        }
+
+        for (const [aIdx, a] of aulasPayload.entries()) {
+          const aulaData = {
+            titulo: a.titulo,
+            descricao: a.descricao ?? null,
+            ordem: aIdx + 1,
+            ativo: a.ativo ?? 1,
+            duracao: Number(a.duracao) || 0,
+            tipo: a.tipo ?? '',
+            fkModuloId: idModulo,
+          };
+
+          let idAula = a.idAula > 0 ? a.idAula : 0;
+
+          if (a.idAula > 0) {
+            // UPDATE aula
+            await tx.aula.update({ where: { idAula }, data: aulaData });
+          } else {
+            // CREATE aula e pega o id para filhos
+            const created = await tx.aula.create({ data: aulaData });
+            idAula = created.idAula;
+          }
+
+          const videosPayload = Array.isArray(a.videos) ? a.videos : [];
+          const keepVideoIds = videosPayload
+            .filter((v: any) => (v.idAulaVideo ?? 0) > 0)
+            .map((v: any) => v.idAulaVideo);
+
+          // apaga os vídeos que sumiram
+          await tx.aulavideo.deleteMany({
+            where: {
+              fkAulaId: idAula,
+              idAulaVideo: { notIn: keepVideoIds.length ? keepVideoIds : [0] },
+            },
+          });
+
+          // cria/atualiza vídeos
+          for (const v of videosPayload) {
+            if (!v.idAulaVideo || v.idAulaVideo < 0) {
+              await tx.aulavideo.create({
+                data: { url: v.url, fkAulaId: idAula },
+              });
+            } else {
+              await tx.aulavideo.update({
+                where: { idAulaVideo: v.idAulaVideo },
+                data: { url: v.url },
+              });
+            }
+          }
+
+          const matsPayload = Array.isArray(a.materiais) ? a.materiais : [];
+          const keepMatIds = matsPayload
+            .filter((m: any) => (m.idMaterialComplementar ?? 0) > 0)
+            .map((m: any) => m.idMaterialComplementar);
+
+          // apaga os materiais que sumiram
+          await tx.materialcomplementar.deleteMany({
+            where: {
+              fkAulaId: idAula,
+              idMaterialComplementar: { notIn: keepMatIds.length ? keepMatIds : [0] },
+            },
+          });
+
+          for (const m of matsPayload) {
+            const matData = {
+              titulo: m.titulo,
+              tipo: m.tipo ?? 'LINK', // precisa casar com enum do Prisma
+              material: m.material,
+              ativo: m.ativo ?? 1,
+              fkAulaId: idAula,
+            };
+
+            if (!m.idMaterialComplementar || m.idMaterialComplementar < 0) {
+              await tx.materialcomplementar.create({ data: matData });
+            } else {
+              await tx.materialcomplementar.update({
+                where: { idMaterialComplementar: m.idMaterialComplementar },
+                data: {
+                  titulo: matData.titulo,
+                  tipo: matData.tipo,
+                  material: matData.material,
+                  ativo: matData.ativo,
+                },
+              });
+            }
+          }
+        }
+      }
+
+      // 5) CATEGORIAS — sincroniza a pivot categoriacurso
+      // Aceita payload.categorias como number[] OU [{ idCategoria }] (flex)
+      const catIdsFromPayload: number[] = Array.isArray(payload.categorias)
+        ? payload.categorias
+          .map((c: any) => (typeof c === 'number' ? c : c?.idCategoria ?? c?.fkCategoriaId))
+          .filter((v: any) => typeof v === 'number')
+        : [];
+
+      // estado atual
+      const catExist = await tx.categoriacurso.findMany({
+        where: { fkCursoId: idCurso },
+        select: { fkCategoriaId: true },
+      });
+      const existIds = catExist.map((x) => x.fkCategoriaId);
+
+      // diff
+      const toAdd = catIdsFromPayload.filter((id) => !existIds.includes(id));
+      const toRemove = existIds.filter((id) => !catIdsFromPayload.includes(id));
+
+      if (toRemove.length) {
+        await tx.categoriacurso.deleteMany({
+          where: { fkCursoId: idCurso, fkCategoriaId: { in: toRemove } },
+        });
+      }
+
+      if (toAdd.length) {
+        // como tem @@unique(fkCursoId, fkCategoriaId), podemos usar createMany com skipDuplicates
+        await tx.categoriacurso.createMany({
+          data: toAdd.map((fkCategoriaId) => ({ fkCursoId: idCurso, fkCategoriaId })),
+          skipDuplicates: true,
+        });
+      }
+
+      // 6) Retorna curso completo
+      const cursoFull = await tx.curso.findUniqueOrThrow({
+        where: { idCurso },
+        include: {
+          modulos: {
+            include: {
+              aulas: {
+                include: {
+                  videos: true,
+                  materiais: true,
+                  avaliacoes: true, // se tu também atrela avaliação à aula
+                },
+                orderBy: { ordem: 'asc' },
+              },
+              avaliacoes: true, // se manténs avaliação no nível do módulo também
+            },
+            orderBy: { ordem: 'asc' },
+          },
+          avaliacoes: true, // se tens avaliações no nível do curso
+          categorias: { include: { categoria: true } },
+        },
+      });
+
+      return cursoFull as any;
     });
   }
 };

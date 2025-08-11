@@ -17,7 +17,6 @@ import FormFuncionario from "../../components/Formularios/FormFuncionario";
 import { ChevronDown, ChevronUp, Pencil, PencilOff, CirclePlus, CircleCheck, CircleX } from 'lucide-react';
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import { SearchDropdown } from "../../components/SearchDropDown";
-import Spinner from "../../components/Spinner";
 
 export default function GerenciaEmpresa() {
 

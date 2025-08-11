@@ -1,91 +1,125 @@
-import type { Curso } from '../../types/EstruturaCurso';
+import { formatarMinutosEmHoras } from '../../auxiliares/formatters';
+import type { Categoria, Curso } from '../../types/EstruturaCurso';
+import { Input, TextArea, SelectInput, SelectMultiInput } from './Inputs';
+import { getCategorias } from '../../services/apiCurso';
+import { useEffect, useState } from 'react';
 
 interface FormCursoProps {
   curso: Curso;
   setCurso: (curso: Curso) => void;
+  setLoading: (loading: boolean) => void;
 }
 
-const FormCurso = ({ curso, setCurso }: FormCursoProps) => {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+export default function FormCurso({ curso, setCurso, setLoading }: FormCursoProps) {
+  const [categoriasOpts, setCategoriasOpts] = useState<Categoria[]>([]);
+  const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<number[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const lista = await getCategorias();
+        setCategoriasOpts(lista);
+      } catch (e) {
+        console.error('Erro ao carregar categorias', e);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const ids = Array.isArray(curso.categorias)
+      ? curso.categorias
+        .map((c: any) => c?.idCategoria ?? c?.fkCategoriaId ?? c?.id)
+        .filter((x: any) => typeof x === 'number')
+      : [];
+    setCategoriasSelecionadas(ids as number[]);
+  }, [curso]);
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setCurso({ ...curso, [name]: value });
   };
 
-  const handleToggleAtivo = () => {
-    setCurso({ ...curso, ativo: curso.ativo === 1 ? 0 : 1 });
+  const handleToggleAtivo = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCurso({ ...curso, ativo: parseInt(e.target.value) });
+  };
+
+  const handleCategoriasChange = (selected: number[]) => {
+    setCategoriasSelecionadas(selected);
+    const novasCats = categoriasOpts.filter((c) => selected.includes((c as any).idCategoria));
+    setCurso({ ...curso, categorias: novasCats as any });
   };
 
   return (
-    <div className="border border-gray-200 rounded p-4 space-y-4 bg-white shadow-sm">
+    <div className="space-y-2">
       <h2 className="text-lg font-semibold">Dados do Curso</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm">Título</label>
-          <input
-            type="text"
-            name="titulo"
-            value={curso.titulo}
-            onChange={handleChange}
-            className="input input-bordered w-full"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm">Carga Horária</label>
-          <input
-            type="text"
-            name="cargaHoraria"
-            value={curso.cargaHoraria}
-            onChange={handleChange}
-            className="input input-bordered w-full"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm">Responsável Técnico (ID)</label>
-          <input
-            type="number"
-            name="fkResponsavelTecnicoId"
-            value={curso.fkResponsavelTecnicoId}
-            onChange={handleChange}
-            className="input input-bordered w-full"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm">Empresa (ID)</label>
-          <input
-            type="number"
-            name="fkEmpresaId"
-            value={curso.fkEmpresaId ?? ''}
-            onChange={handleChange}
-            className="input input-bordered w-full"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm">Descrição</label>
-        <textarea
-          name="descricao"
-          value={curso.descricao || ''}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Input
+          label="Título"
+          name="titulo"
+          value={curso.titulo}
           onChange={handleChange}
-          className="textarea textarea-bordered w-full"
+        />
+
+        <Input
+          label="Carga Horária"
+          name="cargaHoraria"
+          onChange={handleChange}
+          value={formatarMinutosEmHoras(curso.cargaHoraria)}
+          disable
+        />
+
+        {/* <Input
+          label="Responsável Técnico (ID)"
+          name="fkResponsavelTecnicoId"
+          value={String(curso.fkResponsavelTecnicoId)}
+          onChange={handleChange}
+          type="number"
+        />
+
+        <Input
+          label="Empresa (ID)"
+          name="fkEmpresaId"
+          value={curso.fkEmpresaId ? String(curso.fkEmpresaId) : ''}
+          onChange={handleChange}
+          type="number"
+        /> */}
+
+        <SelectInput
+          label="Status"
+          name="ativo"
+          value={String(curso.ativo)}
+          onChange={handleToggleAtivo}
+          options={[
+            { value: '1', label: 'Ativo' },
+            { value: '0', label: 'Inativo' },
+          ]}
         />
       </div>
 
-      <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={curso.ativo === 1}
-          onChange={handleToggleAtivo}
-          className="checkbox"
+      <div className="md:col-span-3">
+        <SelectMultiInput<number>
+          label="Categorias"
+          name="categorias"
+          value={categoriasSelecionadas}
+          onChange={handleCategoriasChange}
+          options={categoriasOpts.map((c) => ({
+            value: (c as any).idCategoria,
+            label: c.nome,
+          }))}
+          placeholder="Selecione as categorias"
+          required
         />
-        <label className="text-sm">Curso Ativo</label>
       </div>
+
+      <TextArea
+        label="Descrição"
+        name="descricao"
+        value={curso.descricao || ''}
+        onChange={handleChange}
+      />
     </div>
   );
-};
-
-export default FormCurso;
+}

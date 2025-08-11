@@ -27,10 +27,10 @@ export default function FiltrosCursos({ busca, setBusca, filtros, setFiltros }: 
   }, []);
 
   return (
-    <div className="w-full flex flex-col md:flex-row gap-3 items-stretch mb-4">
+    <div className="w-full mb-4">
 
       {/* Select + Search input */}
-      <div className="flex w-full border border-gray-300 rounded-full overflow-hidden">
+      <div className="flex w-full border border-gray-300 rounded-md overflow-hidden">
         {/* Categoria dropdown */}
         <select
           value={filtros.categoria || ""}

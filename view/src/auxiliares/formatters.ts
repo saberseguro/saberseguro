@@ -50,3 +50,13 @@ export function formatarDocumento(doc: string, type: string): string {
     default: return doc;
   }
 }
+
+// exemplo: formatador
+export function formatarMinutosEmHoras(min?: number): string {
+  const minutes = Number.isFinite(min) && (min as number) >= 0 ? (min as number) : 0;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h && m) return `${h}h ${m}min`;
+  if (h) return `${h}h`;
+  return `${m}min`;
+}

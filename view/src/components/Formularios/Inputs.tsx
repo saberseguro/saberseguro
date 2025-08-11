@@ -1,21 +1,18 @@
 import React from 'react';
 import Select from "react-select";
 
-export interface SelectOption {
-  value: string;
-  label: string;
-}
-
+// Input
 interface InputProps {
-  label: string;
+  label?: string;
   name: string;
-  value: string;
+  value: any;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
   type?: string;
   min?: number;
   maxLength?: number;
   disable?: boolean;
+  placeholder?: string
 }
 
 export const Input = ({
@@ -28,6 +25,7 @@ export const Input = ({
   min = 0,
   maxLength,
   disable = false,
+  placeholder = ""
 }: InputProps) => (
   <div className="w-full">
     <label htmlFor={name} className="block mb-1 text-sm font-medium text-gray-900">
@@ -42,10 +40,17 @@ export const Input = ({
       min={min}
       maxLength={maxLength}
       disabled={disable}
-      className="border border-gray-300 text-gray-900 text-sm rounded-md focus:border-2 focus:border-blue-500 focus:outline-none block w-full p-2.5"
+      placeholder={placeholder}
+      className="border border-gray-300 text-gray-900 text-sm rounded-md focus:border-2 focus:border-blue-500 focus:outline-none block w-full p-2.5 bg-white"
     />
   </div>
 );
+
+// Select
+export interface SelectOption {
+  value: string;
+  label: string;
+}
 
 interface SelectInputProps {
   label: string;
@@ -81,7 +86,7 @@ export const SelectInput = ({
       onChange={onChange}
       required={required}
       disabled={disable}
-      className={`border border-gray-300 text-sm rounded-md block w-full p-2.5 focus:border-2 focus:border-blue-500 focus:outline-none`}
+      className={`border border-gray-300 text-sm rounded-md block w-full p-2.5 focus:border-2 focus:border-blue-500 focus:outline-none bg-white`}
     >
       <option value="">{placeholder}</option>
       {options.map((opt) => (
@@ -93,6 +98,7 @@ export const SelectInput = ({
   </div>
 );
 
+// Multiple Select
 export interface SelectMultipleOption<T extends string | number = string> {
   value: T;
   label: string;
@@ -142,6 +148,7 @@ export const SelectMultiInput = <T extends string | number>({
   );
 };
 
+// Text Area
 interface TextAreaProps {
   label: string;
   name: string;
@@ -176,7 +183,26 @@ export const TextArea = ({
       rows={rows}
       maxLength={maxLength}
       placeholder={placeholder}
-      className="border border-gray-300 text-gray-900 text-sm rounded-md focus:border-2 focus:border-blue-500 focus:outline-none block w-full p-2.5 resize-none"
+      className="border border-gray-300 text-gray-900 text-sm rounded-md focus:border-2 focus:border-blue-500 focus:outline-none block w-full p-2.5 resize-none bg-white"
     />
   </div>
 );
+
+// CheckBox
+interface CheckboxStatusProps {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+}
+
+export default function CheckboxStatus({ checked, onChange, disabled = false }: CheckboxStatusProps) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={(e) => onChange(e.target.checked)}
+      disabled={disabled}
+      className="w-4 h-4 text-yellow-600 bg-gray-100 border-gray-200 rounded-md focus:ring-yellow-500 focus:ring-2 disabled:opacity-50 cursor-pointer"
+    />
+  );
+}
