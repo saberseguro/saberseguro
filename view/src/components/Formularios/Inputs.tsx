@@ -53,7 +53,7 @@ export interface SelectOption {
 }
 
 interface SelectInputProps {
-  label: string;
+  label?: string;
   name: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;

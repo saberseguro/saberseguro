@@ -5,6 +5,18 @@ export async function searchEmpresas(termo: string): Promise<Empresa[]> {
   return apiFetch(`/empresa?busca=${encodeURIComponent(termo)}`);
 }
 
+type Paginado<T> = { data: T[]; total: number; page: number; take: number };
+
+export async function getEmpresas(params?: { page?: number; take?: number }): Promise<Paginado<Empresa>> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.take) qs.set("take", String(params.take));
+  const url = qs.toString() ? `/empresa?${qs.toString()}` : `/empresa`;
+
+  // sem tocar no apiFetch: só faz cast do retorno
+  return apiFetch(url) as Promise<Paginado<Empresa>>;
+}
+
 export async function getEmpresa(id: number): Promise<Empresa> {
   return apiFetch(`/empresa/${id}`);
 }

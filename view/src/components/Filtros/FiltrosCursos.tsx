@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Categoria } from "../types/EstruturaCurso";
-import { getCategorias } from "../services/apiCurso";
+import type { Categoria } from "../../types/EstruturaCurso";
+import { getCategorias } from "../../services/apiCurso";
 import { Search } from "lucide-react";
 
 interface Filtros {

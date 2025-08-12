@@ -48,6 +48,26 @@ export const buscarEmpresas = {
   }
 };
 
+export const listarEmpresas = {
+  async execute(query: any) {
+    const page = Number(query.page) || 1;
+    const take = Math.min(Math.max(Number(query.take) || 20, 1), 100);
+    const skip = (page - 1) * take;
+
+    const [data, total] = await Promise.all([
+      prisma.empresa.findMany({
+        where: {},
+        orderBy: { nomeFantasia: 'asc' },
+        skip,
+        take,
+      }),
+      prisma.empresa.count({ where: {} }),
+    ]);
+
+    return { data, total, page, take };
+  },
+};
+
 export const criarEmpresa = {
   async execute(data: EmpresaInput) {
     try {

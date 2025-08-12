@@ -25,6 +25,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
 import { withCalculatedCargaHoraria } from "../../auxiliares/cursoCalc";
+import FormAvaliacao from "./FormAvaliacao";
 
 interface Props {
   curso: Curso & { modulos: Modulo[] };
@@ -491,7 +492,7 @@ export default function FormModulos({ curso, setCurso, setLoading }: Props) {
 
                           {/* CONTEÚDO: AVALIAÇÕES DO MÓDULO */}
                           {abaAtiva === "avaliacoes" && (
-                            <section>
+                            <section className="space-y-3">
                               <div className="flex items-center justify-between mb-2">
                                 <h4 className="font-semibold text-gray-700">
                                   Avaliações do módulo ({(m.avaliacoes ?? []).length})
@@ -501,38 +502,33 @@ export default function FormModulos({ curso, setCurso, setLoading }: Props) {
                                   onClick={() => addAvaliacaoModulo(m.idModulo)}
                                   className="px-3 py-1.5 text-sm bg-violet-600 text-white rounded hover:bg-violet-700 cursor-pointer flex items-center gap-1"
                                 >
-                                  <Plus size={14} /> Avaliação
+                                  <Plus size={14} /> Adicionar Avaliação
                                 </button>
                               </div>
 
                               {(m.avaliacoes ?? []).length ? (
-                                <div className="overflow-auto border rounded">
-                                  <table className="w-full text-sm">
-                                    <thead className="bg-gray-50">
-                                      <tr className="text-gray-600">
-                                        <th className="px-3 py-2 text-left">Título</th>
-                                        <th className="px-3 py-2 w-24 text-center">Ativo</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {(m.avaliacoes ?? [])
-                                        .slice()
-                                        .sort((a, b) => (a.idAvaliacao ?? 0) - (b.idAvaliacao ?? 0))
-                                        .map((av) => (
-                                          <tr key={av.idAvaliacao ?? Math.random()} className="border-t">
-                                            <td className="px-3 py-2">{av.titulo}</td>
-                                            <td className="px-3 py-2 text-center">
-                                              {(av.ativo ?? 1) ? "Sim" : "Não"}
-                                            </td>
-                                          </tr>
-                                        ))}
-                                    </tbody>
-                                  </table>
+                                <div className="space-y-3">
+                                  {(m.avaliacoes ?? []).map((av) => (
+                                    <FormAvaliacao
+                                      key={av.idAvaliacao ?? Math.random()}
+                                      avaliacao={av}
+                                      onChange={(patch) =>
+                                        updateModulo(m.idModulo, {
+                                          avaliacoes: (m.avaliacoes ?? []).map((it) =>
+                                            it.idAvaliacao === av.idAvaliacao ? { ...it, ...patch } : it
+                                          ),
+                                        })
+                                      }
+                                      onRemove={() =>
+                                        updateModulo(m.idModulo, {
+                                          avaliacoes: (m.avaliacoes ?? []).filter((it) => it.idAvaliacao !== av.idAvaliacao),
+                                        })
+                                      }
+                                    />
+                                  ))}
                                 </div>
                               ) : (
-                                <p className="text-sm text-gray-500 italic">
-                                  Nenhuma avaliação cadastrada.
-                                </p>
+                                <p className="text-sm text-gray-500 italic">Nenhuma avaliação cadastrada.</p>
                               )}
                             </section>
                           )}

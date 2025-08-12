@@ -5,6 +5,7 @@ import { makeAvaliacao } from "../../types/FactoriesCurso";
 import CheckboxStatus, { Input, SelectInput, TextArea } from "./Inputs";
 import { Trash2 } from "lucide-react";
 import ToolTip from "../Auxiliares/ToolTip";
+import FormAvaliacao from "./FormAvaliacao";
 
 interface Props {
   modulo: Modulo; // pode ser útil se você quiser exibir também avaliações do módulo
@@ -297,64 +298,17 @@ export default function FormAulaDetalhes({ modulo, aula, onChange }: Props) {
             </div>
 
             {avaliacoesAula.length ? (
-              <div className="overflow-auto border rounded">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr className="text-gray-600">
-                      <th className="px-3 py-2 text-left">Título</th>
-                      <th className="px-3 py-2 w-28 text-center">Tempo</th>
-                      <th className="px-3 py-2 w-28 text-center">Aplicação</th>
-                      <th className="px-3 py-2 w-20 text-center">Ativo</th>
-                      <th className="px-3 py-2 w-28 text-center">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {avaliacoesAula.map((av) => (
-                      <tr key={av.idAvaliacao ?? Math.random()} className="border-t">
-                        <td className="px-3 py-2">
-                          <input
-                            className="w-full border rounded px-2 py-1"
-                            value={av.titulo}
-                            onChange={(e) => updateAvaliacaoAula(av.idAvaliacao, { titulo: e.target.value })}
-                          />
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <input
-                            type="number"
-                            className="w-full border rounded px-2 py-1"
-                            value={av.tempoLimite ?? 0}
-                            onChange={(e) =>
-                              updateAvaliacaoAula(av.idAvaliacao, { tempoLimite: Number(e.target.value) || 0 })
-                            }
-                          />
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <input
-                            className="w-full border rounded px-2 py-1"
-                            value={av.tipoAplicacao ?? "PADRAO"}
-                            onChange={(e) => updateAvaliacaoAula(av.idAvaliacao, { tipoAplicacao: e.target.value })}
-                          />
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <input
-                            type="checkbox"
-                            checked={(av.ativo ?? 1) === 1}
-                            onChange={(e) => updateAvaliacaoAula(av.idAvaliacao, { ativo: e.target.checked ? 1 : 0 })}
-                          />
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <button
-                            type="button"
-                            onClick={() => removeAvaliacaoAula(av.idAvaliacao)}
-                            className="px-2 py-1 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 cursor-pointer"
-                          >
-                            Remover
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-3">
+                {avaliacoesAula.map((av) => (
+                  <FormAvaliacao
+                    key={av.idAvaliacao ?? Math.random()}
+                    avaliacao={av}
+                    onChange={(patch) =>
+                      updateAvaliacaoAula(av.idAvaliacao, patch)
+                    }
+                    onRemove={() => removeAvaliacaoAula(av.idAvaliacao)}
+                  />
+                ))}
               </div>
             ) : (
               <p className="text-sm text-gray-500 italic">Nenhuma avaliação da aula.</p>

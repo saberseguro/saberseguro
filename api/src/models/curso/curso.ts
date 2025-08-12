@@ -2,12 +2,42 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma-client';
 import { registrarEvento } from '../../shared/utils/registrarEvento';
 
+// helper: normalização segura de arrays
+const arr = <T = unknown>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+
 type CursoCompleto = Prisma.cursoGetPayload<{
   include: {
     modulos: { include: { aulas: true, avaliacoes: true } };
     avaliacoes: true;
   };
 }>;
+
+type AlternativaPayload = {
+  idAlternativa?: number;
+  texto?: string;
+  correta?: number;
+  ativo?: number;
+};
+
+type PerguntaPayload = {
+  idPergunta?: number;
+  enunciado?: string;
+  tipo?: string;
+  ativo?: number;
+  alternativas?: AlternativaPayload[];
+};
+
+type AvaliacaoPayload = {
+  idAvaliacao?: number;
+  fkCursoId?: number | null;
+  fkModuloId?: number | null;
+  fkAulaId?: number | null;
+  titulo?: string;
+  tempo_limite?: number;
+  tipoAplicacao?: string;
+  ativo?: number;
+  perguntas?: PerguntaPayload[];
+};
 
 export const buscarCurso = {
   async execute(id: number) {
@@ -18,18 +48,30 @@ export const buscarCurso = {
         modulos: {
           orderBy: { ordem: 'asc' },
           include: {
-            avaliacoes: true,
+            avaliacoes: {
+              include: {
+                perguntas: { include: { alternativas: true } },
+              },
+            },
             aulas: {
               orderBy: { ordem: 'asc' },
               include: {
-                avaliacoes: true,
+                avaliacoes: {
+                  include: {
+                    perguntas: { include: { alternativas: true } },
+                  },
+                },
                 materiais: true,
                 videos: true,
               }
             }
           }
         },
-        avaliacoes: true,
+        avaliacoes: {
+          include: {
+            perguntas: { include: { alternativas: true } },
+          },
+        },
         responsaveltecnico: true,
       },
     });
@@ -74,18 +116,30 @@ export const buscarCursos = {
           modulos: {
             orderBy: { ordem: 'asc' },
             include: {
-              avaliacoes: true,
+              avaliacoes: {
+                include: {
+                  perguntas: { include: { alternativas: true } },
+                },
+              },
               aulas: {
                 orderBy: { ordem: 'asc' },
                 include: {
-                  avaliacoes: true,
+                  avaliacoes: {
+                    include: {
+                      perguntas: { include: { alternativas: true } },
+                    },
+                  },
                   materiais: true,
                   videos: true,
                 }
               }
             }
           },
-          avaliacoes: true,
+          avaliacoes: {
+            include: {
+              perguntas: { include: { alternativas: true } },
+            },
+          },
           responsaveltecnico: true,
         },
         orderBy: { criado_em: 'desc' },
@@ -390,6 +444,9 @@ export const syncCurso = {
 
       const idCurso = cursoBase.idCurso;
 
+      // Avaliações do Curso
+      await syncAvaliacoes(tx, { fkCursoId: idCurso }, arr(payload.avaliacoes));
+
       // 2) Módulos: excluir os que sumiram
       const modPayload = (payload.modulos ?? []);
       const modIdsPos = modPayload.filter((m: any) => m.idModulo > 0).map((m: any) => m.idModulo);
@@ -418,6 +475,9 @@ export const syncCurso = {
           const created = await tx.modulo.create({ data: modData });
           idModulo = created.idModulo;
         }
+
+        // Avaliações do Módulo
+        await syncAvaliacoes(tx, { fkModuloId: idModulo }, arr(m.avaliacoes));
 
         // 4) Aulas do módulo
         const aulasPayload = m.aulas ?? [];
@@ -453,6 +513,9 @@ export const syncCurso = {
             const created = await tx.aula.create({ data: aulaData });
             idAula = created.idAula;
           }
+
+          // Avaliações da Aula
+          await syncAvaliacoes(tx, { fkAulaId: idAula }, arr(a.avaliacoes));
 
           const videosPayload = Array.isArray(a.videos) ? a.videos : [];
           const keepVideoIds = videosPayload
@@ -563,15 +626,23 @@ export const syncCurso = {
                 include: {
                   videos: true,
                   materiais: true,
-                  avaliacoes: true, // se tu também atrela avaliação à aula
+                  avaliacoes: {
+                    include: {
+                      perguntas: { include: { alternativas: true } },
+                    },
+                  },
                 },
                 orderBy: { ordem: 'asc' },
               },
-              avaliacoes: true, // se manténs avaliação no nível do módulo também
+              avaliacoes: {
+                include: { perguntas: { include: { alternativas: true } } },
+              },
             },
             orderBy: { ordem: 'asc' },
           },
-          avaliacoes: true, // se tens avaliações no nível do curso
+          avaliacoes: {
+            include: { perguntas: { include: { alternativas: true } } },
+          },
           categorias: { include: { categoria: true } },
         },
       });
@@ -580,3 +651,135 @@ export const syncCurso = {
     });
   }
 };
+
+// Avaliações
+async function syncAlternativas(tx: any, fkPerguntaId: number, alternativasPayload: AlternativaPayload[]) {
+  const keepIds = arr<AlternativaPayload>(alternativasPayload)
+    .filter((al) => (al.idAlternativa ?? 0) > 0)
+    .map((al) => al.idAlternativa);
+
+  // apaga alternativas que sumiram
+  await tx.alternativa.deleteMany({
+    where: {
+      fkPerguntaId,
+      idAlternativa: { notIn: keepIds.length ? keepIds : [0] },
+    },
+  });
+
+  for (const al of alternativasPayload) {
+    const data = {
+      texto: al.texto ?? '',
+      correta: Number(al.correta) === 1 ? 1 : 0,
+      ativo: al.ativo ?? 1,
+      fkPerguntaId,
+    };
+
+    if (!al.idAlternativa || al.idAlternativa < 0) {
+      await tx.alternativa.create({ data });
+    } else {
+      await tx.alternativa.update({
+        where: { idAlternativa: al.idAlternativa },
+        data: { texto: data.texto, correta: data.correta, ativo: data.ativo },
+      });
+    }
+  }
+}
+
+async function syncPerguntas(tx: any, fkAvaliacaoId: number, perguntasPayload: PerguntaPayload[]) {
+  const keepIds = arr<PerguntaPayload>(perguntasPayload)
+    .filter((p) => (p.idPergunta ?? 0) > 0)
+    .map((p) => p.idPergunta);
+
+  // apaga perguntas que sumiram (alternativas caem por cascade)
+  await tx.pergunta.deleteMany({
+    where: {
+      fkAvaliacaoId,
+      idPergunta: { notIn: keepIds.length ? keepIds : [0] },
+    },
+  });
+
+  for (const p of perguntasPayload) {
+    const dataPerg = {
+      enunciado: p.enunciado ?? '',
+      tipo: p.tipo ?? 'OBJETIVA', // alinhar com enum pergunta_tipo
+      ativo: p.ativo ?? 1,
+      fkAvaliacaoId,
+    };
+
+    let idPergunta = p.idPergunta ?? 0;
+    if (!p.idPergunta || p.idPergunta < 0) {
+      const created = await tx.pergunta.create({ data: dataPerg });
+      idPergunta = created.idPergunta;
+    } else {
+      await tx.pergunta.update({
+        where: { idPergunta },
+        data: { enunciado: dataPerg.enunciado, tipo: dataPerg.tipo, ativo: dataPerg.ativo },
+      });
+    }
+
+    // alternativas
+    await syncAlternativas(tx, idPergunta, arr<AlternativaPayload>(p.alternativas));
+  }
+}
+
+async function syncAvaliacoes(tx: any, escopo: { fkCursoId?: number; fkModuloId?: number; fkAulaId?: number }, avalsPayload: AvaliacaoPayload[]) {
+  // validação de escopo exclusivo
+  const setCount = [escopo.fkCursoId, escopo.fkModuloId, escopo.fkAulaId].filter((v) => !!v).length;
+  if (setCount !== 1) throw new Error('syncAvaliacoes: escopo inválido (defina exatamente um fk*)');
+
+  const whereEscopo: any = {
+    fkCursoId: escopo.fkCursoId ?? null,
+    fkModuloId: escopo.fkModuloId ?? null,
+    fkAulaId: escopo.fkAulaId ?? null,
+  };
+
+  // IDs atuais no banco para o escopo
+  const atuais = await tx.avaliacao.findMany({
+    where: whereEscopo,
+    select: { idAvaliacao: true },
+  });
+  const atuaisIds = atuais.map((x: any) => x.idAvaliacao);
+
+  const keepIds = arr<AvaliacaoPayload>(avalsPayload)
+    .filter((av) => (av.idAvaliacao ?? 0) > 0)
+    .map((av) => av.idAvaliacao);
+
+  const toDelete = atuaisIds.filter((id: number) => !keepIds.includes(id));
+  if (toDelete.length) {
+    await tx.avaliacao.deleteMany({ where: { idAvaliacao: { in: toDelete } } });
+  }
+
+  // Upsert por avaliação
+  for (const av of avalsPayload) {
+    const dataAv = {
+      titulo: av.titulo ?? '',
+      tempo_limite: Number(av.tempo_limite) || 0,
+      tipoAplicacao: av.tipoAplicacao ?? 'PADRAO',
+      ativo: av.ativo ?? 1,
+      fkCursoId: escopo.fkCursoId ?? null,
+      fkModuloId: escopo.fkModuloId ?? null,
+      fkAulaId: escopo.fkAulaId ?? null,
+    };
+
+    let idAvaliacao = av.idAvaliacao ?? 0;
+    if (!av.idAvaliacao || av.idAvaliacao < 0) {
+      const created = await tx.avaliacao.create({ data: dataAv });
+      idAvaliacao = created.idAvaliacao;
+    } else {
+      await tx.avaliacao.update({
+        where: { idAvaliacao },
+        data: {
+          titulo: dataAv.titulo,
+          tempo_limite: dataAv.tempo_limite,
+          tipoAplicacao: dataAv.tipoAplicacao,
+          ativo: dataAv.ativo,
+          fkCursoId: dataAv.fkCursoId,
+          fkModuloId: dataAv.fkModuloId,
+          fkAulaId: dataAv.fkAulaId,
+        },
+      });
+    }
+
+    await syncPerguntas(tx, idAvaliacao, arr<PerguntaPayload>(av.perguntas));
+  }
+}

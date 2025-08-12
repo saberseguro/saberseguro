@@ -28,7 +28,7 @@ export async function loginUser(idToken: string) {
   const usuario = await prisma.usuario.findUnique({
     where: { firebaseId: uid },
     include: {
-      usuarioHorario: true,
+      usuariohorario: true,
     },
   });
 
@@ -68,7 +68,7 @@ export async function loginUser(idToken: string) {
     const agora = new Date();
     const diaSemana = getDay(agora);
 
-    const horarioDoDia = usuario.usuarioHorario.find(
+    const horarioDoDia = usuario.usuariohorario.find(
       (h) => h.diaSemana === diaSemana && h.permitido
     );
 

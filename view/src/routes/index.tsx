@@ -8,6 +8,7 @@ const LoginPage = lazy(() => import('../pages/Auth/LoginPage'));
 const HomePage = lazy(() => import('../pages/Home/HomePage'));
 const EmpresaPage = lazy(() => import('../pages/Empresa/EmpresaPage'));
 const CursoPage = lazy(() => import('../pages/Curso/CursoPage'));
+const MedidaPage = lazy(() => import('../pages/Medida/MedidaPage'));
 
 function PrivateRoute() {
   const { user } = useAuth();
@@ -38,7 +39,12 @@ export default function AppRoutes() {
             <Route element={<Layout />}>
               <Route path="/" element={<HomePage />} />
               <Route path="/empresa" element={<EmpresaPage />} />
-              <Route path="/cursos/todos" element={<CursoPage />} />
+
+              {/* Curso */}
+              <Route path="/cursos/gerenciar" element={<CursoPage />} />
+
+              {/* Medida */}
+              <Route path="/medida" element={<MedidaPage />} />
             </Route>
           </Route>
 

@@ -26,6 +26,9 @@ import materialComplementarRoutes from './routes/curso/materialcomplementar.rout
 // Avaliação
 import avaliacaoRoutes from './routes/curso/avaliacao.routes';
 
+// Medida
+import medidaRoutes from './routes/medida.routes';
+
 const app = express();
 
 app.use(cors({
@@ -60,6 +63,9 @@ app.use("/api/curso/aulausuario", aulaUsuarioRoutes);
 
 // Avaliação
 app.use("/api/avaliacao", avaliacaoRoutes);
+
+// Medida
+app.use("/api/medida", medidaRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Servidor rodando na porta ${env.PORT}`);

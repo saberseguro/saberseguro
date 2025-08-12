@@ -1,30 +1,15 @@
-import type { Aula, AulaVideo, Avaliacao, Curso, MaterialComplementar, Modulo } from "./EstruturaCurso";
-
-export const makeAvaliacao = (ordem: number): Avaliacao => ({
-  idAvaliacao: undefined,
-  titulo: "Nova avaliação",
-  descricao: "",
-  tempoLimite: 0,
-  tipoAplicacao: "",
-  ordem: ordem,
-  ativo: 1,
-  fkAulaId: undefined,
-  fkModuloId: undefined,
-  fkCursoId: undefined,
-  perguntas: [],
-  avaliacoesUsuarios: [],
-
-  criado_em: new Date().toISOString(),
-  editado_em: new Date().toISOString(),
-});
+import type { Alternativa, Aula, AulaVideo, Avaliacao, Curso, MaterialComplementar, Modulo, Pergunta } from "./EstruturaCurso";
+// Avaliação
+let tempId = -1;
+const nextTempId = () => tempId--;
 
 export const makeVideo = (): AulaVideo => ({
-  idAulaVideo: undefined,
+  idAulaVideo: nextTempId(),
   url: "",
 });
 
 export const makeMaterial = (): MaterialComplementar => ({
-  idMaterialComplementar: undefined,
+  idMaterialComplementar: nextTempId(),
   titulo: "Novo material",
   tipo: "LINK",
   material: "",
@@ -32,7 +17,7 @@ export const makeMaterial = (): MaterialComplementar => ({
 });
 
 export const makeAula = (ordem = 1): Aula => ({
-  idAula: undefined,
+  idAula: nextTempId(),
   titulo: "Nova aula",
   descricao: "",
   tipo: "",
@@ -45,24 +30,58 @@ export const makeAula = (ordem = 1): Aula => ({
 });
 
 export const makeModulo = (ordem = 1): Modulo => ({
-  idModulo: undefined,
+  idModulo: nextTempId(),
   titulo: "Novo módulo",
-  cargaHoraria: "00h",
+  cargaHoraria: 0,
   ativo: 1,
   ordem,
   aulas: [],
   avaliacoes: [],
 });
 
-export const makeCurso = (): Curso => ({
-  idCurso: 0,
-  titulo: "",
-  descricao: "",
-  cargaHoraria: "00h",
+export const makeCurso = ({ fkEmpresaId = 0 }: { fkEmpresaId?: number } = {}): Curso => ({
+  idCurso: nextTempId(),
+  titulo: "Novo Curso",
+  descricao: "Descreva o curso aqui...",
+  cargaHoraria: 0,
   ativo: 1,
   criado_em: new Date().toISOString(),
   editado_em: new Date().toISOString(),
   fkResponsavelTecnicoId: 0,
+  fkEmpresaId,
   modulos: [],
   avaliacoes: [],
 });
+
+
+export const makeAvaliacao = (ordem: number): Avaliacao => ({
+  idAvaliacao: nextTempId(),
+  titulo: "Nova avaliação",
+  descricao: "",
+  tempo_limite: 0,
+  tipoAplicacao: "avaliacao",
+  ordem: ordem,
+  ativo: 1,
+  fkAulaId: undefined,
+  fkModuloId: undefined,
+  fkCursoId: undefined,
+  perguntas: [],
+  avaliacoesUsuarios: [],
+
+  criado_em: new Date().toISOString(),
+  editado_em: new Date().toISOString(),
+});
+
+export function makePergunta(): Pergunta {
+  return {
+    idPergunta: nextTempId(),
+    enunciado: '',
+    tipo: 'multipla',
+    ativo: 1,
+    alternativas: [],
+  };
+}
+
+export function makeAlternativa(): Alternativa {
+  return { idAlternativa: nextTempId(), texto: '', correta: 0, ativo: 1 };
+}

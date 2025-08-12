@@ -11,7 +11,6 @@ model usuario {
   idUsuario              Int                @id @default(autoincrement())
   nome                   String             @db.VarChar(45)
   email                  String             @unique(map: "email_UNIQUE") @db.VarChar(45)
-  cpf                    String?            @unique(map: "cpf_UNIQUE") @db.VarChar(12)
   criado_em              DateTime           @default(now()) @db.DateTime(0)
   editado_em             DateTime           @default(now()) @db.DateTime(0)
   ativo                  Int                @default(1) @db.TinyInt
@@ -19,51 +18,53 @@ model usuario {
   fkResponsavelTecnicoId Int?
   fkCargoId              Int?
   firebaseId             String             @unique
-
-  empresa                empresa?           @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull, map: "fk_usuario_fkEmpresaId")
-  cargo                  cargo?             @relation(fields: [fkCargoId], references: [idCargo], onDelete: SetNull, map: "fk_usuario_fkCargoId")
-
-  logEvento              logEvento[]        @relation("logUsuario")
-  usuariorole            usuariorole[]
-  usuarioHorario         usuarioHorario[]
-  cursoacessos           cursoacesso[]
-  medidasvinculos         medidavinculo[]
+  cpf                    String?            @unique(map: "cpf_UNIQUE") @db.VarChar(12)
   aulas                  aulausuario[]
   avaliacoes             avaliacaousuario[]
+  cursoacessos           cursoacesso[]
+  logevento              logevento[]
+  medidasvinculos        medidavinculo[]
+  cargo                  cargo?             @relation(fields: [fkCargoId], references: [idCargo], map: "fk_usuario_fkCargoId")
+  empresa                empresa?           @relation(fields: [fkEmpresaId], references: [idEmpresa], map: "fk_usuario_fkEmpresaId")
+  usuariohorario         usuariohorario[]
+  usuariorole            usuariorole[]
+
+  @@index([fkCargoId], map: "fk_usuario_fkCargoId")
+  @@index([fkEmpresaId], map: "fk_usuario_fkEmpresaId")
 }
 
 model alternativa {
-  idAlternativa Int      @id @default(autoincrement())
-  texto         String   @db.Text
-  correta       Int      @db.TinyInt
-  criado_em     DateTime @default(now()) @db.DateTime(0)
-  editado_em    DateTime @updatedAt @db.DateTime(0)
-  ativo         Int      @default(1) @db.TinyInt
+  idAlternativa Int        @id @default(autoincrement())
+  texto         String     @db.Text
+  correta       Int        @db.TinyInt
+  criado_em     DateTime   @default(now()) @db.DateTime(0)
+  editado_em    DateTime   @updatedAt @db.DateTime(0)
+  ativo         Int        @default(1) @db.TinyInt
   fkPerguntaId  Int
-
-  pergunta      pergunta @relation(fields: [fkPerguntaId], references: [idPergunta], onDelete: Cascade, map: "fk_alternativa_fkPerguntaId")
-
+  pergunta      pergunta   @relation(fields: [fkPerguntaId], references: [idPergunta], onDelete: Cascade, map: "fk_alternativa_fkPerguntaId")
   respostas     resposta[]
+
+  @@index([fkPerguntaId], map: "fk_alternativa_fkPerguntaId")
 }
 
 model aula {
-  idAula        Int       @id @default(autoincrement())
-  titulo        String    @db.VarChar(45)
-  descricao     String?   @db.Text
-  tipo          aula_tipo
-  duracao       Int
-  ordem         Int
-  criado_em     DateTime  @default(now()) @db.DateTime(0)
-  editado_em    DateTime  @updatedAt @db.DateTime(0)
-  ativo         Int       @default(1) @db.TinyInt
-  fkModuloId    Int
+  idAula       Int                    @id @default(autoincrement())
+  titulo       String                 @db.VarChar(45)
+  descricao    String?                @db.Text
+  tipo         aula_tipo
+  duracao      Int
+  ordem        Int
+  criado_em    DateTime               @default(now()) @db.DateTime(0)
+  editado_em   DateTime               @updatedAt @db.DateTime(0)
+  ativo        Int                    @default(1) @db.TinyInt
+  fkModuloId   Int
+  modulo       modulo                 @relation(fields: [fkModuloId], references: [idModulo], onDelete: Cascade, map: "fk_aula_fkModuloId")
+  aulausuarios aulausuario[]
+  videos       aulavideo[]
+  avaliacoes   avaliacao[]
+  materiais    materialcomplementar[]
 
-  modulo        modulo    @relation(fields: [fkModuloId], references: [idModulo], onDelete: Cascade, map: "fk_aula_fkModuloId")
-  
-  videos        aulavideo[]
-  materiais     materialcomplementar[]
-  avaliacoes    avaliacao[]
-  aulausuarios  aulausuario[]
+  @@index([fkModuloId], map: "fk_aula_fkModuloId")
 }
 
 model aulausuario {
@@ -76,37 +77,42 @@ model aulausuario {
   criado_em       DateTime @default(now()) @db.DateTime(0)
   fkAulaId        Int
   fkUsuarioId     Int
-
   aula            aula     @relation(fields: [fkAulaId], references: [idAula], onDelete: Cascade, map: "fk_aulaUsuario_fkAulaId")
   usuario         usuario  @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: Cascade, map: "fk_aulaUsuario_fkUsuarioId")
+
+  @@index([fkAulaId], map: "fk_aulaUsuario_fkAulaId")
+  @@index([fkUsuarioId], map: "fk_aulaUsuario_fkUsuarioId")
 }
 
 model aulavideo {
   idAulaVideo Int    @id @default(autoincrement())
   url         String @db.Text
   fkAulaId    Int
-
   aula        aula   @relation(fields: [fkAulaId], references: [idAula], onDelete: Cascade, map: "fk_aulaVideo_fkAulaId")
+
+  @@index([fkAulaId], map: "fk_aulaVideo_fkAulaId")
 }
 
 model avaliacao {
-  idAvaliacao         Int                     @id @default(autoincrement())
-  fkCursoId           Int?
-  fkModuloId          Int?
-  fkAulaId            Int?
-  titulo              String                  @db.VarChar(45)
-  tempo_limite        Int
-  tipoAplicacao       avaliacao_tipoAplicacao
-  criado_em           DateTime                @default(now()) @db.DateTime(0)
-  editado_em          DateTime                @updatedAt @db.DateTime(0)
-  ativo               Int                     @default(1) @db.TinyInt
+  idAvaliacao        Int                     @id @default(autoincrement())
+  fkCursoId          Int?
+  fkModuloId         Int?
+  fkAulaId           Int?
+  titulo             String                  @db.VarChar(45)
+  tempo_limite       Int
+  tipoAplicacao      avaliacao_tipoAplicacao
+  criado_em          DateTime                @default(now()) @db.DateTime(0)
+  editado_em         DateTime                @updatedAt @db.DateTime(0)
+  ativo              Int                     @default(1) @db.TinyInt
+  aula               aula?                   @relation(fields: [fkAulaId], references: [idAula], map: "fk_avaliacao_fkAulaId")
+  curso              curso?                  @relation(fields: [fkCursoId], references: [idCurso], map: "fk_avaliacao_fkCursoId")
+  modulo             modulo?                 @relation(fields: [fkModuloId], references: [idModulo], map: "fk_avaliacao_fkModuloId")
+  avaliacoesUsuarios avaliacaousuario[]
+  perguntas          pergunta[]
 
-  curso               curso?                  @relation(fields: [fkCursoId], references: [idCurso], onDelete: SetNull, map: "fk_avaliacao_fkCursoId")
-  modulo              modulo?                 @relation(fields: [fkModuloId], references: [idModulo], onDelete: SetNull, map: "fk_avaliacao_fkModuloId")
-  aula                aula?                   @relation(fields: [fkAulaId], references: [idAula], onDelete: SetNull, map: "fk_avaliacao_fkAulaId")
-
-  perguntas           pergunta[]
-  avaliacoesUsuarios  avaliacaousuario[]
+  @@index([fkAulaId], map: "fk_avaliacao_fkAulaId")
+  @@index([fkCursoId], map: "fk_avaliacao_fkCursoId")
+  @@index([fkModuloId], map: "fk_avaliacao_fkModuloId")
 }
 
 model avaliacaousuario {
@@ -117,34 +123,34 @@ model avaliacaousuario {
   status             avaliacaousuario_status
   fkUsuarioId        Int
   fkAvaliacaoId      Int
-
-  usuario            usuario                 @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: Cascade, map: "fk_avaliacaoUsuario_fkUsuarioId")
   avaliacao          avaliacao               @relation(fields: [fkAvaliacaoId], references: [idAvaliacao], onDelete: Cascade, map: "fk_avaliacaoUsuario_fkAvaliacaoId")
-  
+  usuario            usuario                 @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: Cascade, map: "fk_avaliacaoUsuario_fkUsuarioId")
   respostas          resposta[]
+
+  @@index([fkAvaliacaoId], map: "fk_avaliacaoUsuario_fkAvaliacaoId")
+  @@index([fkUsuarioId], map: "fk_avaliacaoUsuario_fkUsuarioId")
 }
 
 model cargo {
-  idCargo           Int      @id @default(autoincrement())
-  nome              String   @db.VarChar(45)
-  descricao         String   @db.Text
-  criado_em         DateTime @default(now()) @db.DateTime(0)
-  editado_em        DateTime @default(now()) @db.DateTime(0)
-  ativo             Int      @default(1) @db.TinyInt
-  fkSetorId         Int
+  idCargo         Int             @id @default(autoincrement())
+  nome            String          @db.VarChar(45)
+  descricao       String          @db.Text
+  criado_em       DateTime        @default(now()) @db.DateTime(0)
+  editado_em      DateTime        @default(now()) @db.DateTime(0)
+  ativo           Int             @default(1) @db.TinyInt
+  fkSetorId       Int
+  setor           setor           @relation(fields: [fkSetorId], references: [idSetor], onDelete: Cascade, map: "fk_cargo_fkSetorId")
+  cursoacessos    cursoacesso[]
+  medidasvinculos medidavinculo[]
+  funcionarios    usuario[]
 
-  setor             setor @relation(fields: [fkSetorId], references: [idSetor], onDelete: Cascade, map: "fk_cargo_fkSetorId")
-
-  funcionarios      usuario[]
-  cursoacessos      cursoacesso[]
-  medidasvinculos    medidavinculo[]
+  @@index([fkSetorId], map: "fk_cargo_fkSetorId")
 }
 
 model categoria {
   idCategoria Int              @id @default(autoincrement())
   nome        String           @db.VarChar(45)
   descricao   String           @db.Text
-
   cursos      categoriacurso[]
 }
 
@@ -152,21 +158,20 @@ model categoriacurso {
   idCategoriaCurso Int       @id @default(autoincrement())
   fkCursoId        Int
   fkCategoriaId    Int
-
-  curso     curso     @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade)
-  categoria categoria @relation(fields: [fkCategoriaId], references: [idCategoria], onDelete: Cascade)
+  categoria        categoria @relation(fields: [fkCategoriaId], references: [idCategoria], onDelete: Cascade)
+  curso            curso     @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade)
 
   @@unique([fkCursoId, fkCategoriaId])
+  @@index([fkCategoriaId], map: "categoriacurso_fkCategoriaId_fkey")
   @@map("categoriacurso")
 }
 
 model cnae {
-  idCnae        Int    @id @default(autoincrement())
-  subclasse     String @db.VarChar(45)
-  descricao     String @db.Text
-  grauRisco     Int
-
-  cnaevinculos  cnaevinculo[]
+  idCnae       Int           @id @default(autoincrement())
+  subclasse    String        @db.VarChar(45)
+  descricao    String        @db.Text
+  grauRisco    Int
+  cnaevinculos cnaevinculo[]
 }
 
 model cnaevinculo {
@@ -174,31 +179,35 @@ model cnaevinculo {
   fkCnaeId      Int?
   fkEmpresaId   Int?
   fkUnidadeId   Int?
+  cnae          cnae?    @relation(fields: [fkCnaeId], references: [idCnae])
+  empresa       empresa? @relation(fields: [fkEmpresaId], references: [idEmpresa])
+  unidade       unidade? @relation(fields: [fkUnidadeId], references: [idUnidade])
 
-  cnae          cnae?    @relation(fields: [fkCnaeId], references: [idCnae], onDelete: SetNull)
-  empresa       empresa? @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull)
-  unidade       unidade? @relation(fields: [fkUnidadeId], references: [idUnidade], onDelete: SetNull)
+  @@index([fkCnaeId], map: "cnaevinculo_fkCnaeId_fkey")
+  @@index([fkEmpresaId], map: "cnaevinculo_fkEmpresaId_fkey")
+  @@index([fkUnidadeId], map: "cnaevinculo_fkUnidadeId_fkey")
 }
 
 model curso {
-  idCurso                Int               @id @default(autoincrement())
-  titulo                 String            @db.VarChar(45)
-  descricao              String?           @db.Text
+  idCurso                Int                @id @default(autoincrement())
+  titulo                 String             @db.VarChar(45)
+  descricao              String?            @db.Text
   cargaHoraria           Int
-  criado_em              DateTime          @default(now()) @db.DateTime(0)
-  editado_em             DateTime          @updatedAt @db.DateTime(0)
-  ativo                  Int               @default(1) @db.TinyInt
+  criado_em              DateTime           @default(now()) @db.DateTime(0)
+  editado_em             DateTime           @updatedAt @db.DateTime(0)
+  ativo                  Int                @default(1) @db.TinyInt
   fkResponsavelTecnicoId Int
   fkEmpresaId            Int?
-
-  responsaveltecnico     responsaveltecnico @relation(fields: [fkResponsavelTecnicoId], references: [idResponsavelTecnico], map: "fk_curso_fkResponsavelTecnicoId")
-  empresa                empresa?           @relation(fields: [fkEmpresaId], references: [idEmpresa], map: "fk_curso_fkEmpresaId")
-
-  modulos                modulo[]
-  acessos                cursoacesso[]
   avaliacoes             avaliacao[]
   categorias             categoriacurso[]
+  empresa                empresa?           @relation(fields: [fkEmpresaId], references: [idEmpresa], map: "fk_curso_fkEmpresaId")
+  responsaveltecnico     responsaveltecnico @relation(fields: [fkResponsavelTecnicoId], references: [idResponsavelTecnico], map: "fk_curso_fkResponsavelTecnicoId")
+  acessos                cursoacesso[]
   medidas                medidacurso[]
+  modulos                modulo[]
+
+  @@index([fkEmpresaId], map: "fk_curso_fkEmpresaId")
+  @@index([fkResponsavelTecnicoId], map: "fk_curso_fkResponsavelTecnicoId")
 }
 
 model cursoacesso {
@@ -213,40 +222,45 @@ model cursoacesso {
   concluido     Int       @default(0) @db.TinyInt
   dataConclusao DateTime? @db.DateTime(0)
   atualizado_em DateTime  @updatedAt @db.DateTime(0)
+  cargo         cargo?    @relation(fields: [fkCargoId], references: [idCargo])
+  curso         curso     @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade)
+  empresa       empresa?  @relation(fields: [fkEmpresaId], references: [idEmpresa])
+  setor         setor?    @relation(fields: [fkSetorId], references: [idSetor])
+  unidade       unidade?  @relation(fields: [fkUnidadeId], references: [idUnidade])
+  usuario       usuario?  @relation(fields: [fkUsuarioId], references: [idUsuario])
 
-  curso    curso     @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade)
-  usuario  usuario?  @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: SetNull)
-  empresa  empresa?  @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull)
-  unidade  unidade?  @relation(fields: [fkUnidadeId], references: [idUnidade], onDelete: SetNull)
-  setor    setor?    @relation(fields: [fkSetorId], references: [idSetor], onDelete: SetNull)
-  cargo    cargo?    @relation(fields: [fkCargoId], references: [idCargo], onDelete: SetNull)
+  @@index([fkCargoId], map: "cursoacesso_fkCargoId_fkey")
+  @@index([fkCursoId], map: "cursoacesso_fkCursoId_fkey")
+  @@index([fkEmpresaId], map: "cursoacesso_fkEmpresaId_fkey")
+  @@index([fkSetorId], map: "cursoacesso_fkSetorId_fkey")
+  @@index([fkUnidadeId], map: "cursoacesso_fkUnidadeId_fkey")
+  @@index([fkUsuarioId], map: "cursoacesso_fkUsuarioId_fkey")
 }
 
 model empresa {
-  idEmpresa        Int                   @id @default(autoincrement())
-  nomeFantasia     String                @db.VarChar(45)
-  razaoSocial      String                @db.VarChar(45)
-  tipoDocumento    empresa_tipoDocumento
-  documento        String                @db.VarChar(20)
-  cep              String                @db.VarChar(10)
-  endereco         String                @db.VarChar(45)
-  numero           String?               @db.VarChar(10)
-  complemento      String?               @db.VarChar(50)
-  bairro           String                @db.VarChar(45)
-  cidade           String                @db.VarChar(45)
-  uf               String                @db.VarChar(2)
-  logoUrl          String?               @db.Text
-  criado_em        DateTime              @default(now()) @db.DateTime(0)
-  editado_em       DateTime              @default(now()) @db.DateTime(0)
-  ativo            Int                   @default(1) @db.TinyInt
-
-  unidades         unidade[]
-  funcionarios     usuario[]
-  cursoacessos     cursoacesso[]
-  medidas          medida[]
-  medidasvinculos  medidavinculo[]
-  cnaevinculos     cnaevinculo[]
-  cursos           curso[]
+  idEmpresa       Int                   @id @default(autoincrement())
+  nomeFantasia    String                @db.VarChar(45)
+  razaoSocial     String                @db.VarChar(45)
+  tipoDocumento   empresa_tipoDocumento
+  documento       String                @db.VarChar(20)
+  cep             String                @db.VarChar(10)
+  endereco        String                @db.VarChar(45)
+  numero          String?               @db.VarChar(10)
+  bairro          String                @db.VarChar(45)
+  cidade          String                @db.VarChar(45)
+  uf              String                @db.VarChar(2)
+  logoUrl         String?               @db.Text
+  criado_em       DateTime              @default(now()) @db.DateTime(0)
+  editado_em      DateTime              @default(now()) @db.DateTime(0)
+  ativo           Int                   @default(1) @db.TinyInt
+  complemento     String?               @db.VarChar(50)
+  cnaevinculos    cnaevinculo[]
+  cursos          curso[]
+  cursoacessos    cursoacesso[]
+  medidas         medida[]
+  medidasvinculos medidavinculo[]
+  unidades        unidade[]
+  funcionarios    usuario[]
 }
 
 model materialcomplementar {
@@ -258,66 +272,74 @@ model materialcomplementar {
   editado_em             DateTime                  @default(now()) @db.DateTime(0)
   ativo                  Int                       @default(1) @db.TinyInt
   fkAulaId               Int
+  aula                   aula                      @relation(fields: [fkAulaId], references: [idAula], onDelete: Cascade, map: "fk_materialComplementar_fkAulaId")
 
-  aula                   aula   @relation(fields: [fkAulaId], references: [idAula], onDelete: Cascade, map: "fk_materialComplementar_fkAulaId")
+  @@index([fkAulaId], map: "fk_materialComplementar_fkAulaId")
 }
 
 model medida {
-  idMedida          Int         @id @default(autoincrement())
-  nome              String      @db.VarChar(45)
-  tipo              medida_tipo
-  descricao         String?     @db.Text
-  ativo             Int         @default(1) @db.TinyInt
-  fkEmpresaId       Int?
+  idMedida       Int             @id @default(autoincrement())
+  nome           String          @db.VarChar(45)
+  tipo           medida_tipo
+  descricao      String?         @db.Text
+  ativo          Int             @default(1) @db.TinyInt
+  fkEmpresaId    Int?
+  empresa        empresa?        @relation(fields: [fkEmpresaId], references: [idEmpresa])
+  cursos         medidacurso[]
+  medidavinculos medidavinculo[]
 
-  empresa           empresa?    @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull)
-
-  medidavinculos    medidavinculo[]
-  cursos            medidacurso[]
+  @@index([fkEmpresaId], map: "medida_fkEmpresaId_fkey")
 }
 
 model medidacurso {
-  fkMedidaId  Int
-  fkCursoId   Int
-  validade    Int
-
-  medida      medida @relation(fields: [fkMedidaId], references: [idMedida], onDelete: Cascade)
-  curso       curso  @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade)
+  fkMedidaId Int
+  fkCursoId  Int
+  validade   Int
+  curso      curso  @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade)
+  medida     medida @relation(fields: [fkMedidaId], references: [idMedida], onDelete: Cascade)
 
   @@id([fkMedidaId, fkCursoId])
+  @@index([fkCursoId], map: "medidacurso_fkCursoId_fkey")
+  @@map("medidacurso")
 }
 
 model medidavinculo {
-  idMedidaVinculo Int     @id @default(autoincrement())
+  idMedidaVinculo Int      @id @default(autoincrement())
   fkMedidaId      Int
   fkEmpresaId     Int?
   fkUnidadeId     Int?
   fkSetorId       Int?
   fkCargoId       Int?
   fkUsuarioId     Int?
-
+  cargo           cargo?   @relation(fields: [fkCargoId], references: [idCargo])
+  empresa         empresa? @relation(fields: [fkEmpresaId], references: [idEmpresa])
   medida          medida   @relation(fields: [fkMedidaId], references: [idMedida], onDelete: Cascade)
-  empresa         empresa? @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: SetNull)
-  unidade         unidade? @relation(fields: [fkUnidadeId], references: [idUnidade], onDelete: SetNull)
-  setor           setor?   @relation(fields: [fkSetorId], references: [idSetor], onDelete: SetNull)
-  cargo           cargo?   @relation(fields: [fkCargoId], references: [idCargo], onDelete: SetNull)
-  usuario         usuario? @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: SetNull)
+  setor           setor?   @relation(fields: [fkSetorId], references: [idSetor])
+  unidade         unidade? @relation(fields: [fkUnidadeId], references: [idUnidade])
+  usuario         usuario? @relation(fields: [fkUsuarioId], references: [idUsuario])
+
+  @@index([fkCargoId], map: "medidavinculo_fkCargoId_fkey")
+  @@index([fkEmpresaId], map: "medidavinculo_fkEmpresaId_fkey")
+  @@index([fkMedidaId], map: "medidavinculo_fkMedidaId_fkey")
+  @@index([fkSetorId], map: "medidavinculo_fkSetorId_fkey")
+  @@index([fkUnidadeId], map: "medidavinculo_fkUnidadeId_fkey")
+  @@index([fkUsuarioId], map: "medidavinculo_fkUsuarioId_fkey")
 }
 
 model modulo {
-  idModulo     Int      @id @default(autoincrement())
-  titulo       String   @db.VarChar(45)
+  idModulo     Int         @id @default(autoincrement())
+  titulo       String      @db.VarChar(45)
   cargaHoraria Int
-  criado_em    DateTime @default(now()) @db.DateTime(0)
-  editado_em   DateTime @updatedAt @db.DateTime(0)
-  ativo        Int      @default(1) @db.TinyInt
+  criado_em    DateTime    @default(now()) @db.DateTime(0)
+  editado_em   DateTime    @updatedAt @db.DateTime(0)
+  ativo        Int         @default(1) @db.TinyInt
   ordem        Int
   fkCursoId    Int
-
-  curso        curso    @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade, map: "fk_modulo_fkCursoId")
-  
   aulas        aula[]
   avaliacoes   avaliacao[]
+  curso        curso       @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade, map: "fk_modulo_fkCursoId")
+
+  @@index([fkCursoId], map: "fk_modulo_fkCursoId")
 }
 
 model pergunta {
@@ -328,18 +350,17 @@ model pergunta {
   editado_em    DateTime      @default(now()) @db.DateTime(0)
   ativo         Int           @default(1) @db.TinyInt
   fkAvaliacaoId Int
-
-  avaliacao     avaliacao     @relation(fields: [fkAvaliacaoId], references: [idAvaliacao], onDelete: Cascade, map: "fk_pergunta_fkAvalicaoId")
-
   alternativas  alternativa[]
+  avaliacao     avaliacao     @relation(fields: [fkAvaliacaoId], references: [idAvaliacao], onDelete: Cascade, map: "fk_pergunta_fkAvalicaoId")
   respostas     resposta[]
+
+  @@index([fkAvaliacaoId], map: "fk_pergunta_fkAvalicaoId")
 }
 
 model permissao {
-  idPermissao Int     @id @default(autoincrement())
-  nome        String  @db.VarChar(45)
-  descricao   String? @db.Text
-
+  idPermissao   Int             @id @default(autoincrement())
+  nome          String          @db.VarChar(45)
+  descricao     String?         @db.Text
   rolepermissao rolepermissao[]
 }
 
@@ -354,7 +375,6 @@ model responsaveltecnico {
   criado_em            DateTime                         @default(now()) @db.DateTime(0)
   editado_em           DateTime                         @default(now()) @db.DateTime(0)
   ativo                Int                              @default(1) @db.TinyInt
-
   cursos               curso[]
 }
 
@@ -365,16 +385,18 @@ model resposta {
   fkAvaliacaoUsuarioId Int
   fkAlternativaId      Int?
   fkPerguntaId         Int
-
+  alternativa          alternativa?     @relation(fields: [fkAlternativaId], references: [idAlternativa], map: "fk_resposta_fkAlternativaId")
   avaliacoesUsuario    avaliacaousuario @relation(fields: [fkAvaliacaoUsuarioId], references: [idAvaliacaoUsuario], onDelete: Cascade, map: "fk_resposta_fkAvaliacaoUsuarioId")
-  alternativa          alternativa?     @relation(fields: [fkAlternativaId], references: [idAlternativa], onDelete: SetNull, map: "fk_resposta_fkAlternativaId")
   pergunta             pergunta         @relation(fields: [fkPerguntaId], references: [idPergunta], onDelete: Cascade, map: "fk_resposta_fkPerguntaId")
+
+  @@index([fkAlternativaId], map: "fk_resposta_fkAlternativaId")
+  @@index([fkAvaliacaoUsuarioId], map: "fk_resposta_fkAvaliacaoUsuarioId")
+  @@index([fkPerguntaId], map: "fk_resposta_fkPerguntaId")
 }
 
 model role {
-  idRole Int    @id @default(autoincrement())
-  nome   String @db.VarChar(45)
-
+  idRole        Int             @id @default(autoincrement())
+  nome          String          @db.VarChar(45)
   rolepermissao rolepermissao[]
   usuariorole   usuariorole[]
 }
@@ -382,62 +404,60 @@ model role {
 model rolepermissao {
   fkRoleId      Int
   fkPermissaoId Int
-
-  permissao permissao @relation(fields: [fkPermissaoId], references: [idPermissao], onDelete: Cascade, map: "fk_rolepermissao_fkPermissaoId")
-  role      role      @relation(fields: [fkRoleId], references: [idRole], onDelete: Cascade, map: "fk_rolepermissao_fkRoleId")
+  permissao     permissao @relation(fields: [fkPermissaoId], references: [idPermissao], onDelete: Cascade, map: "fk_rolepermissao_fkPermissaoId")
+  role          role      @relation(fields: [fkRoleId], references: [idRole], onDelete: Cascade, map: "fk_rolepermissao_fkRoleId")
 
   @@id([fkRoleId, fkPermissaoId])
   @@index([fkPermissaoId], map: "fk_rolepermissao_fkPermissaoId")
 }
 
 model setor {
-  idSetor           Int      @id @default(autoincrement())
-  nome              String   @db.VarChar(45)
-  descricao         String   @db.Text
-  ambiente          String?  @db.Text
-  criado_em         DateTime @default(now()) @db.DateTime(0)
-  editado_em        DateTime @default(now()) @db.DateTime(0)
-  ativo             Int      @default(1) @db.TinyInt
-  fkUnidadeId       Int
+  idSetor         Int             @id @default(autoincrement())
+  nome            String          @db.VarChar(45)
+  descricao       String          @db.Text
+  ambiente        String?         @db.Text
+  criado_em       DateTime        @default(now()) @db.DateTime(0)
+  editado_em      DateTime        @default(now()) @db.DateTime(0)
+  ativo           Int             @default(1) @db.TinyInt
+  fkUnidadeId     Int
+  cargos          cargo[]
+  cursoacessos    cursoacesso[]
+  medidasvinculos medidavinculo[]
+  unidade         unidade         @relation(fields: [fkUnidadeId], references: [idUnidade], onDelete: Cascade, map: "fk_setor_fkUnidadeId")
 
-  unidade           unidade @relation(fields: [fkUnidadeId], references: [idUnidade], onDelete: Cascade, map: "fk_setor_fkUnidadeId")
-
-  cargos            cargo[]
-  cursoacessos      cursoacesso[]
-  medidasvinculos    medidavinculo[]
+  @@index([fkUnidadeId], map: "fk_setor_fkUnidadeId")
 }
 
 model unidade {
-  idUnidade         Int                   @id @default(autoincrement())
-  nomeFantasia      String                @db.VarChar(45)
-  razaoSocial       String                @db.VarChar(45)
-  tipoDocumento     unidade_tipoDocumento
-  documento         String                @db.VarChar(20)
-  cep               String                @db.VarChar(10)
-  endereco          String                @db.VarChar(45)
-  numero            String?               @db.VarChar(10)
-  complemento       String?               @db.VarChar(50)
-  bairro            String                @db.VarChar(45)
-  cidade            String                @db.VarChar(45)
-  uf                String                @db.VarChar(2)
-  criado_em         DateTime              @default(now()) @db.DateTime(0)
-  editado_em        DateTime              @default(now()) @db.DateTime(0)
-  ativo             Int                   @default(1) @db.TinyInt
-  copiarEmpresa     Int?                  @default(0) @db.TinyInt
-  fkEmpresaId       Int
+  idUnidade       Int                   @id @default(autoincrement())
+  nomeFantasia    String                @db.VarChar(45)
+  razaoSocial     String                @db.VarChar(45)
+  tipoDocumento   unidade_tipoDocumento
+  documento       String                @db.VarChar(20)
+  cep             String                @db.VarChar(10)
+  endereco        String                @db.VarChar(45)
+  numero          String?               @db.VarChar(10)
+  bairro          String                @db.VarChar(45)
+  cidade          String                @db.VarChar(45)
+  uf              String                @db.VarChar(2)
+  criado_em       DateTime              @default(now()) @db.DateTime(0)
+  editado_em      DateTime              @default(now()) @db.DateTime(0)
+  ativo           Int                   @default(1) @db.TinyInt
+  copiarEmpresa   Int?                  @default(0) @db.TinyInt
+  fkEmpresaId     Int
+  complemento     String?               @db.VarChar(50)
+  cnaevinculos    cnaevinculo[]
+  cursoacessos    cursoacesso[]
+  medidasvinculos medidavinculo[]
+  setores         setor[]
+  empresa         empresa               @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: Cascade, map: "fk_unidade_fkEmpresaId")
 
-  empresa           empresa @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: Cascade, map: "fk_unidade_fkEmpresaId")
-
-  setores           setor[]
-  cursoacessos      cursoacesso[]
-  medidasvinculos   medidavinculo[]
-  cnaevinculos      cnaevinculo[]
+  @@index([fkEmpresaId], map: "fk_unidade_fkEmpresaId")
 }
 
 model usuariorole {
   fkUsuarioId Int
   fkRoleId    Int
-
   role        role    @relation(fields: [fkRoleId], references: [idRole], onDelete: Cascade, map: "fk_usuariorole_fkRoleId")
   usuario     usuario @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: Cascade, map: "fk_usuariorole_fkUsuarioId")
 
@@ -445,7 +465,7 @@ model usuariorole {
   @@index([fkRoleId], map: "fk_usuariorole_fkRoleId")
 }
 
-model logEvento {
+model logevento {
   idLogEvento  Int      @id @default(autoincrement())
   fkUsuarioId  Int
   tipo         String
@@ -455,21 +475,21 @@ model logEvento {
   dados_antes  Json?
   dados_depois Json?
   criado_em    DateTime @default(now()) @db.DateTime(0)
+  usuario      usuario  @relation(fields: [fkUsuarioId], references: [idUsuario], map: "fk_logEvento_fkUsuarioId")
 
-  usuario usuario @relation("logUsuario", fields: [fkUsuarioId], references: [idUsuario], map: "fk_logEvento_fkUsuarioId")
+  @@index([fkUsuarioId], map: "fk_logEvento_fkUsuarioId")
 }
 
-model usuarioHorario {
-  id               Int      @id @default(autoincrement())
-  diaSemana        Int
-  permitido        Boolean  @default(true)
-  horarioInicio    String
-  horarioFim       String
-  fkUsuarioId      Int
-  
-  @@unique([fkUsuarioId, diaSemana])
+model usuariohorario {
+  id            Int     @id @default(autoincrement())
+  diaSemana     Int
+  horarioInicio String
+  horarioFim    String
+  fkUsuarioId   Int
+  permitido     Boolean @default(true)
+  usuario       usuario @relation(fields: [fkUsuarioId], references: [idUsuario], map: "usuarioHorario_fkUsuarioId_fkey")
 
-  usuario          usuario  @relation(fields: [fkUsuarioId], references: [idUsuario])
+  @@unique([fkUsuarioId, diaSemana], map: "usuarioHorario_fkUsuarioId_diaSemana_key")
 }
 
 enum materialcomplementar_tipo {
@@ -485,15 +505,14 @@ enum medida_tipo {
   epi
   epc
   adm
-  treinamneto
+  treinamento
   inspecao
   geral
 }
 
 enum pergunta_tipo {
-  multipla_escolha
+  multipla
   dissertativa
-  vf
 }
 
 enum responsaveltecnico_tipoDocumento {

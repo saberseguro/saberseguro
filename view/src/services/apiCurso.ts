@@ -29,7 +29,6 @@ export async function getCursos({ page = 1, busca = "", filtros = {} }: GetCurso
   return res as GetCursosResponse;
 }
 
-
 export const getCursoPorId = async (id: number): Promise<Curso> => {
   return await apiFetch(`/curso/${id}`);
 };

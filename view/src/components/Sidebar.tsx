@@ -1,8 +1,9 @@
 import { createContext, useContext, useState } from "react";
 import {
   Home,
-  Boxes,
-  HeartHandshake,
+  Building,
+  BookOpenText,
+  HardHat,
   ChevronFirst,
   ChevronLast,
   Settings,
@@ -42,16 +43,17 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
   const menuItems = [
     { label: "Home", icon: <Home />, path: "/", permissoes: [] },
-    { label: "Empresa", icon: <Boxes />, path: "/empresa", permissoes: ['ver_empresas'] },
+    { label: "Empresa", icon: <Building />, path: "/empresa", permissoes: ['ver_empresas'] },
     {
       label: "Cursos",
-      icon: <HeartHandshake />,
+      icon: <BookOpenText />,
       permissoes: ['ver_cursos'],
       children: [
-        { label: "Todos os Cursos", path: "/cursos/todos", permissoes: ['criar_cursos'] },
+        { label: "Gerenciar Cursos", path: "/cursos/gerenciar", permissoes: ['criar_cursos'] },
         { label: "Meus Cursos", path: "/cursos/meus", permissoes: ['ver_cursos'] },
       ],
     },
+    { label: "Medidas", icon: <HardHat />, path: "/medida", permissoes: ['criar_medidas'] },
   ];
 
   return (
@@ -90,7 +92,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                     icon={item.icon}
                     text={item.label}
                     path={item.path}
-                    children={filteredChildren} // pode ser undefined
+                    children={filteredChildren}
                     isOpenSubmenu={openMenuKey === item.label}
                     onToggle={() => setOpenMenuKey(openMenuKey === item.label ? null : item.label)}
                   />

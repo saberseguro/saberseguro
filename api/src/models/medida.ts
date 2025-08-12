@@ -10,16 +10,47 @@ export const buscarMedida = {
 };
 
 export const buscarMedidas = {
-  async execute(fkEmpresaId: number) {
-    return await prisma.medida.findMany({
-      where: {
-        OR: [
-          { fkEmpresaId: null },
-          { fkEmpresaId: fkEmpresaId }
-        ]
-      },
-      orderBy: { nome: 'asc' }
-    });
+  async execute(query: any, fkEmpresaId: number) {
+    const page = Number(query.page) || 1;
+    const take = 10;
+    const skip = (page - 1) * take;
+
+    const where: any = {
+      AND: [
+        {
+          OR: [
+            { fkEmpresaId: null },
+            { fkEmpresaId }
+          ]
+        }
+      ]
+    };
+
+    if (query.busca) {
+      where.AND.push({
+        nome: { contains: String(query.busca), mode: 'insensitive' }
+      });
+    }
+
+    if (query.tipo) {
+      where.AND.push({ tipo: String(query.tipo) });
+    }
+
+    if (query.ativo !== undefined && query.ativo !== "") {
+      where.AND.push({ ativo: Number(query.ativo) });
+    }
+
+    const [data, total] = await Promise.all([
+      prisma.medida.findMany({
+        where,
+        orderBy: { nome: 'asc' },
+        skip,
+        take,
+      }),
+      prisma.medida.count({ where }),
+    ]);
+
+    return { data, total, page, take };
   }
 };
 
@@ -68,6 +99,30 @@ export const editarMedida = {
       entidade: 'medida',
       entidadeId: id,
       descricao: `Medida "${antes.nome}" atualizada.`,
+      dadosAntes: antes,
+      dadosDepois: atualizada
+    });
+
+    return atualizada;
+  }
+};
+
+export const atualizarStatusMedida = {
+  async execute(id: number, ativo: 0 | 1, usuario: any) {
+    const antes = await prisma.medida.findUnique({ where: { idMedida: id } });
+    if (!antes) throw new Error('Nenhuma medida encontrada com esse ID');
+
+    const atualizada = await prisma.medida.update({
+      where: { idMedida: id },
+      data: { ativo }
+    });
+
+    await registrarEvento({
+      idUsuario: usuario.idUsuario,
+      tipo: 'editar',
+      entidade: 'medida',
+      entidadeId: id,
+      descricao: `Status da medida "${antes.nome}" atualizado para ${ativo}.`,
       dadosAntes: antes,
       dadosDepois: atualizada
     });
@@ -167,4 +222,125 @@ export const excluirMedidaVinculo = {
       dadosAntes: antes
     });
   }
+};
+
+
+export const listarCursosDaMedida = {
+  async execute(fkMedidaId: number) {
+    return prisma.medidacurso.findMany({
+      where: { fkMedidaId },
+      include: {
+        curso: { select: { idCurso: true, titulo: true } },
+      },
+      orderBy: [{ curso: { titulo: 'asc' } }, { fkCursoId: 'asc' }],
+    });
+  },
+};
+
+export const listarMedidasDoCurso = {
+  async execute(fkCursoId: number) {
+    return prisma.medidacurso.findMany({
+      where: { fkCursoId },
+      include: {
+        medida: { select: { idMedida: true, nome: true, tipo: true } },
+      },
+      orderBy: [{ medida: { nome: 'asc' } }, { fkMedidaId: 'asc' }],
+    });
+  },
+};
+
+export const vincularCursoNaMedida = {
+  async execute(
+    fkMedidaId: number,
+    fkCursoId: number,
+    usuario: any,
+    validade?: number // em dias/meses conforme seu significado
+  ) {
+    // valida existência da medida e do curso
+    const [medida, curso] = await Promise.all([
+      prisma.medida.findUnique({ where: { idMedida: fkMedidaId } }),
+      prisma.curso.findUnique({ where: { idCurso: fkCursoId } }),
+    ]);
+    if (!medida) throw new Error('Medida não encontrada.');
+    if (!curso) throw new Error('Curso não encontrado.');
+
+    const vinculo = await prisma.medidacurso.upsert({
+      where: { fkMedidaId_fkCursoId: { fkMedidaId, fkCursoId } },
+      update: {
+        // só atualiza validade se for fornecida; senão mantém
+        ...(typeof validade === 'number' ? { validade } : {}),
+      },
+      create: {
+        fkMedidaId,
+        fkCursoId,
+        validade: typeof validade === 'number' ? validade : 0,
+      },
+    });
+
+    // Como não há id único, use o fkCursoId como entidadeId e detalhe ambos na descrição.
+    await registrarEvento({
+      idUsuario: usuario.idUsuario,
+      tipo: 'criar',
+      entidade: 'medidacurso',
+      entidadeId: fkCursoId,
+      descricao: `Vínculo criado/atualizado: medida ${fkMedidaId} ⇄ curso ${fkCursoId} (validade=${vinculo.validade}).`,
+      dadosDepois: vinculo,
+    });
+
+    return vinculo;
+  },
+};
+
+export const atualizarValidadeDoVinculo = {
+  async execute(
+    fkMedidaId: number,
+    fkCursoId: number,
+    novaValidade: number,
+    usuario: any
+  ) {
+    const antes = await prisma.medidacurso.findUnique({
+      where: { fkMedidaId_fkCursoId: { fkMedidaId, fkCursoId } },
+    });
+    if (!antes) throw new Error('Vínculo não encontrado.');
+
+    const depois = await prisma.medidacurso.update({
+      where: { fkMedidaId_fkCursoId: { fkMedidaId, fkCursoId } },
+      data: { validade: novaValidade },
+    });
+
+    await registrarEvento({
+      idUsuario: usuario.idUsuario,
+      tipo: 'editar',
+      entidade: 'medidacurso',
+      entidadeId: fkCursoId,
+      descricao: `Atualizada validade do vínculo medida ${fkMedidaId} ⇄ curso ${fkCursoId}: ${antes.validade} → ${depois.validade}.`,
+      dadosAntes: antes,
+      dadosDepois: depois,
+    });
+
+    return depois;
+  },
+};
+
+// Desvincula medida⇄curso (com chave composta)
+export const desvincularCursoDaMedida = {
+  async execute(fkMedidaId: number, fkCursoId: number, usuario: any) {
+    const antes = await prisma.medidacurso.findUnique({
+      where: { fkMedidaId_fkCursoId: { fkMedidaId, fkCursoId } },
+    });
+    if (!antes) throw new Error('Vínculo não encontrado.');
+
+    await prisma.medidacurso.delete({
+      where: { fkMedidaId_fkCursoId: { fkMedidaId, fkCursoId } },
+    });
+
+    await registrarEvento({
+      idUsuario: usuario.idUsuario,
+      tipo: 'excluir',
+      entidade: 'medidacurso',
+      entidadeId: fkCursoId,
+      descricao: `Removido vínculo medida ${fkMedidaId} ⇄ curso ${fkCursoId}.`,
+      dadosAntes: antes,
+    });
+  },
 };

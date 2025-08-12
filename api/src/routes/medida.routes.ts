@@ -1,7 +1,6 @@
-// medidaRoutes.ts
 import { Router } from 'express';
-import { buscarMedidaController, buscarMedidasController, buscarVinculosDaMedidaController, criarMedidaController, criarMedidaVinculoController, editarMedidaController, excluirMedidaController, excluirMedidaVinculoController } from '../controllers/medidaController';
 import { authorize } from '../middlewares/authorize';
+import { buscarMedidaController, buscarMedidasController, buscarVinculosDaMedidaController, criarMedidaController, criarMedidaVinculoController, editarMedidaController, excluirMedidaController, atualizarStatusMedidaController, excluirMedidaVinculoController, listarCursosDaMedidaController, vincularCursoNaMedidaController, desvincularCursoDaMedidaController } from '../controllers/medidaController';
 
 const router = Router();
 
@@ -9,10 +8,14 @@ router.get('/', authorize(['ver_medidas']), buscarMedidasController);
 router.get('/:id', authorize(['ver_medidas']), buscarMedidaController);
 router.post('/', authorize(['criar_medidas']),criarMedidaController);
 router.put('/:id', authorize(['editar_medidas']),editarMedidaController);
+router.patch('/:id/status', authorize(['editar_medidas']), atualizarStatusMedidaController);
 router.delete('/:id', authorize(['excluir_medidas']),excluirMedidaController);
 
-router.post('/medida/:id/vinculo', authorize(['criar_medidas']), criarMedidaVinculoController);
-router.get('/medida/:id/vinculos', authorize(['criar_medidas']), buscarVinculosDaMedidaController);
-router.delete('/medida/vinculo/:id', authorize(['criar_medidas']), excluirMedidaVinculoController);
+router.post('/:id/vinculo', authorize(['criar_medidas']), criarMedidaVinculoController);
+router.get('/:id/vinculos', authorize(['criar_medidas']), buscarVinculosDaMedidaController);
+router.delete('/vinculo/:id', authorize(['criar_medidas']), excluirMedidaVinculoController);
 
+router.get('/:id/cursos', listarCursosDaMedidaController);
+router.post('/:id/cursos', vincularCursoNaMedidaController);
+router.delete('/:id/cursos/:fkCursoId', desvincularCursoDaMedidaController);
 export default router;

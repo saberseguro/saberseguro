@@ -87,7 +87,7 @@ export interface Avaliacao {
   idAvaliacao?: number;
   titulo: string;
   descricao?: string;
-  tempoLimite?: number;
+  tempo_limite?: number;
   tipoAplicacao?: string;
   ordem: number;
   ativo: number;
@@ -102,3 +102,18 @@ export interface Avaliacao {
   perguntas: any[];
   avaliacoesUsuarios: any[];
 }
+
+export type Alternativa = {
+  idAlternativa?: number;
+  texto: string;
+  correta: number;
+  ativo?: number;
+};
+
+export type Pergunta = {
+  idPergunta?: number;
+  enunciado: string;
+  tipo: 'multipla' | 'dissertativa' | string;
+  ativo?: number;
+  alternativas?: Alternativa[];
+};

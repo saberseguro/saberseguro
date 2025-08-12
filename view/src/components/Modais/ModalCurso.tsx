@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Curso } from "../../types/EstruturaCurso";
 
+import Spinner from "../Spinner";
 import ModalBase from "../Modais/ModalBase";
 
 // Formulários
 import FormCurso from "../Formularios/FormCurso";
 import FormModulos from "../Formularios/FormModulo";
-import Spinner from "../Spinner";
+import FormAvaliacoesCurso from "../Formularios/FormAvaliacoesCurso";
+
+// Serviços
 import { syncCurso } from "../../services/apiCurso";
 import { withCalculatedCargaHoraria } from "../../auxiliares/cursoCalc";
 
@@ -62,6 +65,7 @@ export default function ModalCurso({ isOpen, onClose, cursoSelecionado, onSaved 
     switch (abaSelecionada) {
       case "dados": return <FormCurso curso={curso} setCurso={setCurso} setLoading={setLoading} />;
       case "modulos": return <FormModulos curso={curso} setCurso={setCurso} setLoading={setLoading} />;
+      case "avaliacoes": return <FormAvaliacoesCurso curso={curso} setCurso={setCurso} setLoading={setLoading} />;
       default:
         return null;
     }
