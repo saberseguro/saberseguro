@@ -15,7 +15,7 @@ router.post('/:id/vinculo', authorize(['criar_medidas']), criarMedidaVinculoCont
 router.get('/:id/vinculos', authorize(['criar_medidas']), buscarVinculosDaMedidaController);
 router.delete('/vinculo/:id', authorize(['criar_medidas']), excluirMedidaVinculoController);
 
-router.get('/:id/cursos', listarCursosDaMedidaController);
-router.post('/:id/cursos', vincularCursoNaMedidaController);
-router.delete('/:id/cursos/:fkCursoId', desvincularCursoDaMedidaController);
+router.get('/:id/cursos', authorize(['vincular_cursos_medidas']), listarCursosDaMedidaController);
+router.post('/:id/cursos', authorize(['vincular_cursos_medidas']), vincularCursoNaMedidaController);
+router.delete('/:id/cursos/:fkCursoId', authorize(['vincular_cursos_medidas']), desvincularCursoDaMedidaController);
 export default router;

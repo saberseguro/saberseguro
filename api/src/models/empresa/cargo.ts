@@ -130,7 +130,7 @@ export const buscarFuncionariosDoCargo = {
             },
           },
         },
-        usuarioHorario: true,
+        usuariohorario: true,
       },
     });
 
@@ -150,7 +150,7 @@ export const buscarFuncionariosDoCargo = {
         )
       );
 
-      const usuarioHorario = f.usuarioHorario.map((h) => ({
+      const usuarioHorario = f.usuariohorario.map((h) => ({
         diaSemana: h.diaSemana,
         diaSemanaNome: diasSemana[h.diaSemana],
         horarioInicio: h.horarioInicio,

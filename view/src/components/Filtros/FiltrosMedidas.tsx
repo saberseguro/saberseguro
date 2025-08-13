@@ -34,7 +34,7 @@ export default function FiltrosMedidas({ busca, setBusca, filtros, setFiltros, o
           >
             <option value="">Todas os Tipos</option>
             {tipos.map((tip) => (
-              <option value={String(tip.value)}>
+              <option key={tip.value} value={String(tip.value)}>
                 {tip.label}
               </option>
             ))}

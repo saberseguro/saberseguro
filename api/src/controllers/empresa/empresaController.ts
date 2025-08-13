@@ -20,18 +20,16 @@ export const buscarEmpresasController = async (req: Request, res: Response) => {
   try {
     const termo = req.query.busca?.toString().trim();
 
-    // Se veio 'busca', aplica regra de >= 3 letras
     if (termo !== undefined) {
       if (termo.length < 3) {
         return res.status(400).json({ error: "Informe ao menos 3 letras para busca." });
       }
       const empresas = await buscarEmpresas.execute(termo);
-      return res.json(empresas); // array simples
+      return res.json(empresas);
     }
 
-    // Sem 'busca' → lista paginada
-    const resultado = await listarEmpresas.execute(req.query);
-    return res.json(resultado); // { data, total, page, take }
+    const resultado = await listarEmpresas.execute();
+    return res.json(resultado);
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ error: err.message });

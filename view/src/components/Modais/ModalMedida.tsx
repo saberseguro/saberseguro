@@ -16,8 +16,10 @@ interface Props {
 
 const abas = [
   { id: "dados", label: "Dados" },
-  { id: "vinculos", label: "Vínculos" },
-];
+  { id: "cursos", label: "Cursos" },
+] as const;
+
+type AbaId = typeof abas[number]["id"];
 
 export default function ModalMedida({
   isOpen,
@@ -29,11 +31,11 @@ export default function ModalMedida({
 }: Props) {
   const [medida, setMedida] = useState<Medida>(makeMedida());
   const [saving, setSaving] = useState(false);
-
-  const [aba, setAba] = useState<"dados" | "vinculos">("dados");
+  const [aba, setAba] = useState<AbaId>("dados");
 
   useEffect(() => {
     setMedida(medidaSelecionada ?? makeMedida());
+    setAba("dados");
   }, [medidaSelecionada, isOpen]);
 
   const handleSubmit = async () => {
@@ -55,14 +57,23 @@ export default function ModalMedida({
   };
 
   return (
-    <ModalBase isOpen={isOpen} onClose={onClose} largura="max-w-7xl" titulo={medida.idMedida > 0 ? "Editar Medida" : "Nova Medida"}>
+    <ModalBase
+      isOpen={isOpen}
+      onClose={onClose}
+      largura="max-w-7xl"
+      titulo={medida.idMedida > 0 ? "Editar Medida" : "Nova Medida"}
+    >
       <div className="">
         <nav className="flex gap-2">
           {abas.map((a) => (
             <button
               key={a.id}
-              className={`px-3 py-2 text-sm rounded-t cursor-pointer ${aba === a.id ? "bg-gray-100 border-t border-x border-gray-300 font-medium" : "bg-white border border-gray-200 border-b-0"}`}
-              onClick={() => setAba(a.id as any)}
+              className={`px-5 py-2 text-sm rounded-md cursor-pointer mb-4 bg-gray-100 border border-gray-300 ${
+                aba === a.id
+                  ? "bg-sky-600 text-white font-medium border-0"
+                  : ""
+              }`}
+              onClick={() => setAba(a.id)}
               type="button"
             >
               {a.label}
@@ -71,7 +82,7 @@ export default function ModalMedida({
         </nav>
       </div>
 
-      <div className="max-h-[70vh] overflow-auto bg-gray-100 border border-gray-300 px-4 py-2 rounded-b-md">
+      <div className="max-h-[70vh] overflow-auto px-4 py-2 rounded-md">
         {aba === "dados" && (
           <FormMedida
             medida={medida}
@@ -81,13 +92,13 @@ export default function ModalMedida({
           />
         )}
 
-        {aba === "vinculos" && medida.idMedida > 0 && (
+        {aba === "cursos" && medida.idMedida > 0 && (
           <VinculosMedida idMedida={medida.idMedida} />
         )}
 
-        {aba === "vinculos" && medida.idMedida <= 0 && (
+        {aba === "cursos" && medida.idMedida <= 0 && (
           <div className="text-sm text-gray-600">
-            Salve a medida primeiro para liberar os vínculos.
+            Salve a medida primeiro para liberar os vínculos de cursos.
           </div>
         )}
       </div>
