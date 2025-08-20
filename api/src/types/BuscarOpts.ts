@@ -1,0 +1,1 @@
+export type BuscarOpts = { includeCursos?: boolean, includeMedidas?: boolean };

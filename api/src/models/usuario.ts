@@ -106,6 +106,8 @@ interface NovoUsuarioDTO {
   roles: number[];
   idUsuario: number;
   horarios?: HorarioDTO[];
+  cursos?: { idCurso: number; ativo: 0 | 1; origem?: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" }[];
+  medidas?: { idMedida: number; ativo: 0 | 1; origem?: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" }[];
 }
 
 export async function criarUsuario(data: NovoUsuarioDTO) {
@@ -120,6 +122,10 @@ export async function criarUsuario(data: NovoUsuarioDTO) {
       fkCargoId,
       fkResponsavelTecnicoId,
       roles,
+      horarios = [],
+      cursos = [],
+      medidas = [],
+      idUsuario,
     } = data;
 
     const jaExiste = await prisma.usuario.findUnique({ where: { email } });
@@ -133,46 +139,77 @@ export async function criarUsuario(data: NovoUsuarioDTO) {
 
     const firebaseId = firebaseUser.uid;
 
-    const novoUsuario = await prisma.usuario.create({
-      data: {
-        nome,
-        cpf,
-        email,
-        firebaseId,
-        ativo,
-        fkEmpresaId,
-        fkCargoId,
-        fkResponsavelTecnicoId,
-      },
-    });
+    const novoUsuario = await prisma.$transaction(async (tx) => {
+      // 1. Criar usuário
+      const usuario = await tx.usuario.create({
+        data: {
+          nome,
+          cpf,
+          email,
+          firebaseId,
+          ativo,
+          fkEmpresaId,
+          fkCargoId,
+          fkResponsavelTecnicoId,
+        },
+      });
 
-    if (data.horarios && data.horarios.length > 0) {
-      for (const h of data.horarios.filter(h => h.horarioInicio && h.horarioFim)) {
-        await prisma.usuarioHorario.create({
-          data: {
-            diaSemana: h.diaSemana,
-            permitido: h.permitido ?? true,
-            horarioInicio: h.horarioInicio,
-            horarioFim: h.horarioFim,
-            fkUsuarioId: novoUsuario.idUsuario,
-          },
+      const id = usuario.idUsuario;
+
+      // 2. Criar horários (se existirem)
+      if (horarios.length > 0) {
+        const horariosValidos = horarios.filter(h => h.horarioInicio && h.horarioFim);
+        if (horariosValidos.length > 0) {
+          await tx.usuariohorario.createMany({
+            data: horariosValidos.map(h => ({
+              diaSemana: h.diaSemana,
+              permitido: h.permitido ?? true,
+              horarioInicio: h.horarioInicio,
+              horarioFim: h.horarioFim,
+              fkUsuarioId: id,
+            })),
+          });
+        }
+      }
+
+      // 3. Criar roles
+      if (roles.length > 0) {
+        await tx.usuariorole.createMany({
+          data: roles.map(roleId => ({
+            fkUsuarioId: id,
+            fkRoleId: roleId,
+          })),
         });
       }
-    }
 
-    await Promise.all(
-      roles.map((roleId) =>
-        prisma.usuariorole.create({
-          data: {
-            fkUsuarioId: novoUsuario.idUsuario,
-            fkRoleId: roleId,
-          },
-        })
-      )
-    );
+      // 4. Vínculo de cursos no usuário
+      if (cursos.length > 0) {
+        await tx.cursoacesso.createMany({
+          data: cursos.map((c) => ({
+            fkCursoId: c.idCurso,
+            fkUsuarioId: id,
+          })),
+          skipDuplicates: true,
+        });
+      }
 
+      // 5. Vínculo de medidas no usuário
+      if (medidas.length > 0) {
+        await tx.medidavinculo.createMany({
+          data: medidas.map((m) => ({
+            fkMedidaId: m.idMedida,
+            fkUsuarioId: id,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      return usuario;
+    });
+
+    // 6. Evento de sucesso
     await registrarEvento({
-      idUsuario: data.idUsuario,
+      idUsuario,
       tipo: "criar",
       entidade: "usuario",
       entidadeId: novoUsuario.idUsuario,
@@ -203,6 +240,8 @@ interface EditarUsuarioDTO {
   roles?: number[];
   editadoPor: number;
   horarios?: HorarioDTO[];
+  cursos?: { idCurso: number; ativo: 0 | 1; origem?: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" }[];
+  medidas?: { idMedida: number; ativo: 0 | 1; origem?: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" }[];
 }
 
 export async function editarUsuario(data: EditarUsuarioDTO) {
@@ -214,68 +253,127 @@ export async function editarUsuario(data: EditarUsuarioDTO) {
     fkCargoId,
     fkEmpresaId,
     fkResponsavelTecnicoId,
-    roles,
+    roles = [],
+    horarios = [],
+    cursos = [],
+    medidas = [],
     editadoPor,
   } = data;
 
-  const usuarioExistente = await prisma.usuario.findUnique({ where: { idUsuario } });
-  if (!usuarioExistente) throw new Error('Usuário não encontrado');
+  try {
+    return await prisma.$transaction(async (tx) => {
+      // 1) Buscar dados antigos para log
+      const usuarioAntes = await tx.usuario.findUnique({
+        where: { idUsuario },
+      });
+      if (!usuarioAntes) throw new Error("Usuário não encontrado");
 
-  await prisma.usuario.update({
-    where: { idUsuario },
-    data: {
-      nome,
-      cpf,
-      ativo,
-      fkCargoId,
-      fkEmpresaId,
-      fkResponsavelTecnicoId,
-      editado_em: new Date(),
-    },
-  });
-
-  if (roles && roles.length > 0) {
-    await prisma.usuariorole.deleteMany({ where: { fkUsuarioId: idUsuario } });
-
-    await Promise.all(
-      roles.map((roleId) =>
-        prisma.usuariorole.create({
-          data: {
-            fkUsuarioId: idUsuario,
-            fkRoleId: roleId,
-          },
-        })
-      )
-    );
-  }
-
-  if (data.horarios && data.horarios.length > 0) {
-    await prisma.usuarioHorario.deleteMany({
-      where: { fkUsuarioId: idUsuario }
-    });
-
-    for (const h of data.horarios.filter(h => h.horarioInicio && h.horarioFim)) {
-      await prisma.usuarioHorario.create({
+      // 2) Atualizar dados do usuário
+      const usuario = await tx.usuario.update({
+        where: { idUsuario },
         data: {
-          diaSemana: h.diaSemana,
-          permitido: h.permitido ?? true,
-          horarioInicio: h.horarioInicio,
-          horarioFim: h.horarioFim,
-          fkUsuarioId: idUsuario,
+          nome,
+          cpf,
+          ativo,
+          fkCargoId,
+          fkEmpresaId,
+          fkResponsavelTecnicoId,
+          editado_em: new Date(),
         },
       });
-    }
+
+      // 3) Atualizar roles
+      await tx.usuariorole.deleteMany({ where: { fkUsuarioId: idUsuario } });
+      if (roles.length > 0) {
+        await tx.usuariorole.createMany({
+          data: roles.map((roleId) => ({
+            fkUsuarioId: idUsuario,
+            fkRoleId: roleId,
+          })),
+        });
+      }
+
+      // 4) Atualizar horários
+      await tx.usuariohorario.deleteMany({ where: { fkUsuarioId: idUsuario } });
+      const horariosValidos = horarios.filter((h) => h.horarioInicio && h.horarioFim);
+      if (horariosValidos.length > 0) {
+        await tx.usuariohorario.createMany({
+          data: horariosValidos.map((h) => ({
+            diaSemana: h.diaSemana,
+            permitido: h.permitido ?? true,
+            horarioInicio: h.horarioInicio,
+            horarioFim: h.horarioFim,
+            fkUsuarioId: idUsuario,
+          })),
+        });
+      }
+
+      // 5) Limpa vínculos antigos de cursos e medidas
+      await tx.cursoacesso.deleteMany({
+        where: {
+          fkUsuarioId: idUsuario,
+          fkEmpresaId: null,
+          fkUnidadeId: null,
+          fkSetorId: null,
+          fkCargoId: null,
+        },
+      });
+
+      await tx.medidavinculo.deleteMany({
+        where: {
+          fkUsuarioId: idUsuario,
+          fkEmpresaId: null,
+          fkUnidadeId: null,
+          fkSetorId: null,
+          fkCargoId: null,
+        },
+      });
+
+      // 6) Vincular novos cursos
+      if (cursos.length > 0) {
+        await tx.cursoacesso.createMany({
+          data: cursos.map((c) => ({
+            fkCursoId: c.idCurso,
+            fkUsuarioId: idUsuario,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      // 7) Vincular novas medidas
+      if (medidas.length > 0) {
+        await tx.medidavinculo.createMany({
+          data: medidas.map((m) => ({
+            fkMedidaId: m.idMedida,
+            fkUsuarioId: idUsuario,
+          })),
+          skipDuplicates: true,
+        });
+      }
+
+      // 8) Registrar evento
+      await registrarEvento({
+        idUsuario: editadoPor,
+        tipo: "editar",
+        entidade: "usuario",
+        entidadeId: idUsuario,
+        descricao: `Usuário ${usuario.nome} editado com sucesso!`,
+        dadosAntes: usuarioAntes,
+        dadosDepois: usuario,
+      });
+
+      return usuario;
+    });
+  } catch (e: any) {
+    await registrarEvento({
+      idUsuario: data.editadoPor,
+      tipo: "erro",
+      entidade: "usuario",
+      entidadeId: data.idUsuario,
+      descricao: `Erro ao editar usuário: ${e.message}`,
+    });
+    throw new Error("Erro ao editar usuário: " + e.message);
   }
-
-  await registrarEvento({
-    idUsuario: editadoPor,
-    tipo: 'edição',
-    entidade: 'usuario',
-    entidadeId: idUsuario,
-    descricao: `Usuário ${idUsuario} editado.`,
-  });
-
-  return { success: true };
 }
 
 export const buscarRolesComPermissoes = async () => {
@@ -293,7 +391,7 @@ export async function verificarHorarioAcesso(email: string) {
   const usuario = await prisma.usuario.findUnique({
     where: { email },
     include: {
-      usuarioHorario: true,
+      usuariohorario: true,
     },
   });
 
@@ -309,7 +407,7 @@ export async function verificarHorarioAcesso(email: string) {
     "Sábado"
   ];
 
-  const horarios = usuario.usuarioHorario.map((h) => ({
+  const horarios = usuario.usuariohorario.map((h) => ({
     diaSemanaNumero: h.diaSemana,
     diaSemana: diasSemana[h.diaSemana],
     permitido: h.permitido,

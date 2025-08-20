@@ -17,6 +17,8 @@ import FormFuncionario from "../../components/Formularios/FormFuncionario";
 import { ChevronDown, ChevronUp, Pencil, PencilOff, CirclePlus, CircleCheck, CircleX } from 'lucide-react';
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import { SearchDropdown } from "../../components/SearchDropDown";
+import { getCursos } from "../../services/apiCurso";
+import { getMedidas } from "../../services/apiMedida";
 
 export default function GerenciaEmpresa() {
 
@@ -54,6 +56,9 @@ export default function GerenciaEmpresa() {
   const podeEditar = temPermissao(user, ["editar_empresas"]);
 
   const [buscaEmpresa, setBuscaEmpresa] = useState("");
+
+  const [cursosOptions, setCursosOptions] = useState<{ label: string; value: number }[]>([]);
+  const [medidasOptions, setMedidasOptions] = useState<{ label: string; value: number }[]>([]);
 
   useEffect(() => {
     if (!isAdmin && user?.fkEmpresaId) {
@@ -102,7 +107,7 @@ export default function GerenciaEmpresa() {
 
     setLoadingSetor(true);
     try {
-      const setoresData = await getSetores(unidadeSelecionada.idUnidade);
+      const setoresData = await getSetores(unidadeSelecionada.idUnidade, idEmpresaSelecionada!);
       setSetores(setoresData);
 
       if (setorSelecionado) {
@@ -123,7 +128,7 @@ export default function GerenciaEmpresa() {
 
     setLoadingCargo(true);
     try {
-      const cargosData = await getCargos(setorSelecionado.idSetor);
+      const cargosData = await getCargos(setorSelecionado.idSetor, idEmpresaSelecionada!);
       setCargos(cargosData);
 
       if (cargoSelecionado) {
@@ -143,8 +148,9 @@ export default function GerenciaEmpresa() {
     setLoadingFuncionario(true);
     try {
       if (cargoSelecionado) {
-        const funcionariosData = await getFuncionarios(cargoSelecionado.idCargo);
+        const funcionariosData = await getFuncionarios(cargoSelecionado.idCargo, idEmpresaSelecionada!);
         setFuncionarios(funcionariosData);
+        console.log(funcionariosData);
       } else {
         setFuncionarios([]);
       }
@@ -156,10 +162,32 @@ export default function GerenciaEmpresa() {
     }
   };
 
+  const buscarCursos = async () => {
+    const res = await getCursos({
+      page: 1,
+      busca: "",
+      filtros: { fkEmpresaId: idEmpresaSelecionada!, includeGlobais: true },
+      lean: true,
+    });
+
+    setCursosOptions(res.data.map((c: any) => ({ label: c.titulo, value: c.idCurso })));
+  };
+
+  const buscarMedidas = async () => {
+    try {
+      const res = await getMedidas({ ativo: 1 });
+      setMedidasOptions(res.data.map((m: any) => ({ label: m.nome, value: m.idMedida })));
+    } catch (err) {
+      console.error("Erro ao carregar medidas", err);
+    }
+  }
+
   useEffect(() => {
     if (idEmpresaSelecionada) {
       fetchEmpresa();
       fetchUnidades();
+      buscarCursos();
+      buscarMedidas();
     }
   }, [idEmpresaSelecionada]);
 
@@ -519,13 +547,13 @@ export default function GerenciaEmpresa() {
                                   {podeEditar ? (
                                     <ToolTip text="Editar" position="left">
                                       <button className="text-sky-500 hover:text-sky-700 cursor-pointer" onClick={() => setIsOpenCargo(true)}>
-                                        <Pencil size={15} className="mr-2" />
+                                        <Pencil size={15} />
                                       </button>
                                     </ToolTip>
                                   ) : (
                                     <ToolTip text="Sem permissão" position="left">
                                       <button className="text-gray-400 cursor-not-allowed">
-                                        <PencilOff size={15} className="mr-2" />
+                                        <PencilOff size={15} />
                                       </button>
                                     </ToolTip>
                                   )}
@@ -654,6 +682,8 @@ export default function GerenciaEmpresa() {
           fetchUnidades={fetchUnidades}
           onEdit={unidadeSelecionada ?? undefined}
           setIsOpenUnidade={setIsOpenUnidade}
+          cursosOptions={cursosOptions}
+          medidasOptions={medidasOptions}
         />
       </ModalBase>
 
@@ -668,6 +698,8 @@ export default function GerenciaEmpresa() {
           fetchSetores={fetchSetores}
           onEdit={setorSelecionado ?? undefined}
           setIsOpenSetor={setIsOpenSetor}
+          cursosOptions={cursosOptions}
+          medidasOptions={medidasOptions}
         />
       </ModalBase>
 
@@ -682,6 +714,8 @@ export default function GerenciaEmpresa() {
           fetchCargos={fetchCargos}
           onEdit={cargoSelecionado ?? undefined}
           setIsOpenCargo={setIsOpenCargo}
+          cursosOptions={cursosOptions}
+          medidasOptions={medidasOptions}
         />
       </ModalBase>
 
@@ -698,6 +732,8 @@ export default function GerenciaEmpresa() {
           setIsOpenFuncionario={setIsOpenFuncionario}
           fetchFuncionarios={fetchFuncionarios}
           isOpen={isOpenFuncionario}
+          cursosOptions={cursosOptions}
+          medidasOptions={medidasOptions}
         />
 
       </ModalBase>

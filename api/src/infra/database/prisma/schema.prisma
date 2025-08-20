@@ -235,6 +235,8 @@ model cursoacesso {
   @@index([fkSetorId], map: "cursoacesso_fkSetorId_fkey")
   @@index([fkUnidadeId], map: "cursoacesso_fkUnidadeId_fkey")
   @@index([fkUsuarioId], map: "cursoacesso_fkUsuarioId_fkey")
+
+  @@unique([fkCursoId, fkEmpresaId, fkUnidadeId, fkSetorId, fkCargoId, fkUsuarioId], name: "uniq_cursoacesso_scope")
 }
 
 model empresa {

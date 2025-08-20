@@ -14,17 +14,17 @@ export async function getEmpresa(id: number): Promise<Empresa> {
 }
 
 export async function getUnidades(id: number): Promise<Unidade[]> {
-  return apiFetch(`/unidade/unidadesEmpresa/${id}`);
+  return apiFetch(`/unidade/unidadesEmpresa/${id}?includeCursos=1&includeMedidas=1`);
 }
 
-export async function getSetores(id: number): Promise<Setor[]> {
-  return apiFetch(`/setor/setoresUnidade/${id}`);
+export async function getSetores(idUnidade: number, fkEmpresaId: number): Promise<Setor[]> {
+  return apiFetch(`/setor/setoresUnidade/${idUnidade}?includeCursos=1&includeMedidas=1&fkEmpresaId=${fkEmpresaId}`);
 }
 
-export async function getCargos(id: number): Promise<Cargo[]> {
-  return apiFetch(`/cargo/cargosSetor/${id}`);
+export async function getCargos(idSetor: number, fkEmpresaId: number): Promise<Cargo[]> {
+  return apiFetch(`/cargo/cargosSetor/${idSetor}?includeCursos=1&includeMedidas=1&fkEmpresaId=${fkEmpresaId}`);
 }
 
-export async function getFuncionarios(id: number): Promise<Funcionario[]> {
-  return apiFetch(`/cargo/funcionariosCargo/${id}`);
+export async function getFuncionarios(idCargo: number, fkEmpresaId: number): Promise<Funcionario[]> {
+  return apiFetch(`/cargo/funcionariosCargo/${idCargo}?includeCursos=1&includeMedidas=1&fkEmpresaId=${fkEmpresaId}`);
 }

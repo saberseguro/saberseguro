@@ -1,3 +1,6 @@
+import type { Curso } from "./EstruturaCurso";
+import type { Medida } from "./EstruturaMedida";
+
 export interface Empresa {
   idEmpresa: number;
   nomeFantasia: string;
@@ -35,6 +38,9 @@ export interface Unidade {
   editado_em: Date;
   ativo: number;
   fkEmpresaId: number;
+
+  cursos: Curso[];
+  medidas: Medida[];
 }
 
 export interface Setor {
@@ -46,6 +52,9 @@ export interface Setor {
   editado_em: Date;
   ativo: number;
   fkUnidadeId: number;
+
+  cursos: Curso[];
+  medidas: Medida[];
 }
 
 export interface Cargo {
@@ -56,6 +65,9 @@ export interface Cargo {
   editado_em: Date;
   ativo: number;
   fkSetorId: number;
+
+  cursos: Curso[];
+  medidas: Medida[];
 }
 
 interface Role {
@@ -82,7 +94,10 @@ export interface Funcionario {
   fkResponsavelTecnicoId?: number;
   criado_em: Date;
   editado_em: Date;
+  
   roles: Role[];
   permissoes: string[];
   usuarioHorario?: HorarioAcesso[];
+  cursos: Curso[];
+  medidas: Medida[];
 }

@@ -340,7 +340,7 @@ export function SearchableSelect({
           aria-expanded={open}
         >
           <span className={selectedLabel ? "text-gray-900" : "text-gray-400"}>
-            {selectedLabel || "(selecione)"}
+            {selectedLabel || "Selecione"}
           </span>
         </button>
 

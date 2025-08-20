@@ -5,6 +5,17 @@ import { registrarEvento } from '../../shared/utils/registrarEvento';
 // helper: normalização segura de arrays
 const arr = <T = unknown>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
+// helper: garantir que apenas um dos campos de escopo foi enviado
+function assertSingleScope(data: any) {
+  const scopes = ['fkEmpresaId', 'fkUnidadeId', 'fkSetorId', 'fkCargoId', 'fkUsuarioId'];
+  const filled = scopes.filter(k => data[k] != null);
+  if (filled.length !== 1) {
+    throw new Error('Envie exatamente um escopo (empresa, unidade, setor, cargo ou usuario).');
+  }
+  return filled[0] as 'fkEmpresaId' | 'fkUnidadeId' | 'fkSetorId' | 'fkCargoId' | 'fkUsuarioId';
+}
+
+
 type CursoCompleto = Prisma.cursoGetPayload<{
   include: {
     modulos: { include: { aulas: true, avaliacoes: true } };
@@ -81,8 +92,9 @@ export const buscarCurso = {
 export const buscarCursos = {
   async execute(query: any) {
     const page = Number(query.page) || 1;
-    const take = 10;
+    const take = Number(query.take) || 10;
     const skip = (page - 1) * take;
+    const lean = String(query.lean ?? "") === "1";
 
     const where: any = {};
 
@@ -91,21 +103,36 @@ export const buscarCursos = {
     }
 
     if (query.fkEmpresaId) {
-      where.fkEmpresaId = Number(query.fkEmpresaId);
+      const idEmp = Number(query.fkEmpresaId);
+      const includeGlobais = String(query.includeGlobais ?? "") === "1";
+      where.AND = where.AND ?? [];
+      where.AND.push(
+        includeGlobais
+          ? { OR: [{ fkEmpresaId: idEmp }, { fkEmpresaId: null }] }
+          : { fkEmpresaId: idEmp }
+      );
     }
 
     if (query.busca) {
-      where.titulo = {
-        contains: query.busca.toLowerCase(),
-      }
+      where.titulo = { contains: query.busca, mode: 'insensitive' };
     }
 
     if (query.categoria) {
-      where.categorias = {
-        some: {
-          fkCategoriaId: Number(query.categoria),
-        },
-      };
+      where.categorias = { some: { fkCategoriaId: Number(query.categoria) } };
+    }
+
+    if (lean) {
+      const [data, total] = await Promise.all([
+        prisma.curso.findMany({
+          where,
+          select: { idCurso: true, titulo: true, ativo: true, fkEmpresaId: true },
+          orderBy: { criado_em: 'desc' },
+          take,
+          skip,
+        }),
+        prisma.curso.count({ where }),
+      ]);
+      return { data, totalPaginas: Math.ceil(total / take) };
     }
 
     const [data, total] = await Promise.all([
@@ -116,30 +143,18 @@ export const buscarCursos = {
           modulos: {
             orderBy: { ordem: 'asc' },
             include: {
-              avaliacoes: {
-                include: {
-                  perguntas: { include: { alternativas: true } },
-                },
-              },
+              avaliacoes: { include: { perguntas: { include: { alternativas: true } } } },
               aulas: {
                 orderBy: { ordem: 'asc' },
                 include: {
-                  avaliacoes: {
-                    include: {
-                      perguntas: { include: { alternativas: true } },
-                    },
-                  },
+                  avaliacoes: { include: { perguntas: { include: { alternativas: true } } } },
                   materiais: true,
                   videos: true,
                 }
               }
             }
           },
-          avaliacoes: {
-            include: {
-              perguntas: { include: { alternativas: true } },
-            },
-          },
+          avaliacoes: { include: { perguntas: { include: { alternativas: true } } } },
           responsaveltecnico: true,
         },
         orderBy: { criado_em: 'desc' },
@@ -149,10 +164,7 @@ export const buscarCursos = {
       prisma.curso.count({ where }),
     ]);
 
-    return {
-      data,
-      totalPaginas: Math.ceil(total / take),
-    };
+    return { data, totalPaginas: Math.ceil(total / take) };
   },
 };
 
@@ -371,21 +383,33 @@ export const buscarCursoAcessos = {
 
 export const criarCursoAcesso = {
   async execute(data: any, usuario: any) {
-    const curso = await prisma.curso.findUnique({
-      where: { idCurso: data.fkCursoId }
-    });
+    const scopeKey = assertSingleScope(data);
 
+    const curso = await prisma.curso.findUnique({
+      where: { idCurso: Number(data.fkCursoId) }
+    });
     if (!curso) throw new Error('Curso não encontrado');
 
-    const acesso = await prisma.cursoacesso.create({
-      data: {
-        fkCursoId: data.fkCursoId,
+    const acesso = await prisma.cursoacesso.upsert({
+      where: {
+        uniq_cursoacesso_scope: {
+          fkCursoId: Number(data.fkCursoId),
+          fkEmpresaId: data.fkEmpresaId ?? null,
+          fkUnidadeId: data.fkUnidadeId ?? null,
+          fkSetorId: data.fkSetorId ?? null,
+          fkCargoId: data.fkCargoId ?? null,
+          fkUsuarioId: data.fkUsuarioId ?? null,
+        }
+      },
+      create: {
+        fkCursoId: Number(data.fkCursoId),
         fkEmpresaId: data.fkEmpresaId ?? null,
         fkUnidadeId: data.fkUnidadeId ?? null,
         fkSetorId: data.fkSetorId ?? null,
         fkCargoId: data.fkCargoId ?? null,
         fkUsuarioId: data.fkUsuarioId ?? null
-      }
+      },
+      update: {} // nada a atualizar (idempotente)
     });
 
     await registrarEvento({
@@ -393,7 +417,7 @@ export const criarCursoAcesso = {
       tipo: 'criar',
       entidade: 'cursoacesso',
       entidadeId: acesso.idCursoAcesso,
-      descricao: `Curso ${data.fkCursoId} vinculado a estrutura.`,
+      descricao: `Vínculo criado (escopo: ${scopeKey}) para curso ${data.fkCursoId}.`,
       dadosDepois: acesso
     });
 

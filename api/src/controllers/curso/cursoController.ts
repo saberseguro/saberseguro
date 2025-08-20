@@ -119,7 +119,19 @@ export const buscarCursoAcessosController = async (req: Request, res: Response) 
 
 export const criarCursoAcessoController = async (req: Request, res: Response) => {
   try {
-    const resultado = await criarCursoAcesso.execute(req.body, req.user as any);
+    const { id } = req.params;
+    const { fkEmpresaId, fkUnidadeId, fkSetorId, fkCargoId, fkUsuarioId } = req.body;
+
+    const data = {
+      fkCursoId: Number(id),
+      fkEmpresaId: fkEmpresaId ?? null,
+      fkUnidadeId: fkUnidadeId ?? null,
+      fkSetorId: fkSetorId ?? null,
+      fkCargoId: fkCargoId ?? null,
+      fkUsuarioId: fkUsuarioId ?? null,
+    };
+
+    const resultado = await criarCursoAcesso.execute(data, req.user as any);
     return res.status(201).json(resultado);
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
@@ -147,7 +159,7 @@ export const syncCursoController = async (req: Request, res: Response) => {
     const idCursoParam = Number(req.params.id) || 0;
     const result = await syncCurso.execute(idCursoParam, req.body, req.user as any);
     return res.json(result);
-  } catch (e:any) {
+  } catch (e: any) {
     return res.status(400).json({ error: e.message });
   }
 };

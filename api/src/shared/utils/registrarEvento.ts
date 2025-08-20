@@ -20,7 +20,7 @@ export async function registrarEvento({
   dadosDepois,
 }: RegistrarEventoParams) {
   try {
-    await prisma.logEvento.create({
+    await prisma.logevento.create({
       data: {
         fkUsuarioId: idUsuario,
         tipo,

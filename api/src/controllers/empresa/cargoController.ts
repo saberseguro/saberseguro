@@ -6,6 +6,7 @@ import {
   editarCargo,
   buscarFuncionariosDoCargo,
 } from '../../models/empresa/cargo';
+import { BuscarOpts } from '../../types/BuscarOpts';
 
 export const buscarCargoController = async (req: Request, res: Response) => {
   try {
@@ -19,16 +20,33 @@ export const buscarCargoController = async (req: Request, res: Response) => {
   }
 };
 
+// Controller
 export const buscarCargosSetorController = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const cargos = await buscarCargosSetor.execute(Number(id));
+    if (!id) return res.status(400).json({ error: "ID do setor ausente" });
+
+    const { fkEmpresaId } = req.query;
+
+    const opts: BuscarOpts = {
+      includeCursos: req.query.includeCursos === "1",
+      includeMedidas: req.query.includeMedidas === "1",
+    };
+
+    const cargos = await buscarCargosSetor.execute(
+      parseInt(id),
+      opts,
+      fkEmpresaId ? parseInt(fkEmpresaId as string) : undefined
+    );
+
+    if (!cargos.length) return res.status(404).json({ error: "Nenhum cargo encontrado" });
     return res.json(cargos);
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ error: err.message });
   }
 };
+
 
 export const criarCargoController = async (req: Request, res: Response) => {
   try {

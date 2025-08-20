@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import type { Funcionario } from "../../types/EstruturaEmpresa";
-import { Input, SelectInput, SelectMultiInput } from "./Inputs";
+import { Input, SearchableSelect, SelectInput, SelectMultiInput } from "./Inputs";
 import toast from "react-hot-toast";
 import { formatarCPF } from "../../auxiliares/formatters";
 import Spinner from "../Spinner";
+import { Plus, Trash2 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -15,19 +16,49 @@ interface FormFuncionarioProps {
   fkCargoId?: number;
   fkEmpresaId?: number;
   isOpen: boolean;
+  cursosOptions?: { label: string; value: number }[];
+  medidasOptions?: { label: string; value: number }[];
 }
 
-export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFuncionario, fetchFuncionarios, fkCargoId, isOpen, fkEmpresaId }: FormFuncionarioProps) {
+type CursoVincRow = {
+  idCursoAcesso?: number;
+  idCurso: number;
+  titulo: string;
+  ativo: 0 | 1;
+  origem: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" | "FUNCIONARIO";
+};
+
+type MedidaVincRow = {
+  idMedidaVinculo?: number;
+  idMedida: number;
+  nome: string;
+  ativo: 0 | 1;
+  origem: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" | "FUNCIONARIO";
+};
+
+export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFuncionario, fetchFuncionarios, fkCargoId, isOpen, fkEmpresaId, cursosOptions, medidasOptions }: FormFuncionarioProps) {
 
   const diasSemana = ["Domingo", "Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado"];
 
   const abas = [
     { id: "dados", label: "Dados" },
     { id: "horarios", label: "Horários" },
+    { id: "cursos", label: "Cursos" },
+    { id: "medidas", label: "Medidas" },
   ];
-  const [abaAtiva, setAbaAtiva] = useState<"dados" | "horarios">("dados");
+  const [abaAtiva, setAbaAtiva] = useState<"dados" | "horarios" | "cursos" | "medidas">("dados");
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    nome: string;
+    cpf: string;
+    email: string;
+    senha: string;
+    ativo: number;
+    fkCargoId: number;
+    roles: number[];
+    cursos: CursoVincRow[];
+    medidas: MedidaVincRow[];
+  }>({
     nome: initialData.nome || "",
     cpf: initialData.cpf || "",
     email: initialData.email || "",
@@ -35,6 +66,8 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
     ativo: initialData.ativo ?? 1,
     fkCargoId: fkCargoId ?? 0,
     roles: (initialData as any)?.roles || [],
+    cursos: [],
+    medidas: [],
   });
 
   const [horarios, setHorarios] = useState(
@@ -48,6 +81,8 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
   const [rolesDisponiveis, setRolesDisponiveis] = useState<{ idRole: number; nome: string }[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [selCurso, setSelCurso] = useState<{ label: string; value: number } | null>(null);
+  const [selMedida, setSelMedida] = useState<{ label: string; value: number } | null>(null);
 
   useEffect(() => {
     if (onEdit && rolesDisponiveis.length > 0) {
@@ -60,6 +95,20 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
         ativo: onEdit.ativo ?? 1,
         fkCargoId: onEdit.fkCargoId ?? 0,
         roles: onEdit.roles.map((r) => r.idRole),
+        cursos: (onEdit.cursos ?? []).map((curso: any) => ({
+          idCursoAcesso: curso.idCursoAcesso,
+          idCurso: curso.idCurso,
+          titulo: curso.titulo,
+          ativo: curso.ativo,
+          origem: curso.origem ?? "FUNCIONARIO",
+        })),
+        medidas: (onEdit.medidas ?? []).map((medida: any) => ({
+          idMedidaVinculo: medida.idMedidaVinculo,
+          idMedida: medida.idMedida,
+          nome: medida.nome,
+          ativo: medida.ativo,
+          origem: medida.origem ?? "FUNCIONARIO",
+        })),
       }));
 
       if (onEdit.usuarioHorario?.length) {
@@ -128,12 +177,16 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
           fkEmpresaId: fkEmpresaId,
           roles: form.roles,
           horarios: horarios,
+          cursos: form.cursos.filter((c) => c.origem === "FUNCIONARIO"),
+          medidas: form.medidas.filter((m) => m.origem === "FUNCIONARIO"),
         }
         : {
           ...form,
           cpf: form.cpf.replace(/\D/g, ""),
           horarios: horarios,
           fkEmpresaId: fkEmpresaId,
+          cursos: form.cursos.filter((c) => c.origem === "FUNCIONARIO"),
+          medidas: form.medidas.filter((m) => m.origem === "FUNCIONARIO"),
         };
 
       const response = await fetch(`${API_URL}/usuario${onEdit ? `/${onEdit?.idUsuario}` : ""}`, {
@@ -170,6 +223,8 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
       ativo: 1,
       fkCargoId: fkCargoId ?? 0,
       roles: [],
+      cursos: [],
+      medidas: [],
     });
 
     setHorarios(
@@ -179,8 +234,76 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
         horarioFim: "",
       }))
     );
-
   };
+
+  const handleAdicionarCursoSelecionado = () => {
+    if (!selCurso) return;
+
+    const jaExiste = form.cursos.some((c) => c.idCurso === selCurso.value);
+    if (jaExiste) {
+      toast.error("Curso já vinculado");
+      return;
+    }
+
+    const novoCurso: CursoVincRow = {
+      idCurso: selCurso.value,
+      titulo: selCurso.label,
+      ativo: 1,
+      origem: "FUNCIONARIO",
+    };
+
+    setForm((prev) => ({
+      ...prev,
+      cursos: [...prev.cursos, novoCurso],
+    }));
+
+    setSelCurso(null);
+  };
+
+  const handleRemoverCurso = (idCurso: number) => {
+    setForm((prev) => ({
+      ...prev,
+      cursos: prev.cursos.filter((c: any) => c.idCurso !== idCurso),
+    }));
+  };
+
+  const handleAdicionarMedidaSelecionada = () => {
+    if (!selMedida) return;
+
+    const jaExiste = form.medidas.some((m) => m.idMedida === selMedida.value);
+    if (jaExiste) {
+      toast.error("Medida já vinculada");
+      return;
+    }
+
+    const novaMedida: MedidaVincRow = {
+      idMedida: selMedida.value,
+      nome: selMedida.label,
+      ativo: 1,
+      origem: "FUNCIONARIO",
+    };
+
+    setForm((prev) => ({
+      ...prev,
+      medidas: [...prev.medidas, novaMedida],
+    }));
+
+    setSelMedida(null);
+  };
+
+  const handleRemoverMedida = (idMedida: number) => {
+    setForm((prev) => ({
+      ...prev,
+      medidas: prev.medidas.filter((m: any) => m.idMedida !== idMedida),
+    }));
+  };
+
+
+  // Listas
+  const medidasFuncionario = form.medidas.filter((m: any) => m.origem === "FUNCIONARIO");
+  const outrasMedidas = form.medidas.filter((m: any) => m.origem !== "FUNCIONARIO");
+  const cursosFuncionario = form.cursos.filter((c: any) => c.origem === "FUNCIONARIO");
+  const outrosCursos = form.cursos.filter((c: any) => c.origem !== "FUNCIONARIO");
 
   return (
     <>
@@ -189,7 +312,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
           <button
             key={aba.id}
             type="button"
-            onClick={() => setAbaAtiva(aba.id as "dados" | "horarios")}
+            onClick={() => setAbaAtiva(aba.id as "dados" | "horarios" | "cursos" | "medidas")}
             className={`px-4 py-2 font-semibold cursor-pointer ${abaAtiva === aba.id
               ? "border-b-2 border-blue-600 text-blue-600"
               : "text-gray-500"
@@ -320,6 +443,187 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
             </div>
           </>
         )}
+
+        {abaAtiva === "cursos" && (
+          <div>
+            <div className="grid grid-cols-12 gap-4 items-end mb-4">
+              <div className="col-span-11">
+                <SearchableSelect
+                  label="Cursos"
+                  name="curso"
+                  placeholder="Pesquisar cursos ..."
+                  value={selCurso?.value ?? ""}
+                  onChange={(idCurso) => {
+                    const cursoObj = cursosOptions?.find((opt) => opt.value === idCurso) ?? null;
+                    setSelCurso(cursoObj);
+                  }}
+                  options={
+                    (cursosOptions ?? []).filter(
+                      (opt) => !form.cursos.some((c) => c.idCurso === opt.value)
+                    )
+                  }
+                />
+              </div>
+              <div className="col-span-1">
+                <button
+                  type="button"
+                  onClick={handleAdicionarCursoSelecionado}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 w-full cursor-pointer"
+                >
+                  <Plus size={20} className="inline" />
+                </button>
+              </div>
+            </div>
+
+            {/* Lista */}
+            <div>
+              {/* Cursos do Setor */}
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold mb-2">Cursos do Funcionario</h4>
+                <ul className="space-y-2">
+                  {cursosFuncionario.length === 0 && (
+                    <li className="text-gray-400 italic">Nenhum curso vinculado diretamente ao funcionario</li>
+                  )}
+                  {cursosFuncionario.map((curso: any) => (
+                    <li key={curso.idCurso} className="flex justify-between items-center border border-gray-300 bg-gray-50 px-4 py-2 rounded">
+                      <div>
+                        <span className="text-xs text-white bg-red-500 px-2 py-0.5 rounded-full">Funcionario</span>
+                        <p className="font-medium">{curso.titulo}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoverCurso(curso.idCurso)}
+                        className="text-red-600 hover:text-red-800 cursor-pointer"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Outros Cursos */}
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Outros Cursos (herdados)</h4>
+                <ul className="space-y-2">
+                  {outrosCursos.length === 0 && (
+                    <li className="text-gray-400 italic">Nenhum curso herdado</li>
+                  )}
+                  {outrosCursos.map((curso: any) => (
+                    <li key={curso.idCurso} className="flex justify-between items-center border border-gray-300 bg-gray-50 px-4 py-2 rounded">
+                      <div>
+                        {curso.origem === "CARGO" && (
+                          <span className="text-xs text-white bg-indigo-500 px-2 py-0.5 rounded-full">Cargo</span>
+                        )}
+                        {curso.origem === "SETOR" && (
+                          <span className="text-xs text-white bg-yellow-500 px-2 py-0.5 rounded-full">Setor</span>
+                        )}
+                        {curso.origem === "UNIDADE" && (
+                          <span className="text-xs text-white bg-blue-500 px-2 py-0.5 rounded-full">Unidade</span>
+                        )}
+                        {curso.origem === "EMPRESA" && (
+                          <span className="text-xs text-white bg-green-500 px-2 py-0.5 rounded-full">Empresa</span>
+                        )}
+                        <p className="font-medium">{curso.titulo}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {abaAtiva === "medidas" && (
+          <div>
+            <div className="grid grid-cols-12 gap-4 items-end mb-4">
+              <div className="col-span-11">
+                <SearchableSelect
+                  label="Medidas"
+                  name="medida"
+                  placeholder="Pesquisar medidas ..."
+                  value={selMedida?.value ?? ""}
+                  onChange={(idMedida) => {
+                    const medidaObj = medidasOptions?.find((opt) => opt.value === idMedida) ?? null;
+                    setSelMedida(medidaObj);
+                  }}
+                  options={
+                    (medidasOptions ?? []).filter(
+                      (opt) => !form.medidas.some((m) => m.idMedida === opt.value)
+                    )
+                  }
+                />
+              </div>
+              <div className="col-span-1">
+                <button
+                  type="button"
+                  onClick={handleAdicionarMedidaSelecionada}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 w-full cursor-pointer"
+                >
+                  <Plus size={20} className="inline" />
+                </button>
+              </div>
+            </div>
+
+
+            {/* Lista */}
+            {/* Medidas do Cargo */}
+            <div className="mb-4">
+              <h4 className="text-sm font-semibold mb-2">Medidas do Funcionario</h4>
+              <ul className="space-y-2">
+                {medidasFuncionario.length === 0 && (
+                  <li className="text-gray-400 italic">Nenhuma medida vinculada diretamente ao funcionario</li>
+                )}
+                {medidasFuncionario.map((medida: any) => (
+                  <li key={medida.idMedida} className="flex justify-between items-center border border-gray-300 bg-gray-50 px-4 py-2 rounded">
+                    <div>
+                      <span className="text-xs text-white bg-red-500 px-2 py-0.5 rounded-full">Funcionario</span>
+                      <p className="font-medium">{medida.nome}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoverMedida(medida.idMedida)}
+                      className="text-red-600 hover:text-red-800 cursor-pointer"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Outras Medidas (Setor, Unidade, Empresa) */}
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Outras Medidas (herdadas)</h4>
+              <ul className="space-y-2">
+                {outrasMedidas.length === 0 && (
+                  <li className="text-gray-400 italic">Nenhuma medida herdada</li>
+                )}
+                {outrasMedidas.map((medida: any) => (
+                  <li key={medida.idMedida} className="flex justify-between items-center border border-gray-300 bg-gray-50 px-4 py-2 rounded">
+                    <div>
+                      {medida.origem === "CARGO" && (
+                        <span className="text-xs text-white bg-indigo-500 px-2 py-0.5 rounded-full">Cargo</span>
+                      )}
+                      {medida.origem === "SETOR" && (
+                        <span className="text-xs text-white bg-yellow-500 px-2 py-0.5 rounded-full">Setor</span>
+                      )}
+                      {medida.origem === "UNIDADE" && (
+                        <span className="text-xs text-white bg-blue-500 px-2 py-0.5 rounded-full">Unidade</span>
+                      )}
+                      {medida.origem === "EMPRESA" && (
+                        <span className="text-xs text-white bg-green-500 px-2 py-0.5 rounded-full">Empresa</span>
+                      )}
+                      <p className="font-medium">{medida.nome}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+          </div>
+        )}
+
 
         <div className="flex justify-end">
           <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-400" disabled={loading}>
