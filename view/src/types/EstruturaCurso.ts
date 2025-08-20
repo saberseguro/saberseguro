@@ -1,3 +1,5 @@
+import type { Usuario } from "./Usuario";
+
 export interface Curso {
   idCurso: number;
   titulo: string;
@@ -10,11 +12,18 @@ export interface Curso {
   fkResponsavelTecnicoId: number;
   fkEmpresaId?: number;
 
-  responsaveltecnico?: ResponsavelTecnico;
+  responsaveltecnico?: Usuario;
   categorias?: CategoriaCurso[];
   modulos: Modulo[];
   avaliacoes?: Avaliacao[];
 }
+
+export type CursoCompleto = Omit<Curso, 'categorias'> & {
+  categorias: { categoria: Categoria }[];
+  modulos: Modulo[];
+  avaliacoes: Avaliacao[];
+  responsaveltecnico?: Usuario;
+};
 
 export interface Modulo {
   idModulo?: number;

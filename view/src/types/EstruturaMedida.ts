@@ -56,4 +56,5 @@ export type MedidaCurso = {
   fkCursoId: number;
   validade: number;
   curso?: { idCurso: number; titulo: string };
+  medida?: { idMedida: number; nome: string };
 };

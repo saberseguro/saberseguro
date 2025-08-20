@@ -1,5 +1,6 @@
-import type { Curso, Categoria } from '../types/EstruturaCurso';
 import { apiFetch } from './apiFetch';
+import type { Curso, Categoria, CursoCompleto } from '../types/EstruturaCurso';
+import type { MedidaCurso } from "../types/EstruturaMedida";
 
 interface Filtros {
   categoria?: string | null;
@@ -36,7 +37,7 @@ export async function getCursos({ page = 1, busca = "", filtros = {}, lean = fal
   return res as GetCursosResponse;
 }
 
-export const getCursoPorId = async (id: number): Promise<Curso> => {
+export const getCursoCompleto = async (id: number): Promise<CursoCompleto> => {
   return await apiFetch(`/curso/${id}`);
 };
 
@@ -59,5 +60,26 @@ export async function syncCurso(curso: Curso): Promise<Curso> {
   return apiFetch<Curso>(url, {
     method,
     body: JSON.stringify(payload),
+  });
+}
+
+export async function getMeusCursos(): Promise<Curso[]> {
+  return apiFetch("/curso/meus");
+}
+
+export async function getCursoMedidas(idCurso: number): Promise<MedidaCurso[]> {
+  return apiFetch<MedidaCurso[]>(`/curso/${idCurso}/medidas`);
+}
+
+export async function addCursoMedida(idCurso: number, fkMedidaId: number, validade?: number): Promise<MedidaCurso> {
+  return apiFetch<MedidaCurso>(`/curso/${idCurso}/medidas`, {
+    method: "POST",
+    body: JSON.stringify({ fkMedidaId, ...(validade != null ? { validade } : {}) }),
+  });
+}
+
+export async function removeCursoMedida(idCurso: number, fkMedidaId: number): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/curso/${idCurso}/medidas/${fkMedidaId}`, {
+    method: "DELETE",
   });
 }

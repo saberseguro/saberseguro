@@ -20,7 +20,7 @@ export async function authOnly(req: Request, res: Response, next: NextFunction) 
     if (!rolesDoUsuario.includes("admin")) {
       const usuario = await prisma.usuario.findUnique({
         where: { idUsuario: payload.idUsuario },
-        include: { usuarioHorario: true },
+        include: { usuariohorario: true },
       });
 
       if (!usuario) return res.status(401).json({ error: "Usuário não encontrado" });
@@ -28,7 +28,7 @@ export async function authOnly(req: Request, res: Response, next: NextFunction) 
       const agora = new Date();
       const diaSemana = getDay(agora);
 
-      const horarioDoDia = usuario.usuarioHorario.find(h => h.diaSemana === diaSemana && h.permitido);
+      const horarioDoDia = usuario.usuariohorario.find(h => h.diaSemana === diaSemana && h.permitido);
 
       if (!horarioDoDia) {
         return res.status(403).json({ error: "Acesso não permitido neste dia da semana." });
@@ -77,14 +77,14 @@ export function authorize(permissoesNecessarias: string[]) {
       if (!rolesDoUsuario.includes("admin")) {
         const usuario = await prisma.usuario.findUnique({
           where: { idUsuario: payload.idUsuario },
-          include: { usuarioHorario: true },
+          include: { usuariohorario: true },
         });
 
         if (!usuario) return res.status(401).json({ error: "Usuário não encontrado" });
 
         const agora = new Date();
         const diaSemana = getDay(agora);
-        const horarioDoDia = usuario.usuarioHorario.find(h => h.diaSemana === diaSemana && h.permitido);
+        const horarioDoDia = usuario.usuariohorario.find(h => h.diaSemana === diaSemana && h.permitido);
 
         if (!horarioDoDia) {
           return res.status(403).json({ error: "Acesso não permitido neste dia da semana." });

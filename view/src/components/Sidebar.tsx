@@ -50,7 +50,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
       permissoes: ['ver_cursos'],
       children: [
         { label: "Gerenciar Cursos", path: "/cursos/gerenciar", permissoes: ['criar_cursos'] },
-        { label: "Meus Cursos", path: "/cursos/meus", permissoes: ['ver_cursos'] },
+        { label: "Meus Cursos", path: "/cursos/meuscursos", permissoes: ['ver_cursos'] },
       ],
     },
     { label: "Medidas", icon: <HardHat />, path: "/medida", permissoes: ['criar_medidas'] },

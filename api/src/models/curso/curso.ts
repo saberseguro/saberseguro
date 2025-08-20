@@ -15,7 +15,6 @@ function assertSingleScope(data: any) {
   return filled[0] as 'fkEmpresaId' | 'fkUnidadeId' | 'fkSetorId' | 'fkCargoId' | 'fkUsuarioId';
 }
 
-
 type CursoCompleto = Prisma.cursoGetPayload<{
   include: {
     modulos: { include: { aulas: true, avaliacoes: true } };
@@ -50,7 +49,7 @@ type AvaliacaoPayload = {
   perguntas?: PerguntaPayload[];
 };
 
-export const buscarCurso = {
+export const buscarCursoCompleto = {
   async execute(id: number) {
     return await prisma.curso.findUnique({
       where: { idCurso: id },
@@ -86,7 +85,7 @@ export const buscarCurso = {
         responsaveltecnico: true,
       },
     });
-  },
+  }
 };
 
 export const buscarCursos = {
@@ -165,6 +164,103 @@ export const buscarCursos = {
     ]);
 
     return { data, totalPaginas: Math.ceil(total / take) };
+  },
+};
+
+export const buscarMeusCursos = {
+  async execute(usuario: any) {
+
+    const isAdmin = usuario.role?.includes("admin");
+
+    if (!usuario.idUsuario || typeof usuario.idUsuario !== "number" || isNaN(usuario.idUsuario) || isAdmin) {
+      throw new Error("ID do usuario inválido ou usuario administrador.");
+    }
+
+    const { idUsuario, fkCargoId } = usuario;
+
+    // 🔹 1. Buscar hierarquia via cargo → setor → unidade → empresa
+    const cargo = await prisma.cargo.findUnique({
+      where: { idCargo: fkCargoId },
+      select: {
+        setor: {
+          select: {
+            idSetor: true,
+            unidade: {
+              select: {
+                idUnidade: true,
+                empresa: { select: { idEmpresa: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const fkSetorId = cargo?.setor?.idSetor ?? 0;
+    const fkUnidadeId = cargo?.setor?.unidade?.idUnidade ?? 0;
+    const fkEmpresaId = cargo?.setor?.unidade?.empresa?.idEmpresa ?? 0;
+
+    // 🔹 2. Cursos via cursoacesso (direto por estrutura)
+    const acessosDiretos = await prisma.cursoacesso.findMany({
+      where: {
+        OR: [
+          { fkUsuarioId: idUsuario },
+          { fkCargoId },
+          { fkSetorId },
+          { fkUnidadeId },
+          { fkEmpresaId },
+        ],
+      },
+      select: { fkCursoId: true },
+    });
+
+    const cursoIdsDiretos = acessosDiretos.map((a) => a.fkCursoId);
+
+    // 🔹 3. Medidas vinculadas à estrutura
+    const medidas = await prisma.medidavinculo.findMany({
+      where: {
+        OR: [
+          { fkUsuarioId: idUsuario },
+          { fkCargoId },
+          { fkSetorId },
+          { fkUnidadeId },
+          { fkEmpresaId },
+        ],
+      },
+      select: { fkMedidaId: true },
+    });
+
+    const medidaIds = medidas.map((m) => m.fkMedidaId);
+
+    // 🔹 4. Cursos vinculados a essas medidas
+    const cursosMedidas = await prisma.medidacurso.findMany({
+      where: { fkMedidaId: { in: medidaIds } },
+      select: { fkCursoId: true },
+    });
+
+    const cursoIdsMedidas = cursosMedidas.map((c) => c.fkCursoId);
+
+    // 🔹 5. Unificar e remover duplicados
+    const todosCursoIds = Array.from(new Set([...cursoIdsDiretos, ...cursoIdsMedidas]));
+
+    if (todosCursoIds.length === 0) return [];
+
+    // 🔹 6. Buscar cursos com dados mínimos para o carrossel
+    const cursos = await prisma.curso.findMany({
+      where: {
+        idCurso: { in: todosCursoIds },
+        ativo: 1,
+      },
+      select: {
+        idCurso: true,
+        titulo: true,
+        descricao: true,
+        cargaHoraria: true,
+      },
+      orderBy: { titulo: 'asc' },
+    });
+
+    return cursos;
   },
 };
 

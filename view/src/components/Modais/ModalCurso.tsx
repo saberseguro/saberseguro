@@ -12,6 +12,7 @@ import FormAvaliacoesCurso from "../Formularios/FormAvaliacoesCurso";
 // Serviços
 import { syncCurso } from "../../services/apiCurso";
 import { withCalculatedCargaHoraria } from "../../auxiliares/cursoCalc";
+import VinculosCurso from "../Vinculos/VinculosCurso";
 
 interface ModalCursoProps {
   isOpen: boolean;
@@ -23,7 +24,6 @@ interface ModalCursoProps {
 const abas = [
   { id: "dados", label: "Dados" },
   { id: "modulos", label: "Modulos" },
-  { id: "acesso", label: "Acesso" },
   { id: "medidas", label: "Medidas" },
   { id: "avaliacoes", label: "Avaliações" },
 ];
@@ -66,6 +66,15 @@ export default function ModalCurso({ isOpen, onClose, cursoSelecionado, onSaved 
       case "dados": return <FormCurso curso={curso} setCurso={setCurso} setLoading={setLoading} />;
       case "modulos": return <FormModulos curso={curso} setCurso={setCurso} setLoading={setLoading} />;
       case "avaliacoes": return <FormAvaliacoesCurso curso={curso} setCurso={setCurso} setLoading={setLoading} />;
+      case "medidas":
+        return curso.idCurso > 0 ? (
+          <VinculosCurso idCurso={curso.idCurso} />
+        ) : (
+          <div className="text-sm text-gray-600">
+            Salve o curso primeiro para liberar os vínculos de medidas.
+          </div>
+        );
+
       default:
         return null;
     }
