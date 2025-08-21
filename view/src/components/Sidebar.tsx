@@ -35,11 +35,8 @@ const SidebarContext = createContext<{ isOpen: boolean } | undefined>(undefined)
 export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
-
-  if (location.pathname === "/login") return null;
 
   const menuItems = [
     { label: "Home", icon: <Home />, path: "/", permissoes: [] },

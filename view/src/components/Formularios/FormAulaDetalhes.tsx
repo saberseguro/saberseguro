@@ -1,22 +1,203 @@
 // components/Formularios/FormAulaDetalhes.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Modulo, Aula, AulaVideo, MaterialComplementar, Avaliacao } from "../../types/EstruturaCurso";
 import { makeAvaliacao } from "../../types/FactoriesCurso";
 import CheckboxStatus, { Input, SelectInput, TextArea } from "./Inputs";
-import { Trash2 } from "lucide-react";
+import { Trash2, UploadCloud } from "lucide-react";
 import ToolTip from "../Auxiliares/ToolTip";
 import FormAvaliacao from "./FormAvaliacao";
+import { uploadMaterialArquivo } from "../../services/uploadMaterial";
 
 interface Props {
   modulo: Modulo; // pode ser útil se você quiser exibir também avaliações do módulo
   aula: Aula;
   onChange: (patch: Partial<Aula>) => void;
+  setUploadsPendentes: (tem: boolean) => void;
 }
 
 let tempId = -1;
 const nextTempId = () => tempId--;
 
-export default function FormAulaDetalhes({ modulo, aula, onChange }: Props) {
+function MateriaisEditor({
+  materiais,
+  onUpdate,
+  onAdd,
+  onRemove,
+  aulaId,
+  setUploadsPendentes
+}: {
+  materiais: MaterialComplementar[];
+  onUpdate: (id: number | undefined, patch: Partial<MaterialComplementar>) => void;
+  onAdd: () => void;
+  onRemove: (id: number | undefined) => void;
+  aulaId?: number | null;
+  setUploadsPendentes: (tem: boolean) => void;
+}) {
+  const [progressMap, setProgressMap] = useState<Record<number, number>>({});
+  const [uploadingMap, setUploadingMap] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    const algumUpload = Object.values(uploadingMap).some((v) => v === true);
+    setUploadsPendentes(algumUpload);
+  }, [uploadingMap]);
+
+  const handleFile = async (m: MaterialComplementar, file: File) => {
+    const id = m.idMaterialComplementar ?? -1;
+
+    try {
+      setUploadingMap((s) => ({ ...s, [id]: true }));
+      setProgressMap((s) => ({ ...s, [id]: 0 }));
+
+      const { url } = await uploadMaterialArquivo(file, {
+        pasta: "materiais",
+        aulaId: aulaId ?? m.fkAulaId ?? "aula",
+        onProgress: (p) =>
+          setProgressMap((s) => ({ ...s, [id]: p })),
+      });
+
+      // grava a URL pública no campo material
+      onUpdate(m.idMaterialComplementar, { material: url });
+
+    } catch (err: any) {
+      alert(err?.message ?? "Falha no upload do material");
+    } finally {
+      setUploadingMap((s) => ({ ...s, [id]: false }));
+      setProgressMap((s) => ({ ...s, [id]: 0 }));
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <h5 className="font-semibold text-gray-700">Materiais ({materiais.length})</h5>
+        <button
+          type="button"
+          onClick={onAdd}
+          className="px-3 py-1.5 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600 cursor-pointer"
+        >
+          + Adicionar Material
+        </button>
+      </div>
+
+      {materiais.length ? (
+        <div className="space-y-2">
+          {materiais.map((m) => {
+            const id = m.idMaterialComplementar ?? -1;
+            const uploading = uploadingMap[id] === true;
+            const progress = progressMap[id] ?? 0;
+            const isLink = (m.tipo ?? "").toLowerCase() === "link";
+
+            return (
+              <div key={id} className="grid gap-2 md:grid-cols-12 items-center">
+                {/* Título */}
+                <input
+                  className="md:col-span-4 border border-gray-300 rounded px-3 py-2 text-sm"
+                  placeholder="Título"
+                  value={m.titulo ?? ""}
+                  onChange={(e) => onUpdate(m.idMaterialComplementar, { titulo: e.target.value })}
+                />
+
+                {/* Tipo */}
+                <select
+                  className="md:col-span-2 border border-gray-300 rounded px-3 py-2 text-sm"
+                  value={(m.tipo ?? "").toLowerCase()}
+                  onChange={(e) => onUpdate(m.idMaterialComplementar, { tipo: e.target.value as any })}
+                >
+                  <option value="pdf">PDF</option>
+                  <option value="doc">DOC</option>
+                  <option value="ppt">PPT</option>
+                  <option value="link">Link</option>
+                  <option value="video">Video</option>
+                  <option value="outro">Outros</option>
+                </select>
+
+                {/* Campo de material: URL para 'link'; upload de arquivo para demais */}
+                <div className="md:col-span-5">
+                  {isLink ? (
+                    <input
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                      placeholder="https://..."
+                      value={m.material ?? ""}
+                      onChange={(e) => onUpdate(m.idMaterialComplementar, { material: e.target.value })}
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <label className={`inline-flex items-center gap-2 px-3 py-2 rounded border text-sm cursor-pointer ${uploading ? "opacity-60 pointer-events-none" : "hover:bg-gray-50"}`}>
+                        <UploadCloud className="w-4 h-4" />
+                        <span>{m.material ? "Trocar arquivo" : "Selecionar arquivo"}</span>
+                        <input
+                          type="file"
+                          accept={acceptByTipo(m.tipo)}
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFile(m, file);
+                          }}
+                        />
+                      </label>
+
+                      {/* Preview/link atual (se já tem) */}
+                      {m.material && (
+                        <a
+                          href={m.material}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-blue-600 hover:underline truncate max-w-[240px]"
+                          title={m.material}
+                        >
+                          {m.material}
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* barra de progresso */}
+                  {uploading && (
+                    <div className="mt-2 h-2 w-full bg-gray-200 rounded">
+                      <div className="h-2 bg-blue-600 rounded" style={{ width: `${progress}%` }} />
+                    </div>
+                  )}
+                </div>
+
+                {/* Ações */}
+                <div className="md:col-span-1 flex items-center justify-center gap-2">
+                  <ToolTip text={(m.ativo ?? 1) === 1 ? "Inativar" : "Ativar"}>
+                    <CheckboxStatus
+                      checked={(m.ativo ?? 1) !== 1}
+                      onChange={(checked) => onUpdate(m.idMaterialComplementar, { ativo: checked ? 0 : 1 })}
+                    />
+                  </ToolTip>
+                  <ToolTip text="Excluir">
+                    <button
+                      type="button"
+                      onClick={() => onRemove(m.idMaterialComplementar)}
+                      className="px-2 py-1 text-sm text-red-500 rounded hover:text-red-600 cursor-pointer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </ToolTip>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500 italic">Nenhum material adicionado.</p>
+      )}
+    </div>
+  );
+}
+
+function acceptByTipo(tipo?: string) {
+  const t = (tipo ?? "").toLowerCase();
+  if (t === "pdf") return "application/pdf";
+  if (t === "doc") return ".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (t === "ppt") return ".ppt,.pptx,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  if (t === "video") return "video/*";
+  return "*/*";
+}
+
+export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }: Props) {
   const [tab, setTab] = useState<"dados" | "videos" | "materiais" | "avaliacoes">("dados");
 
   // Normalizações para evitar possibly undefined
@@ -155,7 +336,6 @@ export default function FormAulaDetalhes({ modulo, aula, onChange }: Props) {
               required={true}
               options={[
                 { value: "video", label: "Vídeo" },
-                { value: "pdf", label: "PDF" },
               ]}
             />
 
@@ -216,72 +396,14 @@ export default function FormAulaDetalhes({ modulo, aula, onChange }: Props) {
         )}
 
         {tab === "materiais" && (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h5 className="font-semibold text-gray-700">Materiais ({materiais.length})</h5>
-              <button
-                type="button"
-                onClick={addMaterial}
-                className="px-3 py-1.5 text-sm bg-yellow-500 text-white rounded hover:bg-yellow-600 cursor-pointer"
-              >
-                + Adicionar Material
-              </button>
-            </div>
-
-            {materiais.length ? (
-              <div className="space-y-2">
-                {materiais.map((m) => (
-                  <div key={m.idMaterialComplementar ?? Math.random()} className="grid gap-2 md:grid-cols-12 items-center">
-                    <input
-                      className="md:col-span-4 border border-gray-300 rounded px-3 py-2 text-sm"
-                      placeholder="Título"
-                      value={m.titulo}
-                      onChange={(e) => updateMaterial(m.idMaterialComplementar, { titulo: e.target.value })}
-                    />
-                    <select
-                      className="md:col-span-2 border border-gray-300 rounded px-3 py-2 text-sm"
-                      value={m.tipo}
-                      onChange={(e) => updateMaterial(m.idMaterialComplementar, { tipo: e.target.value as any })}
-                    >
-                      <option value="pdf">PDF</option>
-                      <option value="doc">DOC</option>
-                      <option value="ppt">PPT</option>
-                      <option value="link">Link</option>
-                      <option value="video">Video</option>
-                      <option value="outro">Outros</option>
-                    </select>
-                    <input
-                      className="md:col-span-5 border border-gray-300 rounded px-3 py-2 text-sm"
-                      placeholder="URL/Arquivo"
-                      value={m.material}
-                      onChange={(e) => updateMaterial(m.idMaterialComplementar, { material: e.target.value })}
-                    />
-                    <div className="md:col-span-1 flex items-center justify-center gap-2">
-                      <ToolTip text={(m.ativo ?? 1) === 1 ? "Inativar" : "Ativar"}>
-                        <CheckboxStatus
-                          checked={(m.ativo ?? 1) !== 1}
-                          onChange={(checked) =>
-                            updateMaterial(m.idMaterialComplementar, { ativo: checked ? 0 : 1 })
-                          }
-                        />
-                      </ToolTip>
-                      <ToolTip text="Excluir">
-                        <button
-                          type="button"
-                          onClick={() => removeMaterial(m.idMaterialComplementar)}
-                          className="px-2 py-1 text-sm text-red-500 rounded hover:text-red-600 cursor-pointer"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </ToolTip>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500 italic">Nenhum material adicionado.</p>
-            )}
-          </div>
+          <MateriaisEditor
+            materiais={materiais}
+            onUpdate={(id, patch) => updateMaterial(id, patch)}
+            onAdd={addMaterial}
+            onRemove={removeMaterial}
+            aulaId={aula.idAula}
+            setUploadsPendentes={setUploadsPendentes}
+          />
         )}
 
         {tab === "avaliacoes" && (

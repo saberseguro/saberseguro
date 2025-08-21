@@ -3,7 +3,6 @@ import { Suspense, lazy } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
-import CursoView from '../pages/Curso/CursoView';
 
 const LoginPage = lazy(() => import('../pages/Auth/LoginPage'));
 const HomePage = lazy(() => import('../pages/Home/HomePage'));
@@ -46,7 +45,6 @@ export default function AppRoutes() {
               {/* Curso */}
               <Route path="/cursos/gerenciar" element={<CursoPage />} />
               <Route path="/cursos/meuscursos" element={<MeusCursos />} />
-              <Route path="/curso/:idCurso" element={<CursoView />} />
               <Route path="/cursos/playcurso/:idCurso" element={<PlayerCurso />} />
 
               {/* Medida */}

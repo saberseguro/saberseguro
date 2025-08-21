@@ -22,7 +22,7 @@ export type CursoCompleto = Omit<Curso, 'categorias'> & {
   categorias: { categoria: Categoria }[];
   modulos: Modulo[];
   avaliacoes: Avaliacao[];
-  responsaveltecnico?: Usuario;
+  responsaveltecnico?: ResponsavelTecnico;
 };
 
 export interface Modulo {
@@ -90,6 +90,7 @@ export interface MaterialComplementar {
   tipo: string;
   material: string;
   ativo: number;
+  fkAulaId?: number;
 }
 
 export interface Avaliacao {

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Play, Clock, ChevronLeft, ChevronRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import type { Curso } from "../../types/EstruturaCurso";
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import { getMeusCursos } from "../../services/apiCurso";
+import CursoSidePanel from "./CursoSidePanel";
+import { useSearchParams } from "react-router-dom";
 
 // ---- Tipo enxuto esperado do backend para a listagem ----
 // Ajuste se necessário conforme seu DTO.
@@ -47,7 +48,7 @@ function GridSkeleton() {
   );
 }
 
-function CarouselRow({ titulo, itens }: { titulo: string; itens: CursoListItem[] }) {
+function CarouselRow({ titulo, itens, onOpen }: { titulo: string; itens: CursoListItem[]; onOpen: (id: number) => void }) {
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const scrollBy = (dir: "left" | "right") => {
@@ -101,7 +102,7 @@ function CarouselRow({ titulo, itens }: { titulo: string; itens: CursoListItem[]
           tabIndex={0}
         >
           {itens.map((c) => (
-            <CursoCard key={c.idCurso} curso={c} />
+            <CursoCard key={c.idCurso} curso={c} onOpen={onOpen} />
           ))}
         </div>
 
@@ -123,13 +124,8 @@ function CarouselRow({ titulo, itens }: { titulo: string; itens: CursoListItem[]
   );
 }
 
-function CursoCard({ curso }: { curso: CursoListItem }) {
-  const navigate = useNavigate();
+function CursoCard({ curso, onOpen }: { curso: CursoListItem; onOpen: (id: number) => void }) {
   const progresso = Math.max(0, Math.min(100, Number(curso.progresso ?? 0)));
-
-  const continuar = () => {
-    navigate(`/curso/${curso.idCurso}`);
-  };
 
   return (
     <div className="min-w-[240px] w-[240px] bg-white rounded-xl p-4">
@@ -186,7 +182,7 @@ function CursoCard({ curso }: { curso: CursoListItem }) {
 
         <button
           type="button"
-          onClick={continuar}
+          onClick={() => onOpen(curso.idCurso)}
           className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 shadow-sm cursor-pointer"
         >
           Ver Curso
@@ -201,15 +197,35 @@ export default function MeusCursos() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
+  // Novo: controle do painel
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedIdFromQS = searchParams.get("curso");
+  const selectedId = selectedIdFromQS ? Number(selectedIdFromQS) : null;
+  const panelOpen = selectedId != null && !Number.isNaN(selectedId);
+
+  const openPanel = (id: number) => {
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("curso", String(id));
+      return p;
+    }, { replace: false }); // adiciona histórico para back fechar
+  };
+
+  const closePanel = () => {
+    // remove ?curso da URL
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.delete("curso");
+      return p;
+    }, { replace: false });
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
         setErro(null);
         const lista = await getMeusCursos();
-
-        console.log("Meus cursos:", lista);
-
         const cursosAdaptados: CursoListItem[] = lista.map((c: any) => ({
           idCurso: c.idCurso,
           titulo: c.titulo,
@@ -225,7 +241,6 @@ export default function MeusCursos() {
           progresso: c.progresso ?? 0,
           ultimaAulaId: c.ultimaAulaId ?? undefined,
         }));
-
         setCursos(cursosAdaptados);
       } catch (e: any) {
         setErro(e?.message ?? "Falha ao carregar seus cursos.");
@@ -236,24 +251,17 @@ export default function MeusCursos() {
     load();
   }, []);
 
-
-  // Você pode decidir segmentar em seções (recomendados, recentes, etc).
-  // Por enquanto, uma seção única "Meus cursos".
-  const secoes = useMemo(() => {
-    return [
-      {
-        id: "meus-cursos",
-        titulo: "Meus cursos",
-        itens: cursos,
-      },
-    ];
-  }, [cursos]);
+  const secoes = [
+    { id: "meus-cursos", titulo: "Meus cursos", itens: cursos },
+  ];
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <header className="mb-4 md:mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Meus Cursos</h1>
-        <p className="text-gray-500 text-sm md:text-base">Cursos disponíveis para você, com base no seu cargo/setor e nas medidas de segurança.</p>
+        <p className="text-gray-500 text-sm md:text-base">
+          Cursos disponíveis para você, com base no seu cargo/setor e nas medidas de segurança.
+        </p>
       </header>
 
       {loading && <GridSkeleton />}
@@ -264,17 +272,22 @@ export default function MeusCursos() {
         </div>
       )}
 
-      {!loading && !erro && cursos.length === 0 && (
-        <EmptyState />
-      )}
+      {!loading && !erro && cursos.length === 0 && <EmptyState />}
 
       {!loading && !erro && cursos.length > 0 && (
         <div className="space-y-8">
           {secoes.map((sec) => (
-            <CarouselRow key={sec.id} titulo={sec.titulo} itens={sec.itens} />
+            <CarouselRow key={sec.id} titulo={sec.titulo} itens={sec.itens} onOpen={openPanel} />
           ))}
         </div>
       )}
+
+      {/* Sheet lateral */}
+      <CursoSidePanel
+        open={panelOpen}
+        idCurso={selectedId}
+        onClose={closePanel}
+      />
     </div>
   );
 }

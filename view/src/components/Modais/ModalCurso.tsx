@@ -29,6 +29,8 @@ const abas = [
 ];
 
 export default function ModalCurso({ isOpen, onClose, cursoSelecionado, onSaved }: ModalCursoProps) {
+  const [uploadsPendentes, setUploadsPendentes] = useState(false);
+
   const [abaSelecionada, setAbaSelecionada] = useState("dados");
   const [curso, setCurso] = useState<Curso>(
     cursoSelecionado ?? {
@@ -64,7 +66,7 @@ export default function ModalCurso({ isOpen, onClose, cursoSelecionado, onSaved 
 
     switch (abaSelecionada) {
       case "dados": return <FormCurso curso={curso} setCurso={setCurso} setLoading={setLoading} />;
-      case "modulos": return <FormModulos curso={curso} setCurso={setCurso} setLoading={setLoading} />;
+      case "modulos": return <FormModulos curso={curso} setCurso={setCurso} setLoading={setLoading} setUploadsPendentes={setUploadsPendentes} />;
       case "avaliacoes": return <FormAvaliacoesCurso curso={curso} setCurso={setCurso} setLoading={setLoading} />;
       case "medidas":
         return curso.idCurso > 0 ? (
@@ -132,7 +134,7 @@ export default function ModalCurso({ isOpen, onClose, cursoSelecionado, onSaved 
             <button
               type="button"
               className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-400"
-              disabled={loading}
+              disabled={loading || uploadsPendentes}
               onClick={onSalvar}
             >
               {loading ? <Spinner /> : "Salvar"}

@@ -60,3 +60,8 @@ export function formatarMinutosEmHoras(min?: number): string {
   if (h) return `${h}h`;
   return `${m}min`;
 }
+
+export function formatarTelefone(telefone: string): string {
+  const clean = telefone.replace(/\D/g, "");
+  return clean.replace(/^(\d{2})(\d{4,5})(\d{4})$/, "($1) $2-$3");
+}

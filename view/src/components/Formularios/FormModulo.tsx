@@ -31,6 +31,7 @@ interface Props {
   curso: Curso & { modulos: Modulo[] };
   setCurso: React.Dispatch<React.SetStateAction<Curso & { modulos: Modulo[] }>>;
   setLoading: (loading: boolean) => void;
+  setUploadsPendentes: (tem: boolean) => void;
 }
 
 let tempId = -1;
@@ -61,7 +62,7 @@ function SortableRowWrapper({ id, children }: { id: string; children: React.Reac
 
 type AbaModulo = "aulas" | "avaliacoes";
 
-export default function FormModulos({ curso, setCurso, setLoading }: Props) {
+export default function FormModulos({ curso, setCurso, setUploadsPendentes }: Props) {
   const [expandedModuloId, setExpandedModuloId] = useState<number | null>(null);
   const [expandedAulaId, setExpandedAulaId] = useState<number | null>(null);
 
@@ -416,18 +417,6 @@ export default function FormModulos({ curso, setCurso, setLoading }: Props) {
                                                     />
                                                   </div>
 
-                                                  {/* <input
-                                                    type="number"
-                                                    className="w-20 border rounded px-2 py-1 text-sm"
-                                                    value={a.ordem ?? 0}
-                                                    onChange={(e) =>
-                                                      updateAula(m.idModulo, a.idAula, {
-                                                        ordem: safeNumber(e.target.value, a.ordem ?? 0),
-                                                      })
-                                                    }
-                                                    aria-label="ordem"
-                                                  /> */}
-
                                                   <ToolTip text={`${(a.ativo ?? 1) === 1 ? "Inativar" : "Ativar"}`}>
                                                     <CheckboxStatus
                                                       checked={(a.ativo ?? 1) !== 1}
@@ -473,6 +462,7 @@ export default function FormModulos({ curso, setCurso, setLoading }: Props) {
                                                       onChange={(patch) =>
                                                         updateAula(m.idModulo, a.idAula, patch)
                                                       }
+                                                      setUploadsPendentes={setUploadsPendentes}
                                                     />
                                                   </div>
                                                 )}
