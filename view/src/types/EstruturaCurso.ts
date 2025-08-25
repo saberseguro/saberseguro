@@ -49,7 +49,7 @@ export interface Aula {
 
   videos?: AulaVideo[];
   materiais?: MaterialComplementar[];
-
+  steps?: AulaStep[];
   avaliacoes?: Avaliacao[];
 }
 
@@ -126,4 +126,14 @@ export type Pergunta = {
   tipo: 'multipla' | 'dissertativa' | string;
   ativo?: number;
   alternativas?: Alternativa[];
+};
+
+export type AulaStep = {
+  idAulaStep?: number;
+  tipo: "video" | "material" | "avaliacao";
+  ordem: number;
+  obrigatorio: 0 | 1;
+  fkAulaVideoId?: number | null;
+  fkMaterialId?: number | null;
+  fkAvaliacaoId?: number | null;
 };

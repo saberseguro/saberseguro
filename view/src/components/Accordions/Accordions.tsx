@@ -12,7 +12,7 @@ export function ModulosAccordion({ modulos }: { modulos: Modulo[] }) {
             {mod.aulas.map((aula) => {
               const isVideo = (aula.tipo ?? "").toString().toUpperCase() === "VIDEO";
               return (
-                <li key={aula.idAula} className="flex items-center gap-2 py-1 px-3">
+                <li key={aula.idAula} className="flex items-center gap-2 py-1">
                   {isVideo ? (
                     <Video className="w-4 h-4 text-blue-500" />
                   ) : (
@@ -66,16 +66,10 @@ function AccordionItem({
     <div className="">
       <button
         type="button"
-        className="w-full flex items-center justify-between gap-3 px-4 py-1 text-left"
+        className="w-full flex items-center justify-between gap-3 px-4 py-1 text-left cursor-pointer"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setOpen((v) => !v);
-          }
-        }}
       >
         <div className="min-w-0">
           <div className="font-semibold text-gray-800 truncate">{titulo}</div>
@@ -91,9 +85,9 @@ function AccordionItem({
         id={panelId}
         ref={contentRef}
         style={{ maxHeight: open ? height : 0 }}
-        className={`overflow-hidden transition-[max-height] duration-300 ease-out`}
+        className={`overflow-hidden transition-[max-height] duration-300 ease-out px-6`}
       >
-        <div className={`px-4 ${open ? "opacity-100" : "opacity-0"} transition-opacity duration-200`}>
+        <div className={`px-4 ${open ? "opacity-100" : "opacity-0"} transition-opacity duration-200 border-l-2 border-gray-400`}>
           {children}
         </div>
       </div>

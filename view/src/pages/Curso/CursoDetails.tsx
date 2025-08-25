@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Play } from "lucide-react";
+import { Clock, Play, UserCheck, UserCircle } from "lucide-react";
 import { getCursoCompleto } from "../../services/apiCurso";
 import type { CursoCompleto } from "../../types/EstruturaCurso";
 import { ModulosAccordion } from "../../components/Accordions/Accordions";
@@ -35,16 +35,27 @@ export default function CursoDetails({ idCurso }: CursoDetailsProps) {
   return (
     <div className="px-6 py-4">
       {/* Header */}
-      <h1 className="text-2xl font-bold mb-2">{curso.titulo}</h1>
-      <p className="text-gray-600">{curso.descricao}</p>
-      <p className="text-sm text-gray-500">Carga horária: {curso.cargaHoraria}h</p>
+      <h1 className="text-2xl font-bold mb-1">{curso.titulo}</h1>
 
-      {/* Responsável Técnico */}
-      {curso.responsaveltecnico && (
-        <p className="text-sm text-gray-500 mb-4">
-          Responsável Técnico: {curso.responsaveltecnico.nome}
-        </p>
-      )}
+      {/* Carga horária & Responsável Técnico */}
+      <div className="flex items-center gap-2 mb-2">
+        {/* Carga horária */}
+        <div className="flex items-center text-xs text-gray-600 gap-1 bg-gray-100 px-2 py-1 rounded-full">
+          <Clock size={14} className="text-gray-400" />
+          <span>{curso.cargaHoraria}h</span>
+        </div>
+
+        {/* Responsável Técnico */}
+        {curso.responsaveltecnico && (
+          <div className="flex items-center text-xs text-gray-600 gap-1 bg-gray-100 px-2 py-1 rounded-full">
+            <UserCircle size={14} className="text-gray-400" />
+            <span>{curso.responsaveltecnico.nome}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Descrição */}
+      <p className="text-gray-600 text-sm mb-4">Descrição: {curso.descricao}</p>
 
       {/* Categorias */}
       {curso.categorias?.length > 0 && (
@@ -54,7 +65,7 @@ export default function CursoDetails({ idCurso }: CursoDetailsProps) {
             {curso.categorias.map((c, i) => (
               <span
                 key={i}
-                className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full"
+                className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded-full"
               >
                 {c.categoria.nome}
               </span>

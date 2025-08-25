@@ -24,6 +24,7 @@ model usuario {
   cursoacessos           cursoacesso[]
   logevento              logevento[]
   medidasvinculos        medidavinculo[]
+  moduloacesso           moduloacesso[]
   cargo                  cargo?             @relation(fields: [fkCargoId], references: [idCargo], map: "fk_usuario_fkCargoId")
   empresa                empresa?           @relation(fields: [fkEmpresaId], references: [idEmpresa], map: "fk_usuario_fkEmpresaId")
   usuariohorario         usuariohorario[]
@@ -59,12 +60,35 @@ model aula {
   ativo        Int                    @default(1) @db.TinyInt
   fkModuloId   Int
   modulo       modulo                 @relation(fields: [fkModuloId], references: [idModulo], onDelete: Cascade, map: "fk_aula_fkModuloId")
+  steps        aulastep[]
   aulausuarios aulausuario[]
   videos       aulavideo[]
   avaliacoes   avaliacao[]
   materiais    materialcomplementar[]
 
   @@index([fkModuloId], map: "fk_aula_fkModuloId")
+}
+
+model aulastep {
+  idAulaStep    Int                   @id @default(autoincrement())
+  tipo          aulastep_tipo
+  ordem         Int
+  obrigatorio   Int                   @default(1) @db.TinyInt
+  criado_em     DateTime              @default(now()) @db.DateTime(0)
+  editado_em    DateTime              @updatedAt @db.DateTime(0)
+  fkAulaId      Int
+  fkMaterialId  Int?
+  fkAulaVideoId Int?
+  fkAvaliacaoId Int?
+  aula          aula                  @relation(fields: [fkAulaId], references: [idAula], onDelete: Cascade)
+  video         aulavideo?            @relation(fields: [fkAulaVideoId], references: [idAulaVideo], onDelete: Cascade)
+  avaliacao     avaliacao?            @relation(fields: [fkAvaliacaoId], references: [idAvaliacao], onDelete: Cascade)
+  material      materialcomplementar? @relation(fields: [fkMaterialId], references: [idMaterialComplementar], onDelete: Cascade)
+
+  @@index([fkAulaId, ordem])
+  @@index([fkAulaVideoId], map: "aulastep_fkAulaVideoId_fkey")
+  @@index([fkAvaliacaoId], map: "aulastep_fkAvaliacaoId_fkey")
+  @@index([fkMaterialId], map: "aulastep_fkMaterialId_fkey")
 }
 
 model aulausuario {
@@ -85,10 +109,11 @@ model aulausuario {
 }
 
 model aulavideo {
-  idAulaVideo Int    @id @default(autoincrement())
-  url         String @db.Text
+  idAulaVideo Int        @id @default(autoincrement())
+  url         String     @db.Text
   fkAulaId    Int
-  aula        aula   @relation(fields: [fkAulaId], references: [idAula], onDelete: Cascade, map: "fk_aulaVideo_fkAulaId")
+  steps       aulastep[]
+  aula        aula       @relation(fields: [fkAulaId], references: [idAula], onDelete: Cascade, map: "fk_aulaVideo_fkAulaId")
 
   @@index([fkAulaId], map: "fk_aulaVideo_fkAulaId")
 }
@@ -104,6 +129,7 @@ model avaliacao {
   criado_em          DateTime                @default(now()) @db.DateTime(0)
   editado_em         DateTime                @updatedAt @db.DateTime(0)
   ativo              Int                     @default(1) @db.TinyInt
+  steps              aulastep[]
   aula               aula?                   @relation(fields: [fkAulaId], references: [idAula], map: "fk_avaliacao_fkAulaId")
   curso              curso?                  @relation(fields: [fkCursoId], references: [idCurso], map: "fk_avaliacao_fkCursoId")
   modulo             modulo?                 @relation(fields: [fkModuloId], references: [idModulo], map: "fk_avaliacao_fkModuloId")
@@ -163,7 +189,6 @@ model categoriacurso {
 
   @@unique([fkCursoId, fkCategoriaId])
   @@index([fkCategoriaId], map: "categoriacurso_fkCategoriaId_fkey")
-  @@map("categoriacurso")
 }
 
 model cnae {
@@ -229,14 +254,12 @@ model cursoacesso {
   unidade       unidade?  @relation(fields: [fkUnidadeId], references: [idUnidade])
   usuario       usuario?  @relation(fields: [fkUsuarioId], references: [idUsuario])
 
+  @@unique([fkCursoId, fkEmpresaId, fkUnidadeId, fkSetorId, fkCargoId, fkUsuarioId], name: "uniq_cursoacesso_scope")
   @@index([fkCargoId], map: "cursoacesso_fkCargoId_fkey")
-  @@index([fkCursoId], map: "cursoacesso_fkCursoId_fkey")
   @@index([fkEmpresaId], map: "cursoacesso_fkEmpresaId_fkey")
   @@index([fkSetorId], map: "cursoacesso_fkSetorId_fkey")
   @@index([fkUnidadeId], map: "cursoacesso_fkUnidadeId_fkey")
   @@index([fkUsuarioId], map: "cursoacesso_fkUsuarioId_fkey")
-
-  @@unique([fkCursoId, fkEmpresaId, fkUnidadeId, fkSetorId, fkCargoId, fkUsuarioId], name: "uniq_cursoacesso_scope")
 }
 
 model empresa {
@@ -274,6 +297,7 @@ model materialcomplementar {
   editado_em             DateTime                  @default(now()) @db.DateTime(0)
   ativo                  Int                       @default(1) @db.TinyInt
   fkAulaId               Int
+  steps                  aulastep[]
   aula                   aula                      @relation(fields: [fkAulaId], references: [idAula], onDelete: Cascade, map: "fk_materialComplementar_fkAulaId")
 
   @@index([fkAulaId], map: "fk_materialComplementar_fkAulaId")
@@ -302,7 +326,6 @@ model medidacurso {
 
   @@id([fkMedidaId, fkCursoId])
   @@index([fkCursoId], map: "medidacurso_fkCursoId_fkey")
-  @@map("medidacurso")
 }
 
 model medidavinculo {
@@ -329,19 +352,34 @@ model medidavinculo {
 }
 
 model modulo {
-  idModulo     Int         @id @default(autoincrement())
-  titulo       String      @db.VarChar(45)
+  idModulo     Int            @id @default(autoincrement())
+  titulo       String         @db.VarChar(45)
   cargaHoraria Int
-  criado_em    DateTime    @default(now()) @db.DateTime(0)
-  editado_em   DateTime    @updatedAt @db.DateTime(0)
-  ativo        Int         @default(1) @db.TinyInt
+  criado_em    DateTime       @default(now()) @db.DateTime(0)
+  editado_em   DateTime       @updatedAt @db.DateTime(0)
+  ativo        Int            @default(1) @db.TinyInt
   ordem        Int
   fkCursoId    Int
   aulas        aula[]
   avaliacoes   avaliacao[]
-  curso        curso       @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade, map: "fk_modulo_fkCursoId")
+  curso        curso          @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade, map: "fk_modulo_fkCursoId")
+  moduloacesso moduloacesso[]
 
   @@index([fkCursoId], map: "fk_modulo_fkCursoId")
+}
+
+model moduloacesso {
+  idModuloAcesso Int      @id @default(autoincrement())
+  fkModuloId     Int
+  fkUsuarioId    Int
+  concluido      Boolean  @default(false)
+  criado_em      DateTime @default(now()) @db.DateTime(0)
+  editado_em     DateTime @updatedAt @db.DateTime(0)
+  modulo         modulo   @relation(fields: [fkModuloId], references: [idModulo], onDelete: Cascade)
+  usuario        usuario  @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: Cascade)
+
+  @@unique([fkModuloId, fkUsuarioId])
+  @@index([fkUsuarioId], map: "moduloacesso_fkUsuarioId_fkey")
 }
 
 model pergunta {
@@ -547,4 +585,10 @@ enum avaliacaousuario_status {
 enum avaliacao_tipoAplicacao {
   avaliacao
   quiz
+}
+
+enum aulastep_tipo {
+  video
+  material
+  avaliacao
 }

@@ -1,15 +1,18 @@
 // components/Formularios/FormAulaDetalhes.tsx
 import { useEffect, useState } from "react";
-import type { Modulo, Aula, AulaVideo, MaterialComplementar, Avaliacao } from "../../types/EstruturaCurso";
+import type { Modulo, Aula, AulaVideo, MaterialComplementar, Avaliacao, AulaStep } from "../../types/EstruturaCurso";
 import { makeAvaliacao } from "../../types/FactoriesCurso";
 import CheckboxStatus, { Input, SelectInput, TextArea } from "./Inputs";
-import { Trash2, UploadCloud } from "lucide-react";
+import { GripVertical, Trash2, UploadCloud } from "lucide-react";
 import ToolTip from "../Auxiliares/ToolTip";
 import FormAvaliacao from "./FormAvaliacao";
 import { uploadMaterialArquivo } from "../../services/uploadMaterial";
+import SortableItem from "../Auxiliares/SortableItem";
+import { closestCenter, DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
 interface Props {
-  modulo: Modulo; // pode ser útil se você quiser exibir também avaliações do módulo
+  modulo: Modulo;
   aula: Aula;
   onChange: (patch: Partial<Aula>) => void;
   setUploadsPendentes: (tem: boolean) => void;
@@ -198,7 +201,7 @@ function acceptByTipo(tipo?: string) {
 }
 
 export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }: Props) {
-  const [tab, setTab] = useState<"dados" | "videos" | "materiais" | "avaliacoes">("dados");
+  const [tab, setTab] = useState<"dados" | "videos" | "materiais" | "avaliacoes" | "fluxo">("dados");
 
   // Normalizações para evitar possibly undefined
   const videos = aula.videos ?? [];
@@ -220,7 +223,6 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
         {
           idAulaVideo: nextTempId(),
           url: "",
-          // opcional: ordem: (videos.length + 1)
         } as AulaVideo,
       ],
     });
@@ -295,6 +297,7 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
           { id: "videos", label: "Vídeos" },
           { id: "materiais", label: "Materiais" },
           { id: "avaliacoes", label: "Avaliações" },
+          { id: "fluxo", label: "Fluxo" },
         ].map((t) => (
           <button
             key={t.id}
@@ -352,7 +355,6 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
             </div>
           </div>
         )}
-
 
         {tab === "videos" && (
           <div className="space-y-2">
@@ -437,7 +439,160 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
             )}
           </div>
         )}
+
+        {tab === "fluxo" && (
+          <FluxoEditor
+            steps={aula.steps ?? []}
+            videos={videos}
+            materiais={materiais}
+            avaliacoes={avaliacoesAula}
+            setSteps={(steps) => onChange({ steps: steps })}
+          />
+        )}
+
       </div>
+    </div>
+  );
+}
+
+interface FluxoEditorProps {
+  steps: AulaStep[];
+  setSteps: (steps: AulaStep[]) => void;
+  videos: AulaVideo[];
+  materiais: MaterialComplementar[];
+  avaliacoes: Avaliacao[];
+}
+
+function FluxoEditor({ steps, setSteps, videos, materiais, avaliacoes }: FluxoEditorProps) {
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = steps.findIndex((s) => `step-${s.idAulaStep}` === active.id);
+    const newIndex = steps.findIndex((s) => `step-${s.idAulaStep}` === over.id);
+
+    const reordered: AulaStep[] = arrayMove(steps, oldIndex, newIndex).map((step, i): AulaStep => ({
+      ...step,
+      ordem: i + 1,
+    }));
+
+    setSteps(reordered);
+  }
+
+  const adicionarStep = (tipo: AulaStep["tipo"] = "video") => {
+    const novoStep: AulaStep = {
+      idAulaStep: nextTempId(),
+      tipo,
+      ordem: steps.length + 1,
+      obrigatorio: 1,
+    };
+    setSteps([...steps, novoStep]);
+  };
+
+  return (
+    <div className="space-y-4">
+      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext
+          items={steps.map((step) => `step-${step.idAulaStep}`)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => adicionarStep("video")}
+              className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded"
+            >
+              + Adicionar Etapa
+            </button>
+          </div>
+          {steps.map((step, i) => (
+            <SortableItem key={`step-${step.idAulaStep}`} id={`step-${step.idAulaStep}`}>
+              <div className="bg-white border border-gray-300 rounded-md p-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="cursor-grab text-gray-400" title="Arraste para reordenar">
+                    <GripVertical />
+                  </div>
+                  <SelectInput
+                    name={`tipo-${i}`}
+                    value={step.tipo}
+                    onChange={(e) => {
+                      const tipo = e.target.value as AulaStep["tipo"];
+                      const updated = steps.map((s, idx) =>
+                        idx === i
+                          ? {
+                            ...s,
+                            tipo,
+                            fkAulaVideoId: null,
+                            fkMaterialId: null,
+                            fkAvaliacaoId: null,
+                          }
+                          : s
+                      );
+                      setSteps(updated);
+                    }}
+                    options={[
+                      { label: "Vídeo", value: "video" },
+                      { label: "Material", value: "material" },
+                      { label: "Avaliação", value: "avaliacao" },
+                    ]}
+                  />
+
+                  {step.tipo === "video" && (
+                    <SelectInput
+                      name={`video-${i}`}
+                      value={step.fkAulaVideoId?.toString() ?? ""}
+                      onChange={(e) => {
+                        const updated = steps.map((s, idx) =>
+                          idx === i ? { ...s, fkAulaVideoId: Number(e.target.value) } : s
+                        );
+                        setSteps(updated);
+                      }}
+                      options={videos.map((v) => ({
+                        value: v.idAulaVideo!.toString(),
+                        label: v.url,
+                      }))}
+                    />
+                  )}
+
+                  {step.tipo === "material" && (
+                    <SelectInput
+                      name={`material-${i}`}
+                      value={step.fkMaterialId?.toString() ?? ""}
+                      onChange={(e) => {
+                        const updated = steps.map((s, idx) =>
+                          idx === i ? { ...s, fkMaterialId: Number(e.target.value) } : s
+                        );
+                        setSteps(updated);
+                      }}
+                      options={materiais.map((m) => ({
+                        value: m.idMaterialComplementar!.toString(),
+                        label: m.titulo ?? m.material,
+                      }))}
+                    />
+                  )}
+
+                  {step.tipo === "avaliacao" && (
+                    <SelectInput
+                      name={`avaliacao-${i}`}
+                      value={step.fkAvaliacaoId?.toString() ?? ""}
+                      onChange={(e) => {
+                        const updated = steps.map((s, idx) =>
+                          idx === i ? { ...s, fkAvaliacaoId: Number(e.target.value) } : s
+                        );
+                        setSteps(updated);
+                      }}
+                      options={avaliacoes.map((a) => ({
+                        value: a.idAvaliacao!.toString(),
+                        label: a.titulo ?? `Avaliação ${a.idAvaliacao}`,
+                      }))}
+                    />
+                  )}
+                </div>
+              </div>
+            </SortableItem>
+          ))}
+        </SortableContext>
+      </DndContext>
     </div>
   );
 }

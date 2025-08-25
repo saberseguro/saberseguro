@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
-   theme: {
+  theme: {
     extend: {
       backdropBlur: {
         xs: '1px',
@@ -20,21 +20,26 @@ export default {
         '.custom-scrollbar': {
           '&::-webkit-scrollbar': {
             width: '6px',
-            height: '7px',
+            height: '6px',
+            appearance: 'none',
           },
           '&::-webkit-scrollbar-track': {
-            background: '#f1f1f1',
-            'border-radius': '10px',
+            background: 'transparent',
           },
           '&::-webkit-scrollbar-thumb': {
-            background: '#888',
-            'border-radius': '10px',
+            backgroundColor: '#888',
+            borderRadius: '10px',
           },
           '&::-webkit-scrollbar-thumb:hover': {
-            background: '#555',
+            backgroundColor: '#555',
+          },
+          '&::-webkit-scrollbar-button': {
+            display: 'none',
+            width: '0',
+            height: '0',
           },
         },
-      })
+      });
     }
   ],
 };

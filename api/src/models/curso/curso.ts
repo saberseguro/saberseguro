@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, aulastep_tipo } from '@prisma/client';
 import { prisma } from '../../config/prisma-client';
 import { registrarEvento } from '../../shared/utils/registrarEvento';
 
@@ -17,7 +17,19 @@ function assertSingleScope(data: any) {
 
 type CursoCompleto = Prisma.cursoGetPayload<{
   include: {
-    modulos: { include: { aulas: true, avaliacoes: true } };
+    modulos: {
+      include: {
+        aulas: {
+          include: {
+            steps: true;
+            avaliacoes: true;
+            materiais: true;
+            videos: true;
+          };
+        };
+        avaliacoes: true;
+      };
+    };
     avaliacoes: true;
   };
 }>;
@@ -73,6 +85,7 @@ export const buscarCursoCompleto = {
                 },
                 materiais: true,
                 videos: true,
+                steps: true,
               }
             }
           }
@@ -149,6 +162,7 @@ export const buscarCursos = {
                   avaliacoes: { include: { perguntas: { include: { alternativas: true } } } },
                   materiais: true,
                   videos: true,
+                  steps: true,
                 }
               }
             }
@@ -505,7 +519,7 @@ export const criarCursoAcesso = {
         fkCargoId: data.fkCargoId ?? null,
         fkUsuarioId: data.fkUsuarioId ?? null
       },
-      update: {} // nada a atualizar (idempotente)
+      update: {}
     });
 
     await registrarEvento({
@@ -680,7 +694,7 @@ export const syncCurso = {
           for (const m of matsPayload) {
             const matData = {
               titulo: m.titulo,
-              tipo: m.tipo ?? 'LINK', // precisa casar com enum do Prisma
+              tipo: m.tipo ?? 'LINK',
               material: m.material,
               ativo: m.ativo ?? 1,
               fkAulaId: idAula,
@@ -697,6 +711,42 @@ export const syncCurso = {
                   material: matData.material,
                   ativo: matData.ativo,
                 },
+              });
+            }
+          }
+
+          // Aulasteps (fluxo)
+          const stepsPayload = Array.isArray(a.aulaSteps) ? a.aulaSteps : [];
+          const keepStepIds = stepsPayload
+            .filter((s: any) => (s.idAulaStep ?? 0) > 0)
+            .map((s: any) => s.idAulaStep);
+
+          // Apaga os steps que sumiram
+          await tx.aulastep.deleteMany({
+            where: {
+              fkAulaId: idAula,
+              idAulaStep: { notIn: keepStepIds.length ? keepStepIds : [0] },
+            },
+          });
+
+          // Cria ou atualiza steps
+          for (const [sIdx, s] of stepsPayload.entries()) {
+            const dataStep = {
+              tipo: aulastep_tipo[s.tipo?.toLowerCase() as keyof typeof aulastep_tipo] ?? aulastep_tipo.video,
+              ordem: sIdx + 1,
+              obrigatorio: s.obrigatorio ?? 1,
+              fkAulaId: idAula,
+              fkAulaVideoId: s.fkAulaVideoId ?? null,
+              fkMaterialId: s.fkMaterialId ?? null,
+              fkAvaliacaoId: s.fkAvaliacaoId ?? null,
+            };
+
+            if (!s.idAulaStep || s.idAulaStep < 0) {
+              await tx.aulastep.create({ data: dataStep });
+            } else {
+              await tx.aulastep.update({
+                where: { idAulaStep: s.idAulaStep },
+                data: dataStep,
               });
             }
           }
@@ -751,6 +801,7 @@ export const syncCurso = {
                       perguntas: { include: { alternativas: true } },
                     },
                   },
+                  steps: { orderBy: { ordem: 'asc' } },
                 },
                 orderBy: { ordem: 'asc' },
               },

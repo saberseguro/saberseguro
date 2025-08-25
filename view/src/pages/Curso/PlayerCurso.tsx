@@ -82,9 +82,9 @@ export default function PlayCursoPage() {
 
   return (
     <>
-      {/* Header/Breadcrumb */}
+      {/* Header */}
       <div className="w-full bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-11/12 mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-11/12 mx-auto px-4 py-2 flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
             className="p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
@@ -107,9 +107,9 @@ export default function PlayCursoPage() {
         </div>
       </div>
 
-      <div className="max-w-11/12 mx-auto px-4 py-5 flex gap-2">
-        {/* Índice lateral (esquerda) */}
-        <aside className="hidden lg:block w-72 shrink-0 bg-white border border-gray-200 rounded-lg px-3 py-4 max-h-[85vh] overflow-y-auto">
+      <div className="max-w-11/12 mx-auto py-2 flex gap-2">
+        {/* Menu lateral */}
+        <aside className="hidden lg:block w-72 shrink-0 bg-white border border-gray-200 rounded-lg px-3 py-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
           {curso.modulos.map((mod) => (
             <div key={mod.idModulo} className="mb-4">
               <div className="px-1 text-[13px] font-semibold text-gray-700">{mod.titulo}</div>
@@ -148,11 +148,12 @@ export default function PlayCursoPage() {
         </aside>
 
         {/* Conteúdo principal */}
-        <section className="flex-1 min-w-0 max-h-[85vh] overflow-y-auto bg-white border border-gray-200 rounded-lg p-5">
+        <section className="flex-1 min-w-0 max-h-[88vh] overflow-y-auto bg-white border border-gray-200 rounded-lg px-5 py-3 custom-scrollbar">
           {/* Título da aula */}
-          <div className="mb-3">
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">{aulaSelecionada?.titulo}</h1>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+          <div className="mb-2">
+            <h2 className="text-xl sm:text-lg font-semibold text-gray-600">{aulaSelecionada?.titulo}</h2>
+
+            {/* <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
               <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-2 py-0.5 capitalize">
                 <Play className="w-3 h-3" />
                 {aulaSelecionada?.tipo}
@@ -165,14 +166,14 @@ export default function PlayCursoPage() {
                 <Clock className="w-3 h-3" />
                 {formatarMinutosEmHoras(aulaSelecionada?.duracao)}
               </span>
-            </div>
+            </div> */}
           </div>
 
           {/* Player */}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="aspect-video bg-black">
+            <div className="bg-black flex justify-center items-center">
               {currentVideoUrl ? (
-                <div className="aspect-video">
+                <div className="w-full aspect-video rounded overflow-hidden shadow-md">
                   <ReactPlayer
                     src={String(currentVideoUrl)}
                     width="100%"
@@ -195,30 +196,90 @@ export default function PlayCursoPage() {
               )}
             </div>
 
-            {aulaSelecionada?.videos?.length > 1 && (
-              <div className="px-4 py-3 border-t border-gray-200">
-                <div className="text-xs font-medium text-gray-700 mb-2">
-                  {aulaSelecionada.videos.length} vídeos nesta aula
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {aulaSelecionada.videos.map((v: { idAulaVideo: number; url: string }, idx: number) => {
-                    const active = idx === videoIndex;
-                    const isYouTube = /youtube\.com|youtu\.be/.test(v.url);
-                    const label = isYouTube ? `YouTube ${idx + 1}` : `Arquivo ${idx + 1}`;
+            {aulaSelecionada?.steps?.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-base font-semibold text-gray-800 mb-3">Etapas da Aula</h3>
+                <ol className="space-y-3">
+                  {aulaSelecionada.steps.map((step: any, idx: number) => {
+                    const tipo = step.tipo?.toLowerCase();
+                    const obrigatorio = step.obrigatorio === 1;
+                    const ordem = idx + 1;
 
                     return (
-                      <button
-                        key={v.idAulaVideo}
-                        onClick={() => setVideoIndex(idx)}
-                        className={`text-xs px-2 py-1 rounded-full border transition cursor-pointer
-                        ${active ? "bg-blue-50 border-blue-300 text-blue-700" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
-                        title={v.url}
+                      <li
+                        key={step.idAulaStep}
+                        className="flex items-center gap-3 border border-gray-200 rounded-lg px-4 py-2 bg-white shadow-sm"
                       >
-                        {label}
-                      </button>
+                        <span className="text-xs text-gray-500 font-semibold">#{ordem}</span>
+
+                        {/* Etapa: Vídeo */}
+                        {tipo === "video" && (
+                          <>
+                            <Video className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm text-gray-800">Assistir vídeo</span>
+                            <button
+                              onClick={() => {
+                                const index = aulaSelecionada.videos?.findIndex(
+                                  (v: any) => v.idAulaVideo === step.fkAulaVideoId
+                                );
+                                if (index >= 0) setVideoIndex(index);
+                              }}
+                              className="ml-auto text-xs text-blue-700 hover:underline"
+                            >
+                              Assistir
+                            </button>
+                          </>
+                        )}
+
+                        {/* Etapa: Material */}
+                        {tipo === "material" && (
+                          <>
+                            <FileText className="w-4 h-4 text-green-600" />
+                            <span className="text-sm text-gray-800">Ler material</span>
+                            <button
+                              onClick={() => {
+                                const mat = aulaSelecionada.materiais?.find(
+                                  (m: any) => m.idMaterialComplementar === step.fkMaterialId
+                                );
+                                if (mat) {
+                                  setMaterialSelecionado({ titulo: mat.titulo, url: mat.material });
+                                  setModalOpen(true);
+                                }
+                              }}
+                              className="ml-auto text-xs text-green-700 hover:underline"
+                            >
+                              Visualizar
+                            </button>
+                          </>
+                        )}
+
+                        {/* Etapa: Avaliação */}
+                        {tipo === "avaliacao" && (
+                          <>
+                            <File className="w-4 h-4 text-purple-600" />
+                            <span className="text-sm text-gray-800">Realizar avaliação</span>
+                            <button
+                              onClick={() => {
+                                alert("Abrir avaliação ID " + step.fkAvaliacaoId);
+                                // Aqui você pode redirecionar para uma rota tipo `/avaliacao/${step.fkAvaliacaoId}`
+                              }}
+                              className="ml-auto text-xs text-purple-700 hover:underline"
+                            >
+                              Iniciar
+                            </button>
+                          </>
+                        )}
+
+                        {/* Badge obrigatório */}
+                        {obrigatorio && (
+                          <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold text-red-600 border border-red-200 rounded-full">
+                            Obrigatório
+                          </span>
+                        )}
+                      </li>
                     );
                   })}
-                </div>
+                </ol>
               </div>
             )}
 
