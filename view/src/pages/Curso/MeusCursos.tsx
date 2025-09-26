@@ -1,19 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { Play, Clock, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
 import type { Curso } from "../../types/EstruturaCurso";
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import { getMeusCursos } from "../../services/apiCurso";
 import CursoSidePanel from "./CursoSidePanel";
 import { useSearchParams } from "react-router-dom";
 
-// ---- Tipo enxuto esperado do backend para a listagem ----
-// Ajuste se necessário conforme seu DTO.
-// Ideal: o backend já devolver só cursos que o usuário pode ver,
-// calculando vínculos de medidas + hierarquia + vínculos diretos.
 type CursoListItem = Pick<Curso, "idCurso" | "titulo" | "descricao" | "cargaHoraria" | "ativo"> & {
   thumbUrl?: string | null;
   categorias?: string[];
   progresso?: number;
+  concluido?: boolean;
   ultimaAulaId?: number;
 };
 
@@ -124,6 +121,12 @@ function CarouselRow({ titulo, itens, onOpen }: { titulo: string; itens: CursoLi
   );
 }
 
+const getProgressoClass = (progresso: number) => {
+  if (progresso === 0) return "bg-gray-100 text-gray-500 border-gray-400";
+  if (progresso < 100) return "bg-yellow-100 text-yellow-600 border-yellow-400";
+  return "bg-green-100 text-green-600 border-green-400";
+};
+
 function CursoCard({ curso, onOpen }: { curso: CursoListItem; onOpen: (id: number) => void }) {
   const progresso = Math.max(0, Math.min(100, Number(curso.progresso ?? 0)));
 
@@ -131,7 +134,6 @@ function CursoCard({ curso, onOpen }: { curso: CursoListItem; onOpen: (id: numbe
     <div className="min-w-[240px] w-[240px] bg-white rounded-xl p-4">
       <div className="relative aspect-video overflow-hidden rounded-xl bg-gray-100 ring-1 ring-gray-200">
         {curso.thumbUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={curso.thumbUrl}
             alt={`Capa do curso ${curso.titulo}`}
@@ -158,27 +160,26 @@ function CursoCard({ curso, onOpen }: { curso: CursoListItem; onOpen: (id: numbe
       </div>
 
       <div className="mt-3">
-        <h3 className="text-sm font-semibold text-gray-800 line-clamp-2">{curso.titulo}</h3>
+        <h3 className="text-sm font-bold text-sky-700 line-clamp-2">{curso.titulo}</h3>
         <p className="text-xs text-gray-500 mt-1 line-clamp-2">{curso.descricao}</p>
 
-        <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-          <Clock className="w-4 h-4" />
-          <span>{Number(curso.cargaHoraria ?? 0)}h</span>
-        </div>
-
-        {/* Barra de progresso (se tiver) */}
-        {Number.isFinite(progresso) && progresso > 0 && (
-          <div className="mt-2">
-            <div className="h-2 w-full rounded-full bg-gray-200">
-              <div
-                className="h-2 rounded-full bg-blue-600"
-                style={{ width: `${progresso}%` }}
-                aria-label={`Progresso ${progresso}%`}
-              />
+        <div className="flex items-center gap-2 mt-2 select-none">
+          <ToolTip text={`Carga Horária`}>
+            <div className="flex items-center text-xs text-blue-600 gap-1 bg-sky-100 border border-blue-400 px-2 rounded-full">
+              <Clock className="w-3 h-3" />
+              <span className="italic">{Number(curso.cargaHoraria ?? 0)}h</span>
             </div>
-            <div className="mt-1 text-right text-[11px] text-gray-500">{progresso}%</div>
-          </div>
-        )}
+          </ToolTip>
+
+          <ToolTip text={`Progresso`}>
+            <div
+              className={`flex items-center text-xs gap-1 px-2 rounded-full border transition-colors duration-300 ease-in-out ${getProgressoClass(progresso)}`}
+            >
+              <TrendingUp className="w-3 h-3" />
+              <span className="italic">{progresso ?? 0}%</span>
+            </div>
+          </ToolTip>
+        </div>
 
         <button
           type="button"
@@ -197,7 +198,6 @@ export default function MeusCursos() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
-  // Novo: controle do painel
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedIdFromQS = searchParams.get("curso");
   const selectedId = selectedIdFromQS ? Number(selectedIdFromQS) : null;
@@ -208,7 +208,7 @@ export default function MeusCursos() {
       const p = new URLSearchParams(prev);
       p.set("curso", String(id));
       return p;
-    }, { replace: false }); // adiciona histórico para back fechar
+    }, { replace: false });
   };
 
   const closePanel = () => {
@@ -238,9 +238,11 @@ export default function MeusCursos() {
               typeof cat === "string" ? cat : cat?.categoria?.nome ?? ""
             )
             : [],
-          progresso: c.progresso ?? 0,
+          progresso: c.acessos?.[0]?.percentual ?? 0,
+          concluido: c.acessos?.[0]?.concluido ?? false,
           ultimaAulaId: c.ultimaAulaId ?? undefined,
         }));
+
         setCursos(cursosAdaptados);
       } catch (e: any) {
         setErro(e?.message ?? "Falha ao carregar seus cursos.");

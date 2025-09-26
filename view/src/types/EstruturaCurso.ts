@@ -18,11 +18,27 @@ export interface Curso {
   avaliacoes?: Avaliacao[];
 }
 
+export interface CursoAcesso {
+  idCursoAcesso: number;
+  fkCursoId: number;
+  fkUsuarioId?: number;
+  fkEmpresaId?: number;
+  fkUnidadeId?: number;
+  fkSetorId?: number;
+  fkCargoId?: number;
+  percentual: number;
+  concluido: number;
+  dataInicio?: string;
+  dataConclusao?: string;
+  atualizado_em: string;
+}
+
 export type CursoCompleto = Omit<Curso, 'categorias'> & {
   categorias: { categoria: Categoria }[];
   modulos: Modulo[];
   avaliacoes: Avaliacao[];
   responsaveltecnico?: ResponsavelTecnico;
+  acessos?: CursoAcesso[];
 };
 
 export interface Modulo {
@@ -51,6 +67,18 @@ export interface Aula {
   materiais?: MaterialComplementar[];
   steps?: AulaStep[];
   avaliacoes?: Avaliacao[];
+  aulausuarios?: AulaUsuario[];
+}
+
+export interface AulaUsuario {
+  idAulaUsuario?: number;
+  fkAulaId: number;
+  assistiuVideo: number;
+  baixouMateriais: number;
+  respondeuQuiz: number;
+  concluida: number;
+  atualizado_em?: string;
+  criado_em?: string;
 }
 
 export interface Categoria {
@@ -137,3 +165,21 @@ export type AulaStep = {
   fkMaterialId?: number | null;
   fkAvaliacaoId?: number | null;
 };
+
+export interface CertificadoDados {
+  nomeAluno: string;
+  cpf?: string;
+  curso: string;
+  cargaHoraria: string;
+  dataConclusao: string;
+  empresaAluno?: string;
+  empresaPromotora: string;
+  tipoDocumento: string;
+  documento: string;
+  instrutor: {
+    nome: string;
+    funcao: string;
+    registro: string;
+  };
+  pdfBase64?: string;
+}

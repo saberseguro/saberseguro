@@ -62,7 +62,7 @@ type AvaliacaoPayload = {
 };
 
 export const buscarCursoCompleto = {
-  async execute(id: number) {
+  async execute(id: number, usuario: any) {
     return await prisma.curso.findUnique({
       where: { idCurso: id },
       include: {
@@ -72,7 +72,26 @@ export const buscarCursoCompleto = {
           include: {
             avaliacoes: {
               include: {
-                perguntas: { include: { alternativas: true } },
+                perguntas: {
+                  include: { alternativas: true },
+                },
+                avaliacoesUsuarios: {
+                  where: {
+                    fkUsuarioId: usuario.idUsuario,
+                    status: 'concluida',
+                  },
+                  select: {
+                    idAvaliacaoUsuario: true,
+                    nota: true,
+                    dataFim: true,
+                    respostas: {
+                      select: {
+                        fkPerguntaId: true,
+                        fkAlternativaId: true,
+                      },
+                    },
+                  },
+                },
               },
             },
             aulas: {
@@ -80,22 +99,80 @@ export const buscarCursoCompleto = {
               include: {
                 avaliacoes: {
                   include: {
-                    perguntas: { include: { alternativas: true } },
+                    perguntas: {
+                      include: { alternativas: true },
+                    },
+                    avaliacoesUsuarios: {
+                      where: {
+                        fkUsuarioId: usuario.idUsuario,
+                        status: 'concluida',
+                      },
+                      select: {
+                        idAvaliacaoUsuario: true,
+                        nota: true,
+                        dataFim: true,
+                        respostas: {
+                          select: {
+                            fkPerguntaId: true,
+                            fkAlternativaId: true,
+                          },
+                        },
+                      },
+                    },
                   },
                 },
                 materiais: true,
                 videos: true,
                 steps: true,
+                aulausuarios: {
+                  where: { fkUsuarioId: usuario.idUsuario },
+                  select: {
+                    fkAulaId: true,
+                    assistiuVideo: true,
+                    baixouMateriais: true,
+                    respondeuQuiz: true,
+                    concluida: true,
+                  },
+                },
               }
             }
           }
         },
         avaliacoes: {
           include: {
-            perguntas: { include: { alternativas: true } },
+            perguntas: {
+              include: { alternativas: true },
+            },
+            avaliacoesUsuarios: {
+              where: {
+                fkUsuarioId: usuario.idUsuario,
+                status: 'concluida',
+              },
+              select: {
+                idAvaliacaoUsuario: true,
+                nota: true,
+                dataFim: true,
+                respostas: {
+                  select: {
+                    fkPerguntaId: true,
+                    fkAlternativaId: true,
+                  },
+                },
+              },
+            },
           },
         },
         responsaveltecnico: true,
+        acessos: {
+          where: {
+            fkUsuarioId: usuario.idUsuario,
+          },
+          select: {
+            concluido: true,
+            dataConclusao: true,
+            percentual: true,
+          },
+        }
       },
     });
   }
@@ -225,7 +302,7 @@ export const buscarMeusCursos = {
           { fkEmpresaId },
         ],
       },
-      select: { fkCursoId: true },
+      select: { fkCursoId: true, percentual: true, concluido: true },
     });
 
     const cursoIdsDiretos = acessosDiretos.map((a) => a.fkCursoId);
@@ -270,6 +347,13 @@ export const buscarMeusCursos = {
         titulo: true,
         descricao: true,
         cargaHoraria: true,
+        acessos: {
+          where: { fkUsuarioId: idUsuario },
+          select: {
+            percentual: true,
+            concluido: true,
+          },
+        },
       },
       orderBy: { titulo: 'asc' },
     });
@@ -411,6 +495,31 @@ export const excluirCurso = {
   },
 };
 
+export const finalizarCurso = {
+  async execute(idCurso: number, user: any) {
+    return prisma.cursoacesso.upsert({
+      where: {
+        fkUsuarioId_fkCursoId: {
+          fkCursoId: idCurso,
+          fkUsuarioId: user?.idUsuario,
+        },
+      },
+      update: {
+        concluido: 1,
+        dataConclusao: new Date(),
+      },
+      create: {
+        fkCursoId: idCurso,
+        fkUsuarioId: user?.idUsuario,
+        dataInicio: new Date(),
+        dataConclusao: new Date(),
+        concluido: 1,
+      },
+    });
+  },
+};
+
+
 // Adicionar Medidas
 export const adicionarMedidasAoCurso = {
   async execute(idCurso: number, medidas: { id: number; validade: number }[], usuario: any) {
@@ -496,43 +605,74 @@ export const criarCursoAcesso = {
     const scopeKey = assertSingleScope(data);
 
     const curso = await prisma.curso.findUnique({
-      where: { idCurso: Number(data.fkCursoId) }
+      where: { idCurso: Number(data.fkCursoId) },
     });
-    if (!curso) throw new Error('Curso não encontrado');
+    if (!curso) throw new Error("Curso não encontrado");
 
-    const acesso = await prisma.cursoacesso.upsert({
-      where: {
-        uniq_cursoacesso_scope: {
+    const acesso = await prisma.$transaction(async (tx) => {
+      // 1. Cria ou atualiza cursoacesso
+      const cursoAcesso = await tx.cursoacesso.upsert({
+        where: {
+          uniq_cursoacesso_scope: {
+            fkCursoId: Number(data.fkCursoId),
+            fkEmpresaId: data.fkEmpresaId ?? null,
+            fkUnidadeId: data.fkUnidadeId ?? null,
+            fkSetorId: data.fkSetorId ?? null,
+            fkCargoId: data.fkCargoId ?? null,
+            fkUsuarioId: data.fkUsuarioId ?? null,
+          },
+        },
+        create: {
           fkCursoId: Number(data.fkCursoId),
           fkEmpresaId: data.fkEmpresaId ?? null,
           fkUnidadeId: data.fkUnidadeId ?? null,
           fkSetorId: data.fkSetorId ?? null,
           fkCargoId: data.fkCargoId ?? null,
           fkUsuarioId: data.fkUsuarioId ?? null,
-        }
-      },
-      create: {
-        fkCursoId: Number(data.fkCursoId),
-        fkEmpresaId: data.fkEmpresaId ?? null,
-        fkUnidadeId: data.fkUnidadeId ?? null,
-        fkSetorId: data.fkSetorId ?? null,
-        fkCargoId: data.fkCargoId ?? null,
-        fkUsuarioId: data.fkUsuarioId ?? null
-      },
-      update: {}
-    });
+        },
+        update: {},
+      });
 
-    await registrarEvento({
-      idUsuario: usuario.idUsuario,
-      tipo: 'criar',
-      entidade: 'cursoacesso',
-      entidadeId: acesso.idCursoAcesso,
-      descricao: `Vínculo criado (escopo: ${scopeKey}) para curso ${data.fkCursoId}.`,
-      dadosDepois: acesso
+      // 2. Busca os módulos do curso
+      const modulos = await tx.modulo.findMany({
+        where: { fkCursoId: Number(data.fkCursoId) },
+        select: { idModulo: true },
+      });
+
+      // 3. Cria moduloacesso para cada módulo, se ainda não existir
+      for (const mod of modulos) {
+        await tx.moduloacesso.upsert({
+          where: {
+            fkUsuarioId_fkModuloId: {
+              fkUsuarioId: data.fkUsuarioId,
+              fkModuloId: mod.idModulo,
+            },
+          },
+          update: {},
+          create: {
+            fkUsuarioId: data.fkUsuarioId,
+            fkModuloId: mod.idModulo,
+            percentual: 0,
+            concluido: false,
+          },
+        });
+      }
+
+      // 4. Registra evento
+      await registrarEvento({
+        idUsuario: usuario.idUsuario,
+        tipo: "criar",
+        entidade: "cursoacesso",
+        entidadeId: cursoAcesso.idCursoAcesso,
+        descricao: `Vínculo criado (escopo: ${scopeKey}) para curso ${data.fkCursoId}.`,
+        dadosDepois: cursoAcesso,
+      });
+
+      return cursoAcesso;
     });
 
     return acesso;
-  }
+  },
 };
 
 export const excluirCursoAcesso = {
@@ -716,7 +856,7 @@ export const syncCurso = {
           }
 
           // Aulasteps (fluxo)
-          const stepsPayload = Array.isArray(a.aulaSteps) ? a.aulaSteps : [];
+          const stepsPayload = Array.isArray(a.steps) ? a.steps : [];
           const keepStepIds = stepsPayload
             .filter((s: any) => (s.idAulaStep ?? 0) > 0)
             .map((s: any) => s.idAulaStep);

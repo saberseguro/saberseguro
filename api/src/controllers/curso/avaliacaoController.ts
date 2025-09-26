@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { buscarAlternativa, buscarAvaliacao, buscarAvaliacoes, buscarPergunta, criarAlternativa, criarAvaliacao, criarPergunta, editarAlternativa, editarAvaliacao, editarPergunta, excluirAlternativa, excluirAvaliacao, excluirPergunta, finalizarAvaliacao, iniciarAvaliacao, responderAvaliacao } from '../../models/curso/avaliacao';
+import { buscarAlternativa, buscarAvaliacao, buscarAvaliacoes, buscarPergunta, criarAlternativa, criarAvaliacao, criarPergunta, editarAlternativa, editarAvaliacao, editarPergunta, excluirAlternativa, excluirAvaliacao, excluirPergunta, finalizarAvaliacao, iniciarAvaliacao, responderAvaliacao, resultadoAvaliacao } from '../../models/curso/avaliacao';
 
 // Avaliação
 export const buscarAvaliacaoController = async (req: Request, res: Response) => {
@@ -133,7 +133,17 @@ export const excluirAlternativaController = async (req: Request, res: Response) 
   }
 };
 
+export const resultadoAvaliacaoController = async (req: Request, res: Response) => {
+  try {
+    const idAvaliacao = Number(req.params.id);
+    const usuario = req.user as any;
 
+    const resultado = await resultadoAvaliacao.execute(idAvaliacao, usuario);
+    return res.json(resultado);
+  } catch (error: any) {
+    return res.status(400).json({ error: error.message });
+  }
+};
 
 // Responder avaliação
 export const iniciarAvaliacaoController = async (req: Request, res: Response) => {

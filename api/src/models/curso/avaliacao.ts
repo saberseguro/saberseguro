@@ -285,6 +285,61 @@ export const excluirAlternativa = {
   }
 };
 
+export const resultadoAvaliacao = {
+  async execute(idAvaliacao: number, usuario: any) {
+    const tentativas = await prisma.avaliacaousuario.findMany({
+      where: {
+        fkAvaliacaoId: idAvaliacao,
+        fkUsuarioId: usuario.idUsuario,
+        status: 'concluida'
+      },
+      include: {
+        respostas: true,
+        avaliacao: {
+          include: {
+            perguntas: {
+              include: {
+                alternativas: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        dataFim: 'desc'
+      }
+    });
+
+    if (!tentativas.length) throw new Error("Nenhuma tentativa encontrada.");
+
+    const resultadoFinal = tentativas.map((tentativa) => {
+      return {
+        idAvaliacaoUsuario: tentativa.idAvaliacaoUsuario,
+        nota: tentativa.nota,
+        dataFim: tentativa.dataFim,
+        resultado: tentativa.avaliacao.perguntas.map((pergunta) => {
+          const respostaDoUsuario = tentativa.respostas.find(
+            (r) => r.fkPerguntaId === pergunta.idPergunta
+          );
+
+          return {
+            idPergunta: pergunta.idPergunta,
+            enunciado: pergunta.enunciado,
+            alternativas: pergunta.alternativas.map((alt) => ({
+              idAlternativa: alt.idAlternativa,
+              texto: alt.texto,
+              correta: alt.correta === 1,
+              selecionada: alt.idAlternativa === respostaDoUsuario?.fkAlternativaId
+            }))
+          };
+        })
+      };
+    });
+
+    return { tentativas: resultadoFinal };
+  }
+};
+
 // Responder avaliação
 export const iniciarAvaliacao = {
   async execute(idAvaliacao: number, usuario: any) {
@@ -316,7 +371,7 @@ export const iniciarAvaliacao = {
 
 export const responderAvaliacao = {
   async execute(idAvaliacao: number, data: any, usuario: any) {
-    const { idPergunta, idAlternativa, respostaAberta } = data;
+    const { respostas, duracaoSegundos } = data;
 
     const avaliacaoUsuario = await prisma.avaliacaousuario.findFirst({
       where: {
@@ -328,33 +383,43 @@ export const responderAvaliacao = {
 
     if (!avaliacaoUsuario) throw new Error('Avaliação não foi iniciada.');
 
-    // Verifica se já respondeu a pergunta
-    const respostaExistente = await prisma.resposta.findFirst({
-      where: {
-        fkAvaliacaoUsuarioId: avaliacaoUsuario.idAvaliacaoUsuario,
-        fkPerguntaId: idPergunta
+    const respostasCriadas = [];
+
+    for (const respostaItem of respostas) {
+      const idPergunta = Number(respostaItem.idPergunta);
+      const alternativas = respostaItem.alternativas ?? [];
+
+      for (const idAlternativa of alternativas) {
+        const respostaExistente = await prisma.resposta.findFirst({
+          where: {
+            fkAvaliacaoUsuarioId: avaliacaoUsuario.idAvaliacaoUsuario,
+            fkPerguntaId: idPergunta,
+            fkAlternativaId: idAlternativa
+          }
+        });
+
+        const resposta = respostaExistente
+          ? await prisma.resposta.update({
+            where: { idResposta: respostaExistente.idResposta },
+            data: {
+              resposta: '',
+              fkAlternativaId: idAlternativa,
+            },
+          })
+          : await prisma.resposta.create({
+            data: {
+              resposta: '',
+              fkPerguntaId: idPergunta,
+              fkAlternativaId: idAlternativa,
+              fkAvaliacaoUsuarioId: avaliacaoUsuario.idAvaliacaoUsuario
+            }
+          });
+
+        respostasCriadas.push(resposta);
       }
-    });
+    }
 
-    // Se já respondeu, atualiza. Senão, cria
-    const resposta = respostaExistente
-      ? await prisma.resposta.update({
-        where: { idResposta: respostaExistente.idResposta },
-        data: {
-          resposta: respostaAberta || '',
-          fkAlternativaId: idAlternativa ?? null
-        }
-      })
-      : await prisma.resposta.create({
-        data: {
-          resposta: respostaAberta || '',
-          fkAlternativaId: idAlternativa ?? null,
-          fkPerguntaId: idPergunta,
-          fkAvaliacaoUsuarioId: avaliacaoUsuario.idAvaliacaoUsuario
-        }
-      });
-
-    return resposta;
+    return respostasCriadas;
   }
 };
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type JSX } from "react";
 import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import ReactPlayer from "react-player";
-import { getCursoCompleto } from "../../services/apiCurso";
-import type { CursoCompleto } from "../../types/EstruturaCurso";
+import { enviarAvaliacao, fetchResultadoAvaliacao, finalizarAvaliacaoBackend, finalizarCurso, getCursoCompleto, iniciarAvaliacao, registrarStepAula } from "../../services/apiCurso";
+import type { CursoAcesso, CursoCompleto } from "../../types/EstruturaCurso";
 import {
   ArrowLeft,
   ChevronRight,
@@ -17,9 +17,16 @@ import {
   FileChartLine,
   Link2,
   Files,
+  FileQuestion,
+  CheckCircle,
+  BookOpen,
+  CircleCheck,
+  CircleX,
+  GraduationCap,
 } from "lucide-react";
 import ModalVisualizador from "../../components/Modais/ModalVisualizador";
 import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
+import toast from "react-hot-toast";
 
 type Aba = "sobre" | "materiais";
 
@@ -31,22 +38,58 @@ export default function PlayCursoPage() {
   const navigate = useNavigate();
 
   const [curso, setCurso] = useState<CursoCompleto | null>(null);
+  const [cursoFinalizado, setCursoFinalizado] = useState(false);
   const [aulaSelecionada, setAulaSelecionada] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [abaAtiva, setAbaAtiva] = useState<Aba>("sobre");
 
+  const [stepAtualIndex, setStepAtualIndex] = useState(0);
+  const [stepsConcluidos, setStepsConcluidos] = useState<number[]>([]);
+
+  const stepAtual = aulaSelecionada?.steps?.[stepAtualIndex];
+
   const [modalOpen, setModalOpen] = useState(false);
   const [materialSelecionado, setMaterialSelecionado] = useState<{ titulo: string; url: string } | null>(null);
 
-  const [videoIndex, setVideoIndex] = useState(0);
+  // Avaliação
+  const [avaliacaoIniciada, setAvaliacaoIniciada] = useState(false);
+  const [verDetalhes, setVerDetalhes] = useState(false);
+  const [inicioAvaliacao, setInicioAvaliacao] = useState<Date | null>(null);
+  const [respostasSelecionadas, setRespostasSelecionadas] = useState<{ [idPergunta: number]: number[] }>({});
+  const [abaTentativaAtiva, setAbaTentativaAtiva] = useState<number | null>(null);
+  const [tentativas, setTentativas] = useState<any[]>([]);
+  const [tentativaSelecionada, setTentativaSelecionada] = useState<any | null>(null);
 
-  const currentVideoUrl =
-    aulaSelecionada?.videos?.[videoIndex]?.url ?? aulaSelecionada?.url ?? null;
+  const [avaliacoesRespondidasMap, setAvaliacoesRespondidasMap] = useState<
+    Record<number, { nota: number | null; dataFim?: string }>
+  >({});
 
   useEffect(() => {
-    setVideoIndex(0);
-  }, [aulaSelecionada?.idAula]);
+    if (!aulaSelecionada?.steps) return;
+
+    const usuarioAula = aulaSelecionada?.aulausuarios?.[0];
+
+    const concluidos = aulaSelecionada?.steps
+      ?.filter((step: any) => {
+        if (!usuarioAula) return false;
+        switch (step.tipo) {
+          case "video": return usuarioAula.assistiuVideo === 1;
+          case "material": return usuarioAula.baixouMateriais === 1;
+          case "avaliacao": return usuarioAula.respondeuQuiz === 1;
+          default: return false;
+        }
+      })
+      .map((step: any) => step.idAulaStep) ?? [];
+
+    setStepsConcluidos(concluidos);
+
+    const indexNaoConcluido = aulaSelecionada?.steps.findIndex(
+      (s: any) => !concluidos.includes(s.idAulaStep)
+    );
+
+    setStepAtualIndex(indexNaoConcluido >= 0 ? indexNaoConcluido : 0);
+  }, [aulaSelecionada]);
 
   useEffect(() => {
     const load = async () => {
@@ -55,11 +98,65 @@ export default function PlayCursoPage() {
         const data = await getCursoCompleto(Number(idCurso));
         setCurso(data);
 
-        console.log(data);
+        const finalizado = data.acessos?.some((ac: CursoAcesso) => ac.concluido === 1);
+        setCursoFinalizado(finalizado ?? false);
+
+        const mapResp: Record<number, { nota: number | null; dataFim?: string }> = {};
+
+        for (const mod of data.modulos ?? []) {
+          // Avaliações do módulo
+          for (const av of mod.avaliacoes ?? []) {
+            const au = av.avaliacoesUsuarios?.[0];
+            if (au && typeof av.idAvaliacao === "number") {
+              mapResp[av.idAvaliacao] = {
+                nota: au.nota ?? null,
+                dataFim: au.dataFim ?? undefined
+              };
+            }
+          }
+
+          // Avaliações das aulas
+          for (const aula of mod.aulas ?? []) {
+            for (const av of aula.avaliacoes ?? []) {
+              const au = av.avaliacoesUsuarios?.[0];
+              if (au && typeof av.idAvaliacao === "number") {
+                mapResp[av.idAvaliacao] = {
+                  nota: au.nota ?? null,
+                  dataFim: au.dataFim ?? undefined
+                };
+              }
+            }
+          }
+        }
+
+        setAvaliacoesRespondidasMap(mapResp);
 
         const todasAulas = data.modulos.flatMap((m) => m.aulas);
         const aula = todasAulas.find((a) => String(a.idAula) === aulaInicialId) ?? todasAulas[0];
-        setAulaSelecionada(aula ?? null);
+
+        const usuarioAula = aula?.aulausuarios?.[0];
+
+        const concluidos = aula?.steps
+          ?.filter((step: any) => {
+            if (!usuarioAula) return false;
+
+            switch (step.tipo) {
+              case "video":
+                return usuarioAula.assistiuVideo === 1;
+              case "material":
+                return usuarioAula.baixouMateriais === 1;
+              case "avaliacao":
+                return usuarioAula.respondeuQuiz === 1;
+              default:
+                return false;
+            }
+          })
+          .map((step: any) => step.idAulaStep) ?? [];
+
+        setStepsConcluidos(concluidos);
+        if (!finalizado) {
+          setAulaSelecionada(aula ?? null);
+        }
       } finally {
         setLoading(false);
       }
@@ -67,6 +164,160 @@ export default function PlayCursoPage() {
 
     if (idCurso) load();
   }, [idCurso, aulaInicialId]);
+
+  useEffect(() => {
+    const carregarTentativas = async () => {
+      if (stepAtual?.fkAvaliacaoId) {
+        try {
+          const { tentativas } = await fetchResultadoAvaliacao(stepAtual.fkAvaliacaoId);
+          setTentativas(tentativas);
+          setAbaTentativaAtiva(tentativas[0]?.idAvaliacaoUsuario ?? null);
+        } catch (e) {
+          console.error("Erro ao buscar tentativas:", e);
+          toast.error("Erro ao carregar tentativas.");
+        }
+      }
+    };
+
+    carregarTentativas();
+  }, [stepAtual]);
+
+  useEffect(() => {
+    if (abaTentativaAtiva && tentativas.length > 0) {
+      const tentativa = tentativas.find(t => t.idAvaliacaoUsuario === abaTentativaAtiva);
+      setTentativaSelecionada(tentativa ?? null);
+    }
+  }, [abaTentativaAtiva, tentativas]);
+
+
+  const marcarConcluido = (idStep: number) => {
+    setStepsConcluidos((prev) =>
+      prev.includes(idStep) ? prev : [...prev, idStep]
+    );
+  };
+
+  const registrarStepBackend = async (step: any, progressoVideo?: number) => {
+    try {
+      await registrarStepAula({
+        fkAulaId: aulaSelecionada.idAula,
+        idReferencia: step.fkAulaVideoId ?? step.fkAvaliacaoId ?? step.fkMaterialId,
+        tipo: step.tipo,
+        progressoVideo,
+      });
+
+      marcarConcluido(step.idAulaStep);
+
+    } catch (e) {
+      console.error("Erro ao registrar step:", e);
+    }
+  };
+
+  const stepsObrigatoriosConcluidos = useMemo(() => {
+    if (!aulaSelecionada?.steps) return false;
+    return aulaSelecionada.steps
+      .filter((s: any) => s.obrigatorio)
+      .every((s: any) => stepsConcluidos.includes(s.idAulaStep));
+  }, [aulaSelecionada, stepsConcluidos]);
+
+  const todasAulas = useMemo(() => {
+    return curso?.modulos.flatMap((mod) => mod.aulas) ?? [];
+  }, [curso]);
+
+  const indiceAtual = todasAulas.findIndex(
+    (a) => a.idAula === aulaSelecionada?.idAula
+  );
+
+  const aulaAnterior = indiceAtual > 0 ? todasAulas[indiceAtual - 1] : null;
+  const proximaAula = indiceAtual < todasAulas.length - 1 ? todasAulas[indiceAtual + 1] : null;
+
+  const selecionarResposta = (idPergunta: number, idAlternativa: number, checked: boolean) => {
+    setRespostasSelecionadas((prev) => {
+      const atuais = prev[idPergunta] || [];
+
+      const atualizadas = checked
+        ? [...atuais, idAlternativa] // adiciona
+        : atuais.filter((id) => id !== idAlternativa); // remove
+
+      return { ...prev, [idPergunta]: atualizadas };
+    });
+  };
+
+  const iniciar = async (idAvaliacao: number) => {
+    try {
+      await iniciarAvaliacao(idAvaliacao);
+      setInicioAvaliacao(new Date());
+      setAvaliacaoIniciada(true);
+    } catch (error) {
+      console.error("Erro ao iniciar avaliação:", error);
+    }
+  };
+
+  const handleFinalizarCurso = async () => {
+    try {
+      await finalizarCurso(Number(idCurso));
+      setCursoFinalizado(true);
+      setAulaSelecionada(null);
+      toast.success("Curso finalizado com sucesso! Certificado liberado.");
+    } catch (e) {
+      console.error("Erro ao finalizar curso:", e);
+      toast.error("Erro ao finalizar curso.");
+    }
+  };
+
+  const finalizarAvaliacao = async () => {
+    if (!inicioAvaliacao) return;
+
+    const fim = new Date();
+    const duracaoSegundos = Math.floor((fim.getTime() - inicioAvaliacao.getTime()) / 1000);
+
+    const respostas = Object.entries(respostasSelecionadas).map(([idPergunta, alternativas]) => ({
+      idPergunta: Number(idPergunta),
+      alternativas,
+    }));
+
+    try {
+      await enviarAvaliacao(stepAtual.fkAvaliacaoId, respostas, duracaoSegundos);
+      await finalizarAvaliacaoBackend(stepAtual.fkAvaliacaoId);
+      await registrarStepBackend(stepAtual);
+
+      // Buscar resultado completo (todas as tentativas)
+      const resultado = await fetchResultadoAvaliacao(stepAtual.fkAvaliacaoId);
+
+      // Identificar a tentativa mais recente
+      const tentativaMaisRecente = resultado.tentativas?.reduce((maisRecente, atual) => {
+        const dataAtual = new Date(atual.dataFim).getTime();
+        const dataMaisRecente = new Date(maisRecente.dataFim).getTime();
+        return dataAtual > dataMaisRecente ? atual : maisRecente;
+      });
+
+      // Atualiza mapa de avaliações respondidas
+      setAvaliacoesRespondidasMap(prev => ({
+        ...prev,
+        [stepAtual.fkAvaliacaoId]: { nota: tentativaMaisRecente?.nota ?? null }
+      }));
+
+
+      toast.success("Avaliação enviada!");
+      marcarConcluido(stepAtual.idAulaStep);
+
+    } catch (e) {
+      console.error("Erro ao finalizar avaliação:", e);
+      toast.error("Erro ao enviar avaliação.");
+    }
+  };
+
+  const refazerAvaliacao = async () => {
+    if (!stepAtual?.fkAvaliacaoId) return;
+    try {
+      await iniciarAvaliacao(stepAtual.fkAvaliacaoId);
+      setRespostasSelecionadas({});
+      setAvaliacaoIniciada(true);
+      setInicioAvaliacao(new Date());
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível iniciar novamente.");
+    }
+  };
 
   const estatisticas = useMemo(() => {
     if (!curso) return { qtdAulas: 0, duracaoTotal: 0 };
@@ -76,6 +327,15 @@ export default function PlayCursoPage() {
     const duracaoTotal = todasAulas.reduce((acc, a) => acc + Number(a.duracao || 0), 0);
     return { qtdModulos, qtdAulas, duracaoTotal };
   }, [curso]);
+
+  const avaliacaoCompleta = useMemo(() => {
+    if (!stepAtual?.fkAvaliacaoId || !aulaSelecionada?.avaliacoes) return null;
+    return aulaSelecionada.avaliacoes.find(
+      (av: any) => av.idAvaliacao === stepAtual.fkAvaliacaoId
+    );
+  }, [stepAtual, aulaSelecionada]);
+
+  const isUltimaAula = indiceAtual === todasAulas.length - 1;
 
   if (loading) return <div className="p-8">Carregando curso...</div>;
   if (!curso) return <div className="p-8 text-red-500">Curso não encontrado.</div>;
@@ -117,24 +377,26 @@ export default function PlayCursoPage() {
                 {mod.aulas.map((aula) => {
                   const isActive = aula.idAula === aulaSelecionada?.idAula;
                   const isVideo = aula.tipo === "video";
+                  const concluida = aula.aulausuarios?.[0]?.concluida === 1;
+
                   return (
                     <li key={aula.idAula}>
                       <button
                         onClick={() => setAulaSelecionada(aula)}
                         className={`group w-full text-left flex items-center gap-2 px-3 py-2 rounded-full border transition cursor-pointer
-                          ${isActive ? "bg-blue-50 border-blue-200" : "bg-white hover:bg-gray-50 border-gray-200"}`}
+                          ${isActive ? "bg-blue-50 border-blue-200 text-blue-500" : concluida ? "bg-green-50 border-green-400 text-green-600 opacity-70" : "bg-white hover:bg-gray-50 border-gray-200 text-gray-500"}`}
                       >
                         <span className="shrink-0">
                           {isVideo ? (
-                            <Video className={`w-4 h-4 ${isActive ? "text-blue-600" : "text-gray-500"}`} />
+                            <Video className={`w-4 h-4 `} />
                           ) : (
-                            <FileText className={`w-4 h-4 ${isActive ? "text-green-600" : "text-gray-500"}`} />
+                            <FileText className={`w-4 h-4`} />
                           )}
                         </span>
-                        <span className={`text-xs line-clamp-1 ${isActive ? "text-blue-800 font-medium" : "text-gray-700"}`}>
+                        <span className={`text-xs line-clamp-1`}>
                           {aula.titulo}
                         </span>
-                        <span className="ml-auto flex items-center gap-1 text-[11px] text-gray-500">
+                        <span className="ml-auto flex items-center gap-1 text-[11px]">
                           <Clock className="w-3 h-3" />
                           {formatarMinutosEmHoras(aula.duracao).split("min")[0] || 0}m
                         </span>
@@ -149,162 +411,458 @@ export default function PlayCursoPage() {
 
         {/* Conteúdo principal */}
         <section className="flex-1 min-w-0 max-h-[88vh] overflow-y-auto bg-white border border-gray-200 rounded-lg px-5 py-3 custom-scrollbar">
-          {/* Título da aula */}
-          <div className="mb-2">
-            <h2 className="text-xl sm:text-lg font-semibold text-gray-600">{aulaSelecionada?.titulo}</h2>
+          {cursoFinalizado && !aulaSelecionada ? (
+            <div className="flex flex-col items-center justify-center gap-4 py-10 px-6">
+              <div className="text-green-600">
+                <GraduationCap className="w-12 h-12" />
+              </div>
 
-            {/* <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-              <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-2 py-0.5 capitalize">
-                <Play className="w-3 h-3" />
-                {aulaSelecionada?.tipo}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-2 py-0.5">
-                <FileText className="w-3 h-3" />
-                {aulaSelecionada?.materiais.length || 0} Arquivos
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-2 py-0.5">
-                <Clock className="w-3 h-3" />
-                {formatarMinutosEmHoras(aulaSelecionada?.duracao)}
-              </span>
-            </div> */}
-          </div>
+              <h2 className="text-2xl font-bold text-gray-700 text-center">
+                Curso Concluído com Sucesso!
+              </h2>
 
-          {/* Player */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="bg-black flex justify-center items-center">
-              {currentVideoUrl ? (
-                <div className="w-full aspect-video rounded overflow-hidden shadow-md">
-                  <ReactPlayer
-                    src={String(currentVideoUrl)}
-                    width="100%"
-                    height="100%"
-                    controls
-                    playing={false}
-                    style={{ backgroundColor: "black" }}
-                    onEnded={() => {
-                      const total = aulaSelecionada?.videos?.length ?? 0;
-                      if (total > 0 && videoIndex < total - 1) {
-                        setVideoIndex((i) => i + 1);
-                      }
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="text-white flex items-center justify-center h-full">
-                  Vídeo não disponível
-                </div>
-              )}
+              <p className="text-center text-gray-700 max-w-md text-sm">
+                Você completou todas as etapas obrigatórias deste curso. Parabéns pelo seu progresso e dedicação! Agora você pode emitir seu certificado de conclusão.
+              </p>
+
+              <Link
+                to={`/certificado/${curso?.idCurso}`}
+                className="mt-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded transition"
+              >
+                Emitir Certificado
+              </Link>
             </div>
+          ) : (
+            <>
+              {/* Título da aula */}
+              <div className="mb-2">
+                <div className="flex items-center justify-between gap-4 py-2">
+                  <h2 className="text-xl sm:text-lg font-semibold text-gray-600">{aulaSelecionada?.titulo}</h2>
+                  <div className="flex justify-between items-center gap-6">
+                    {/* Botão Anterior */}
+                    <button
+                      onClick={() => aulaAnterior && setAulaSelecionada(aulaAnterior)}
+                      disabled={!aulaAnterior}
+                      className={`flex items-center text-sm font-medium transition
+                  ${aulaAnterior ? "text-gray-700 hover:text-black" : "text-gray-300 cursor-not-allowed"}`}
+                    >
+                      <span className="text-lg mr-1">‹</span> Anterior
+                    </button>
 
-            {aulaSelecionada?.steps?.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-base font-semibold text-gray-800 mb-3">Etapas da Aula</h3>
-                <ol className="space-y-3">
-                  {aulaSelecionada.steps.map((step: any, idx: number) => {
-                    const tipo = step.tipo?.toLowerCase();
-                    const obrigatorio = step.obrigatorio === 1;
-                    const ordem = idx + 1;
+                    {isUltimaAula ? (
+                      <button
+                        onClick={handleFinalizarCurso}
+                        disabled={!stepsObrigatoriosConcluidos}
+                        className={`flex items-center text-sm font-medium transition
+                    ${stepsObrigatoriosConcluidos
+                            ? "text-blue-600 hover:text-blue-800 cursor-pointer"
+                            : "text-gray-300 cursor-not-allowed"}`}
+                      >
+                        Finalizar Curso <span className="text-lg ml-1">›</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => proximaAula && stepsObrigatoriosConcluidos && setAulaSelecionada(proximaAula)}
+                        disabled={!proximaAula || !stepsObrigatoriosConcluidos}
+                        className={`flex items-center text-sm font-medium transition
+                    ${proximaAula && stepsObrigatoriosConcluidos
+                            ? "text-blue-600 hover:text-blue-800 cursor-pointer"
+                            : "text-gray-300 cursor-not-allowed"}`}
+                      >
+                        Próxima <span className="text-lg ml-1">›</span>
+                      </button>
+                    )}
+
+                  </div>
+
+                </div>
+
+                {/* Linha de etapas com progresso */}
+                {aulaSelecionada?.steps?.length > 0 && (
+                  <div className="mt-1">
+                    {/* Barra de progresso (opcional abaixo da linha de etapas) */}
+                    <div className="mb-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-green-500 h-2 rounded-full transition-all"
+                          style={{
+                            width: `${(stepsConcluidos.length / aulaSelecionada.steps.length) * 100}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1 text-xs text-gray-600">
+                      {aulaSelecionada.steps.map((step: any, idx: number) => {
+                        const tipo = step.tipo?.toLowerCase();
+                        const concluido = stepsConcluidos.includes(step.idAulaStep);
+                        const atual = idx === stepAtualIndex;
+
+                        const icon =
+                          tipo === "video" ? <Video className="w-3 h-3" /> :
+                            tipo === "material" ? <FileText className="w-3 h-3" /> :
+                              tipo === "avaliacao" ? <File className="w-3 h-3" /> :
+                                <Info className="w-3 h-3" />;
+
+                        const statusIcon = concluido ? "✅" : atual ? "▶️" : "⬜";
+
+                        const podeAcessar = (() => {
+                          if (concluido) return true;
+                          if (idx === stepAtualIndex) return true;
+
+                          const anterioresObrigatorios = aulaSelecionada.steps
+                            .slice(0, idx)
+                            .filter((s: any) => s.obrigatorio);
+
+                          const anterioresConcluidos = anterioresObrigatorios.every((s: any) =>
+                            stepsConcluidos.includes(s.idAulaStep)
+                          );
+
+                          return anterioresConcluidos;
+                        })();
+
+
+                        return (
+                          <button
+                            key={step.idAulaStep}
+                            onClick={() => {
+                              if (podeAcessar) setStepAtualIndex(idx);
+                            }}
+                            disabled={!podeAcessar}
+                            title={podeAcessar ? "Clique para acessar esta etapa" : "Etapa bloqueada"}
+                            className={`inline-flex items-center gap-1 border rounded-full px-2 py-0.5 text-xs transition
+                          ${atual ? "border-blue-500 bg-blue-50 text-blue-700 cursor-pointer" :
+                                concluido ? "border-green-300 bg-green-50 text-green-700 cursor-pointer" :
+                                  "border-gray-300 bg-white text-gray-500 cursor-pointer"}
+                          ${!podeAcessar ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-100"}
+                        `}
+                          >
+                            <span>{statusIcon}</span>
+                            {icon}
+                            <span className="capitalize">{tipo}</span>
+                            {idx < aulaSelecionada.steps.length - 1 && (
+                              <span className="mx-1 text-gray-400">→</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                  </div>
+                )}
+
+              </div>
+
+              {/* Player */}
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="bg-black flex justify-center items-center">
+                  {stepAtual?.tipo === "video" && (
+                    <div className="w-full aspect-video rounded overflow-hidden shadow-md">
+                      <ReactPlayer
+                        src={
+                          aulaSelecionada?.videos?.find(
+                            (v: any) => v.idAulaVideo === stepAtual.fkAulaVideoId
+                          )?.url ?? ""
+                        }
+                        width="100%"
+                        height="100%"
+                        controls
+                        playing={false}
+                        style={{ backgroundColor: "black" }}
+                        onEnded={() => {
+                          if (!stepsConcluidos.includes(stepAtual.idAulaStep)) {
+                            registrarStepBackend(stepAtual, 100);
+                          }
+
+                          // Tenta ir para o próximo se existir
+                          const proximo = aulaSelecionada?.steps?.[stepAtualIndex + 1];
+                          if (proximo) {
+                            setTimeout(() => setStepAtualIndex((i) => i + 1), 300);
+                          }
+                        }}
+
+                      />
+                    </div>
+                  )}
+
+                  {stepAtual?.tipo === "material" && (
+                    <div className="w-full aspect-video flex items-center justify-center bg-white text-center p-4">
+                      <button
+                        onClick={() => {
+                          const mat = aulaSelecionada?.materiais?.find(
+                            (m: any) => m.idMaterialComplementar === stepAtual.fkMaterialId
+                          );
+                          if (mat) {
+                            setMaterialSelecionado({ titulo: mat.titulo, url: mat.material });
+                            setModalOpen(true);
+                            marcarConcluido(stepAtual.idAulaStep);
+                            setTimeout(() => {
+                              setStepAtualIndex((i) => i + 1);
+                            }, 300);
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                      >
+                        Visualizar material
+                      </button>
+                    </div>
+                  )}
+
+                  {stepAtual?.tipo === "avaliacao" && (() => {
+                    const idAv = stepAtual?.fkAvaliacaoId as number | undefined;
+                    const jaRespondida = !!(idAv && avaliacoesRespondidasMap[idAv]);
 
                     return (
-                      <li
-                        key={step.idAulaStep}
-                        className="flex items-center gap-3 border border-gray-200 rounded-lg px-4 py-2 bg-white shadow-sm"
-                      >
-                        <span className="text-xs text-gray-500 font-semibold">#{ordem}</span>
+                      <div className="w-full flex flex-col items-center justify-start bg-white text-left p-8 overflow-y-auto">
+                        {/* Cabeçalho fixo */}
+                        <div className="text-center rounded-lg w-full mb-4">
+                          <div className="flex items-center justify-center gap-2 text-purple-600 mb-2">
+                            <h3 className="text-xl font-bold text-gray-800">
+                              {avaliacaoCompleta?.titulo}
+                            </h3>
+                          </div>
 
-                        {/* Etapa: Vídeo */}
-                        {tipo === "video" && (
-                          <>
-                            <Video className="w-4 h-4 text-blue-600" />
-                            <span className="text-sm text-gray-800">Assistir vídeo</span>
-                            <button
-                              onClick={() => {
-                                const index = aulaSelecionada.videos?.findIndex(
-                                  (v: any) => v.idAulaVideo === step.fkAulaVideoId
-                                );
-                                if (index >= 0) setVideoIndex(index);
-                              }}
-                              className="ml-auto text-xs text-blue-700 hover:underline"
-                            >
-                              Assistir
-                            </button>
-                          </>
+                          <div className="flex items-center gap-3 justify-center text-xs text-gray-600 mt-2 mb-6">
+                            {/* Quantidade de Perguntas */}
+                            <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full">
+                              <BookOpen className="w-4 h-4 text-purple-600" />
+                              <span className="font-medium">{avaliacaoCompleta?.perguntas?.length ?? 0} pergunta {avaliacaoCompleta?.perguntas?.length === 1 ? "" : "s"}</span>
+                            </div>
+
+                            {/* Tempo estimado */}
+                            <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full">
+                              <Clock className="w-4 h-4 text-blue-600" />
+                              <span className="font-medium">{avaliacaoCompleta?.tempo_limite ?? 0} min</span>
+                            </div>
+
+                            {/* Tipo da avaliação */}
+                            <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full">
+                              {avaliacaoCompleta?.tipoAplicacao === "quiz" ? (
+                                <FileQuestion className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                              )}
+                              <span className="font-medium capitalize">
+                                {avaliacaoCompleta?.tipoAplicacao}
+                              </span>
+                            </div>
+                          </div>
+
+                          {!jaRespondida ? (
+                            <>
+                              <button
+                                onClick={() => {
+                                  const id = avaliacaoCompleta?.idAvaliacao;
+                                  if (id) iniciar(id);
+                                  else toast.error("Nenhuma avaliação encontrada.");
+                                }}
+                                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm shadow-sm cursor-pointer"
+                              >
+                                Iniciar avaliação
+                              </button>
+                            </>
+                          ) : !avaliacaoIniciada && (
+                            <>
+                              <button
+                                onClick={() => setVerDetalhes(!verDetalhes)}
+                                className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm shadow-sm cursor-pointer"
+                              >
+                                {verDetalhes ? "Ocultar resultados" : "Ver resultados"}
+                              </button>
+                            </>
+                          )}
+                        </div>
+
+                        {/* 1 - Tentativas */}
+                        {verDetalhes && !avaliacaoIniciada && avaliacoesRespondidasMap[stepAtual.fkAvaliacaoId]?.nota !== undefined && (
+                          <div className="w-full text-sm ">
+                            <p className="text-sm text-gray-600 font-semibold mb-3">Tentativas anteriores:</p>
+
+                            {/* Abas */}
+                            <div className="w-full flex flex-wrap gap-2 border-b border-gray-200 pb-1 overflow-x-auto custom-scrollbar">
+                              {avaliacaoCompleta?.avaliacoesUsuarios?.map((av: any, idx: number) => (
+                                <button
+                                  key={av.idAvaliacaoUsuario}
+                                  onClick={() => setAbaTentativaAtiva(av.idAvaliacaoUsuario)}
+                                  className={`px-4 py-1 rounded-t-md border-b-2 text-sm transition cursor-pointer
+                                ${abaTentativaAtiva === av.idAvaliacaoUsuario
+                                      ? "border-blue-600 text-blue-700 font-medium"
+                                      : "border-transparent text-gray-600 hover:text-gray-800"}
+                                `}
+                                >
+                                  Tentativa {idx + 1}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Conteúdo da aba ativa */}
+                            {tentativaSelecionada && (
+                              <div className="p-4 space-y-4">
+                                <div>
+                                  <p className="text-gray-700 font-medium mb-1">
+                                    Nota: {tentativaSelecionada?.nota ?? "—"}
+                                    {typeof tentativaSelecionada?.nota === "number" && (
+                                      <span
+                                        className={`ml-2 px-2 py-0.5 rounded-full text-xs font-semibold ${tentativaSelecionada.nota >= 6
+                                          ? "bg-green-100 text-green-700"
+                                          : "bg-red-100 text-red-700"}`}
+                                      >
+                                        {tentativaSelecionada.nota >= 6 ? "Aprovado" : "Reprovado"}
+                                      </span>
+                                    )}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Finalizada em:{" "}
+                                    {tentativaSelecionada?.dataFim
+                                      ? new Date(tentativaSelecionada.dataFim).toLocaleString()
+                                      : "—"}
+                                  </p>
+                                </div>
+
+                                {tentativaSelecionada.resultado?.length > 0 && (
+                                  <div className="space-y-4">
+                                    {tentativaSelecionada.resultado.map((pergunta: any, idx: number) => (
+                                      <div key={pergunta.idPergunta} className="p-4 bg-white rounded-lg border border-gray-200">
+                                        <p className="font-medium text-gray-800 mb-2">
+                                          {idx + 1}. {pergunta.enunciado}
+                                        </p>
+                                        <div className="space-y-2">
+                                          {pergunta.alternativas.map((alt: any) => {
+                                            const correta = alt.correta;
+                                            const selecionada = alt.selecionada;
+
+                                            let style =
+                                              "border border-gray-300 bg-white text-gray-800";
+                                            let icon = null;
+
+                                            if (correta && selecionada) {
+                                              style =
+                                                "border border-green-600 bg-green-50 text-green-800 font-semibold";
+                                              icon = <span className="text-green-600 text-lg"><CircleCheck className="w-4 h-4" /></span>;
+                                            } else if (!correta && selecionada) {
+                                              style =
+                                                "border border-red-500 bg-red-50 text-red-700 font-semibold";
+                                              icon = <span className="text-red-500 text-lg"><CircleX className="w-4 h-4" /></span>;
+                                            } else if (correta) {
+                                              style =
+                                                "border border-green-500 bg-green-50 text-green-800";
+                                              icon = <span className="text-green-500 text-lg"><CircleCheck className="w-4 h-4" /></span>;
+                                            }
+
+                                            return (
+                                              <div
+                                                key={alt.idAlternativa}
+                                                className={`flex justify-between items-center px-4 py-2 rounded-lg transition ${style}`}
+                                              >
+                                                <span className="text-sm">{alt.texto}</span>
+                                                {icon}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Refazer botão */}
+                            <div className="text-center">
+                              <button
+                                onClick={refazerAvaliacao}
+                                className="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 text-sm shadow-sm cursor-pointer"
+                              >
+                                Refazer avaliação
+                              </button>
+                            </div>
+                          </div>
                         )}
 
-                        {/* Etapa: Material */}
-                        {tipo === "material" && (
-                          <>
-                            <FileText className="w-4 h-4 text-green-600" />
-                            <span className="text-sm text-gray-800">Ler material</span>
-                            <button
-                              onClick={() => {
-                                const mat = aulaSelecionada.materiais?.find(
-                                  (m: any) => m.idMaterialComplementar === step.fkMaterialId
-                                );
-                                if (mat) {
-                                  setMaterialSelecionado({ titulo: mat.titulo, url: mat.material });
-                                  setModalOpen(true);
-                                }
-                              }}
-                              className="ml-auto text-xs text-green-700 hover:underline"
-                            >
-                              Visualizar
-                            </button>
-                          </>
-                        )}
+                        {/* 2 - Responder Avaliação */}
+                        {avaliacaoIniciada && (
+                          <div className="w-full space-y-6">
+                            {avaliacaoCompleta?.perguntas?.map((pergunta: any, idx: number) => (
+                              <div
+                                key={pergunta.idPergunta}
+                                className="px-4 py-2 rounded border-1 border-gray-200 shadow"
+                              >
+                                <p className="font-medium text-gray-800 mb-1 select-none">
+                                  {idx + 1}. {pergunta.enunciado}
+                                </p>
+                                <div className="border-b border-gray-300 mb-2"></div>
+                                <div className="space-y-2">
+                                  {pergunta.alternativas.map((alt: any) => (
+                                    <label
+                                      key={alt.idAlternativa}
+                                      className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer bg-gray-50 border border-gray-200 px-2 py-1 rounded"
+                                    >
+                                      {pergunta.tipo === "multipla" && (
+                                        <>
+                                          <input
+                                            type="radio"
+                                            name={`pergunta_${pergunta.idPergunta}`}
+                                            value={alt.idAlternativa}
+                                            onChange={(e) =>
+                                              selecionarResposta(pergunta.idPergunta, alt.idAlternativa, e.target.checked)
+                                            }
+                                            className="accent-blue-600 cursor-pointer w-3.5 h-3.5"
+                                          />
+                                          <span>{alt.texto}</span>
+                                        </>
+                                      )}
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
 
-                        {/* Etapa: Avaliação */}
-                        {tipo === "avaliacao" && (
-                          <>
-                            <File className="w-4 h-4 text-purple-600" />
-                            <span className="text-sm text-gray-800">Realizar avaliação</span>
-                            <button
-                              onClick={() => {
-                                alert("Abrir avaliação ID " + step.fkAvaliacaoId);
-                                // Aqui você pode redirecionar para uma rota tipo `/avaliacao/${step.fkAvaliacaoId}`
-                              }}
-                              className="ml-auto text-xs text-purple-700 hover:underline"
-                            >
-                              Iniciar
-                            </button>
-                          </>
+                            <div className="text-center">
+                              <button
+                                onClick={finalizarAvaliacao}
+                                className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm shadow-sm cursor-pointer"
+                              >
+                                Finalizar avaliação
+                              </button>
+                            </div>
+                          </div>
                         )}
-
-                        {/* Badge obrigatório */}
-                        {obrigatorio && (
-                          <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold text-red-600 border border-red-200 rounded-full">
-                            Obrigatório
-                          </span>
-                        )}
-                      </li>
+                      </div>
                     );
-                  })}
-                </ol>
+                  })()}
+
+                </div>
+
+                {/* Abas */}
+                {
+                  !avaliacaoIniciada && (
+                    <>
+                      <div className="px-4 sm:px-6">
+                        <Tabs abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
+
+                        {/* Conteúdo das abas */}
+                        <div className="py-4">
+                          {abaAtiva === "sobre" && (
+                            <Sobre descricao={aulaSelecionada?.descricao} curso={curso} estatisticas={estatisticas} />
+                          )}
+
+                          {abaAtiva === "materiais" && (
+                            <ListaMateriais
+                              materiais={aulaSelecionada?.materiais ?? []}
+                              abrirMaterial={(titulo, url) => {
+                                setMaterialSelecionado({ titulo, url });
+                                setModalOpen(true);
+                              }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )
+                }
               </div>
-            )}
-
-            {/* Abas */}
-            <div className="px-4 sm:px-6">
-              <Tabs abaAtiva={abaAtiva} setAbaAtiva={setAbaAtiva} />
-
-              {/* Conteúdo das abas */}
-              <div className="py-4">
-                {abaAtiva === "sobre" && (
-                  <Sobre descricao={aulaSelecionada?.descricao} curso={curso} estatisticas={estatisticas} />
-                )}
-
-                {abaAtiva === "materiais" && (
-                  <ListaMateriais
-                    materiais={aulaSelecionada?.materiais ?? []}
-                    abrirMaterial={(titulo, url) => {
-                      setMaterialSelecionado({ titulo, url });
-                      setModalOpen(true);
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </section>
       </div>
 
@@ -320,8 +878,6 @@ export default function PlayCursoPage() {
     </>
   );
 }
-
-/* ------------------------------ Componentes auxiliares ------------------------------ */
 
 function Tabs({ abaAtiva, setAbaAtiva }: { abaAtiva: Aba; setAbaAtiva: (a: Aba) => void }) {
   const items: { id: Aba; label: string; icon: React.ReactNode }[] = [

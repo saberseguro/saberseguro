@@ -5,7 +5,6 @@ import toast from "react-hot-toast";
 import Spinner from "../Spinner";
 import { Plus, Trash2 } from "lucide-react";
 
-
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface FormUnidadeProps {

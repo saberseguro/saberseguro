@@ -1,5 +1,5 @@
 import { apiFetch } from './apiFetch';
-import type { Curso, Categoria, CursoCompleto } from '../types/EstruturaCurso';
+import type { Curso, Categoria, CursoCompleto, CertificadoDados } from '../types/EstruturaCurso';
 import type { MedidaCurso } from "../types/EstruturaMedida";
 
 interface Filtros {
@@ -82,4 +82,82 @@ export async function removeCursoMedida(idCurso: number, fkMedidaId: number): Pr
   return apiFetch<{ message: string }>(`/curso/${idCurso}/medidas/${fkMedidaId}`, {
     method: "DELETE",
   });
+}
+
+export async function iniciarCurso(idCurso: number): Promise<{ sucesso: boolean }> {
+  return apiFetch("/curso/aulausuario/curso/iniciar", {
+    method: "POST",
+    body: JSON.stringify({ idCurso }),
+  });
+}
+
+interface RegistrarStepParams {
+  fkAulaId: number;
+  idReferencia: number;
+  tipo: "video" | "avaliacao";
+  progressoVideo?: number;
+}
+
+export async function registrarStepAula(params: RegistrarStepParams): Promise<{ sucesso: boolean }> {
+  return apiFetch("/curso/aulausuario/step", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+export async function verificarConclusaoModulo(idModulo: number): Promise<{ sucesso: boolean }> {
+  return apiFetch("/curso/aulausuario/modulo/verificar-conclusao", {
+    method: "POST",
+    body: JSON.stringify({ idModulo }),
+  });
+}
+
+export async function iniciarAvaliacao(idAvaliacao: number): Promise<{ sucesso: boolean }> {
+  return apiFetch(`/avaliacao/${idAvaliacao}/iniciar`, {
+    method: "POST",
+  });
+}
+
+export async function enviarAvaliacao(idAvaliacao: number, respostas: any[], duracaoSegundos: number) {
+  return apiFetch(`/avaliacao/${idAvaliacao}/responder`, {
+    method: "POST",
+    body: JSON.stringify({ respostas, duracaoSegundos }),
+  });
+}
+
+export async function finalizarAvaliacaoBackend(idAvaliacao: number) {
+  return apiFetch(`/avaliacao/${idAvaliacao}/finalizar`, { method: "POST" });
+}
+
+export type ResultadoAvaliacao = {
+  tentativas: {
+    idAvaliacaoUsuario: number;
+    nota: number;
+    dataFim: string;
+    resultado: {
+      idPergunta: number;
+      enunciado: string;
+      alternativas: {
+        idAlternativa: number;
+        texto: string;
+        correta: boolean;
+        selecionada: boolean;
+      }[];
+    }[];
+  }[];
+};
+
+export async function fetchResultadoAvaliacao(idAvaliacao: number): Promise<ResultadoAvaliacao> {
+  return apiFetch(`/avaliacao/${idAvaliacao}/resultado`);
+}
+
+export async function finalizarCurso(idCurso: number): Promise<{ sucesso: boolean }> {
+  return apiFetch("/curso/:id/finalizar", {
+    method: "POST",
+    body: JSON.stringify({ idCurso }),
+  });
+}
+
+export async function getCertificadoPreview(idCurso: number): Promise<CertificadoDados> {
+  return await apiFetch(`/curso/certificado/preview/${idCurso}`);
 }

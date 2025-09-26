@@ -11,6 +11,7 @@ const CursoPage = lazy(() => import('../pages/Curso/CursoPage'));
 const MeusCursos = lazy(() => import('../pages/Curso/MeusCursos'));
 const PlayerCurso = lazy(() => import('../pages/Curso/PlayerCurso'));
 const MedidaPage = lazy(() => import('../pages/Medida/MedidaPage'));
+const CertificadoPreview = lazy(() => import('../pages/CertificadoPreview'));
 
 function PrivateRoute() {
   const { user } = useAuth();
@@ -46,6 +47,8 @@ export default function AppRoutes() {
               <Route path="/cursos/gerenciar" element={<CursoPage />} />
               <Route path="/cursos/meuscursos" element={<MeusCursos />} />
               <Route path="/cursos/playcurso/:idCurso" element={<PlayerCurso />} />
+
+              <Route path="/certificado/:idCurso" element={<CertificadoPreview />} />
 
               {/* Medida */}
               <Route path="/medida" element={<MedidaPage />} />

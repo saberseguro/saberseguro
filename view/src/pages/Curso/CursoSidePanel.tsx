@@ -9,13 +9,6 @@ interface CursoSidePanelProps {
   title?: string;
 }
 
-/**
- * Sheet lateral direita:
- * - Overlay clicável para fechar
- * - Fecha com tecla ESC
- * - Responsivo: em telas pequenas ocupa 100% da largura; em ≥ md, 50%
- * - Conteúdo com scroll interno
- */
 export default function CursoSidePanel({ open, idCurso, onClose, title = "Detalhes do Curso" }: CursoSidePanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
 

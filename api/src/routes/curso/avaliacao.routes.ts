@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authorize } from '../../middlewares/authorize';
-import { buscarAvaliacaoController, buscarAvaliacoesController, criarAlternativaController, criarAvaliacaoController, criarPerguntaController, editarAlternativaController, editarAvaliacaoController, editarPerguntaController, excluirAvaliacaoController, finalizarAvaliacaoController, iniciarAvaliacaoController, responderAvaliacaoController } from '../../controllers/curso/avaliacaoController';
+import { buscarAvaliacaoController, buscarAvaliacoesController, criarAlternativaController, criarAvaliacaoController, criarPerguntaController, editarAlternativaController, editarAvaliacaoController, editarPerguntaController, excluirAvaliacaoController, finalizarAvaliacaoController, iniciarAvaliacaoController, responderAvaliacaoController, resultadoAvaliacaoController } from '../../controllers/curso/avaliacaoController';
 
 const router = Router();
 
@@ -11,6 +11,7 @@ router.post('/', authorize(['criar_avaliacoes']), criarAvaliacaoController);
 router.post('/:id/pergunta', authorize(['criar_avaliacoes']), criarPerguntaController);
 router.post('/pergunta/:id/alternativa', authorize(['criar_avaliacoes']), criarAlternativaController);
 
+router.get('/:id/resultado', authorize(['ver_avaliacoes']), resultadoAvaliacaoController );
 router.post('/:id/iniciar', authorize(['responder_avaliacoes']), iniciarAvaliacaoController);
 router.post('/:id/responder', authorize(['responder_avaliacoes']), responderAvaliacaoController);
 router.post('/:id/finalizar', authorize(['responder_avaliacoes']), finalizarAvaliacaoController);

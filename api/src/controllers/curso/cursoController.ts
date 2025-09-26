@@ -1,11 +1,13 @@
 import { Request, Response } from 'express';
-import { buscarCursoCompleto, buscarCursoAcessos, buscarCursos, buscarMeusCursos, criarCurso, criarCursoAcesso, editarCurso, excluirCurso, excluirCursoAcesso, syncCurso } from '../../models/curso/curso';
+import { buscarCursoCompleto, buscarCursoAcessos, buscarCursos, buscarMeusCursos, criarCurso, criarCursoAcesso, editarCurso, excluirCurso, excluirCursoAcesso, syncCurso, finalizarCurso } from '../../models/curso/curso';
 import { desvincularCursoDaMedida, listarMedidasDoCurso, vincularCursoNaMedida } from '../../models/medida';
+import { gerarCertificadoPdf, getCertificadoPreview } from '../../models/curso/gerarCertificado';
+import { registrarEvento } from '../../shared/utils/registrarEvento';
 
 export const buscarCursoController = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const curso = await buscarCursoCompleto.execute(Number(id));
+    const curso = await buscarCursoCompleto.execute(Number(id), req.user as any);
     if (!curso) return res.status(404).json({ error: 'Curso não encontrado' });
     return res.json(curso);
   } catch (err: any) {
@@ -192,6 +194,20 @@ export const excluirCursoAcessoController = async (req: Request, res: Response) 
   }
 };
 
+export const finalizarCursoController = async (req: Request, res: Response) => {
+  try {
+    const { idCurso } = req.body;
+
+    const resultado = await finalizarCurso.execute(idCurso, req.user as any);
+    if (!resultado) {
+      return res.status(404).json({ error: 'Nenhum acesso encontrado' });
+    }
+    return res.json(resultado);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
 // Sincronização
 export const syncCursoController = async (req: Request, res: Response) => {
   try {
@@ -200,5 +216,65 @@ export const syncCursoController = async (req: Request, res: Response) => {
     return res.json(result);
   } catch (e: any) {
     return res.status(400).json({ error: e.message });
+  }
+};
+
+
+export const gerarCertificadoController = async (req: Request, res: Response) => {
+  const { dados } = req.body;
+  const usuario = req.user;
+
+
+  if (!dados || !usuario) {
+    return res.status(400).json({ erro: "Dados ou usuário ausente." });
+  }
+
+
+  try {
+    const pdfBuffer = await gerarCertificadoPdf(dados);
+
+    await registrarEvento({
+      idUsuario: usuario.idUsuario,
+      tipo: "gerar_certificado",
+      entidade: "curso",
+      entidadeId: dados.idCurso,
+      descricao: `Certificado gerado para o aluno "${usuario.nome}" do curso "${dados.titulo}".`,
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=certificado.pdf`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Erro ao gerar certificado:", error);
+    res.status(500).json({ erro: "Erro ao gerar certificado" });
+  }
+};
+
+export const previewCertificadoController = async (req: Request, res: Response) => {
+  const idCurso = Number(req.params.id);
+  const idUsuario = Number(req.user?.idUsuario);
+
+  if (isNaN(idCurso)) {
+    return res.status(400).json({ error: "ID do curso inválido" });
+  }
+
+  try {
+    const dadosCertificado = await getCertificadoPreview.execute(idCurso, idUsuario);
+
+    if (!dadosCertificado) {
+      return res.status(404).json({ error: "Certificado não encontrado ou curso não concluído." });
+    }
+
+    // Gerar PDF
+    const pdfBuffer = await gerarCertificadoPdf(dadosCertificado as any);
+    const pdfBase64 = pdfBuffer.toString("base64");
+
+    return res.json({
+      ...dadosCertificado,
+      pdfBase64, // ← inclui o PDF no retorno
+    });
+  } catch (error) {
+    console.error("Erro ao gerar preview do certificado:", error);
+    return res.status(500).json({ error: "Erro ao gerar preview do certificado." });
   }
 };
