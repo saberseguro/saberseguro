@@ -67,7 +67,6 @@ export const registrarAulaStep = {
       throw new Error("Dados incompletos.");
     }
 
-    // Atualiza progresso de vídeo, se aplicável
     if (tipo === "video") {
       const tempo = progressoVideo ?? 0;
       const assistido = tempo >= 50;

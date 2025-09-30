@@ -42,7 +42,7 @@ export const Input = ({
       maxLength={maxLength}
       disabled={disable}
       placeholder={placeholder}
-      className="border border-gray-300 text-gray-900 text-sm rounded-md focus:border-2 focus:border-blue-500 focus:outline-none block w-full p-2.5 bg-white"
+      className="border border-gray-300 text-gray-900 text-sm rounded-md focus:border-2 focus:border-blue-500 focus:outline-none block w-full p-2.5 bg-white disabled:opacity-50"
     />
   </div>
 );

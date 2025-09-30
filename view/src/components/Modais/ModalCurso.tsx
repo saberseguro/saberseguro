@@ -42,7 +42,7 @@ export default function ModalCurso({ isOpen, onClose, cursoSelecionado, onSaved 
       criado_em: new Date().toISOString(),
       editado_em: new Date().toISOString(),
       fkResponsavelTecnicoId: 0,
-      fkEmpresaId: undefined,
+      fkEmpresaId: 0,
       modulos: [],
       avaliacoes: [],
     }

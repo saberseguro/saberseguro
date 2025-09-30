@@ -111,12 +111,7 @@ export const buscarCursoCompleto = {
                         idAvaliacaoUsuario: true,
                         nota: true,
                         dataFim: true,
-                        respostas: {
-                          select: {
-                            fkPerguntaId: true,
-                            fkAlternativaId: true,
-                          },
-                        },
+                        respostas: true,
                       },
                     },
                   },
@@ -709,7 +704,7 @@ export const syncCurso = {
         cargaHoraria: Number(payload.cargaHoraria) || 0,
         ativo: payload.ativo ?? 1,
         fkResponsavelTecnicoId: payload.fkResponsavelTecnicoId,
-        fkEmpresaId: payload.fkEmpresaId ?? null,
+        fkEmpresaId: payload.fkEmpresaId && payload.fkEmpresaId > 0 ? payload.fkEmpresaId : null,
       };
 
       let cursoBase = idCursoParam > 0
@@ -805,16 +800,19 @@ export const syncCurso = {
           });
 
           // cria/atualiza vídeos
+          const videoIdMap: Record<number, number> = {};
           for (const v of videosPayload) {
             if (!v.idAulaVideo || v.idAulaVideo < 0) {
-              await tx.aulavideo.create({
+              const created = await tx.aulavideo.create({
                 data: { url: v.url, fkAulaId: idAula },
               });
+              videoIdMap[v.idAulaVideo ?? -1] = created.idAulaVideo;
             } else {
               await tx.aulavideo.update({
                 where: { idAulaVideo: v.idAulaVideo },
                 data: { url: v.url },
               });
+              videoIdMap[v.idAulaVideo] = v.idAulaVideo;
             }
           }
 
@@ -831,27 +829,25 @@ export const syncCurso = {
             },
           });
 
+          const matIdMap: Record<number, number> = {};
           for (const m of matsPayload) {
             const matData = {
               titulo: m.titulo,
-              tipo: m.tipo ?? 'LINK',
+              tipo: m.tipo ?? "LINK",
               material: m.material,
               ativo: m.ativo ?? 1,
               fkAulaId: idAula,
             };
 
             if (!m.idMaterialComplementar || m.idMaterialComplementar < 0) {
-              await tx.materialcomplementar.create({ data: matData });
+              const created = await tx.materialcomplementar.create({ data: matData });
+              matIdMap[m.idMaterialComplementar ?? -1] = created.idMaterialComplementar;
             } else {
               await tx.materialcomplementar.update({
                 where: { idMaterialComplementar: m.idMaterialComplementar },
-                data: {
-                  titulo: matData.titulo,
-                  tipo: matData.tipo,
-                  material: matData.material,
-                  ativo: matData.ativo,
-                },
+                data: matData,
               });
+              matIdMap[m.idMaterialComplementar] = m.idMaterialComplementar;
             }
           }
 
@@ -876,9 +872,9 @@ export const syncCurso = {
               ordem: sIdx + 1,
               obrigatorio: s.obrigatorio ?? 1,
               fkAulaId: idAula,
-              fkAulaVideoId: s.fkAulaVideoId ?? null,
-              fkMaterialId: s.fkMaterialId ?? null,
-              fkAvaliacaoId: s.fkAvaliacaoId ?? null,
+              fkAulaVideoId: s.fkAulaVideoId ? videoIdMap[s.fkAulaVideoId] ?? null : null,
+              fkMaterialId: s.fkMaterialId ? matIdMap[s.fkMaterialId] ?? null : null,
+              fkAvaliacaoId: (s.fkAvaliacaoId && s.fkAvaliacaoId > 0) ? s.fkAvaliacaoId : null,
             };
 
             if (!s.idAulaStep || s.idAulaStep < 0) {

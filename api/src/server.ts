@@ -23,6 +23,9 @@ import aulaUsuarioRoutes from './routes/curso/aulausuario.routes';
 import aulaVideoRoutes from './routes/curso/aulavideo.routes';
 import materialComplementarRoutes from './routes/curso/materialcomplementar.routes';
 
+// Responsável Técnico
+import responsavelTecnicoRoutes from './routes/curso/responsavelTecnico.routes';
+
 // Avaliação
 import avaliacaoRoutes from './routes/curso/avaliacao.routes';
 
@@ -60,6 +63,9 @@ app.use("/api/curso/aula", aulaRoutes);
 app.use("/api/curso/aula/aulavideo", aulaVideoRoutes);
 app.use("/api/curso/aula/materialcomplementar", materialComplementarRoutes);
 app.use("/api/curso/aulausuario", aulaUsuarioRoutes);
+
+// Responsável Técnico
+app.use("/api/responsaveltecnico", responsavelTecnicoRoutes);
 
 // Avaliação
 app.use("/api/avaliacao", avaliacaoRoutes);

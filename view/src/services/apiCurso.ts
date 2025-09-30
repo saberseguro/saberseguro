@@ -1,5 +1,5 @@
 import { apiFetch } from './apiFetch';
-import type { Curso, Categoria, CursoCompleto, CertificadoDados } from '../types/EstruturaCurso';
+import type { Curso, Categoria, CursoCompleto, CertificadoDados, ResponsavelTecnico } from '../types/EstruturaCurso';
 import type { MedidaCurso } from "../types/EstruturaMedida";
 
 interface Filtros {
@@ -45,6 +45,11 @@ export const getCategorias = async (): Promise<Categoria[]> => {
   const res = await apiFetch("/categoria");
   return res as Categoria[];
 };
+
+export const getResponsaveisTecnicos = async (): Promise<ResponsavelTecnico[]> => {
+  const res = await apiFetch("/responsaveltecnico");
+  return res as ResponsavelTecnico[];
+}
 
 export async function syncCurso(curso: Curso): Promise<Curso> {
   const isNovo = !curso.idCurso || curso.idCurso <= 0;

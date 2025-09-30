@@ -1,7 +1,7 @@
 import { formatarMinutosEmHoras } from '../../auxiliares/formatters';
-import type { Categoria, Curso } from '../../types/EstruturaCurso';
-import { Input, TextArea, SelectInput, SelectMultiInput } from './Inputs';
-import { getCategorias } from '../../services/apiCurso';
+import type { Categoria, Curso, ResponsavelTecnico } from '../../types/EstruturaCurso';
+import { Input, TextArea, SelectInput, SelectMultiInput, SearchableSelect } from './Inputs';
+import { getCategorias, getResponsaveisTecnicos } from '../../services/apiCurso';
 import { useEffect, useState } from 'react';
 
 interface FormCursoProps {
@@ -10,19 +10,38 @@ interface FormCursoProps {
   setLoading: (loading: boolean) => void;
 }
 
-export default function FormCurso({ curso, setCurso, setLoading }: FormCursoProps) {
+export default function FormCurso({ curso, setCurso }: FormCursoProps) {
   const [categoriasOpts, setCategoriasOpts] = useState<Categoria[]>([]);
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<number[]>([]);
 
+  const [responsaveis, setResponsaveis] = useState<ResponsavelTecnico[]>([]);
+
+  const [loadingResp, setLoadingResp] = useState(false);
+
+  async function carregarCategorias() {
+    try {
+      const lista = await getCategorias();
+      setCategoriasOpts(lista);
+    } catch (e) {
+      console.error("Erro ao carregar categorias", e);
+    }
+  }
+
+  async function carregarResponsaveis() {
+    try {
+      setLoadingResp(true);
+      const resps = await getResponsaveisTecnicos();
+      setResponsaveis(resps);
+    } catch (e) {
+      console.error("Erro ao carregar responsáveis técnicos", e);
+    } finally {
+      setLoadingResp(false);
+    }
+  }
+
   useEffect(() => {
-    (async () => {
-      try {
-        const lista = await getCategorias();
-        setCategoriasOpts(lista);
-      } catch (e) {
-        console.error('Erro ao carregar categorias', e);
-      }
-    })();
+    carregarCategorias();
+    carregarResponsaveis();
   }, []);
 
   useEffect(() => {
@@ -55,7 +74,7 @@ export default function FormCurso({ curso, setCurso, setLoading }: FormCursoProp
     <div className="space-y-2">
       <h2 className="text-lg font-semibold">Dados do Curso</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Input
           label="Título"
           name="titulo"
@@ -69,17 +88,30 @@ export default function FormCurso({ curso, setCurso, setLoading }: FormCursoProp
           onChange={handleChange}
           value={formatarMinutosEmHoras(curso.cargaHoraria)}
           disable
+          required={false}
+        />
+
+        <SearchableSelect
+          label="Responsável Técnico"
+          name="fkResponsavelTecnicoId"
+          options={responsaveis.map((r) => ({
+            value: r.idResponsavelTecnico,
+            label: r.nome,
+          }))}
+          value={curso.responsaveltecnico?.idResponsavelTecnico ?? ""}
+          onChange={(v) =>
+            setCurso({
+              ...curso,
+              fkResponsavelTecnicoId: v as number,
+              responsaveltecnico: responsaveis.find((r) => r.idResponsavelTecnico === v),
+            })
+          }
+          loading={loadingResp}
+          placeholder="Selecione o responsável técnico"
+          emptyOptionLabel="Selecione..."
         />
 
         {/* <Input
-          label="Responsável Técnico (ID)"
-          name="fkResponsavelTecnicoId"
-          value={String(curso.fkResponsavelTecnicoId)}
-          onChange={handleChange}
-          type="number"
-        />
-
-        <Input
           label="Empresa (ID)"
           name="fkEmpresaId"
           value={curso.fkEmpresaId ? String(curso.fkEmpresaId) : ''}

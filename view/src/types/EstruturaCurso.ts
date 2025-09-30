@@ -1,5 +1,3 @@
-import type { Usuario } from "./Usuario";
-
 export interface Curso {
   idCurso: number;
   titulo: string;
@@ -12,7 +10,7 @@ export interface Curso {
   fkResponsavelTecnicoId: number;
   fkEmpresaId?: number;
 
-  responsaveltecnico?: Usuario;
+  responsaveltecnico?: ResponsavelTecnico;
   categorias?: CategoriaCurso[];
   modulos: Modulo[];
   avaliacoes?: Avaliacao[];

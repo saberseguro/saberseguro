@@ -65,7 +65,6 @@ export default function CursosPage() {
   const handleNovoCurso = () => {
     let novoCurso: Curso;
 
-    // verifica se o usuário tem role admin
     const isAdmin = user?.role?.includes("admin");
 
     if (isAdmin) {
@@ -84,7 +83,7 @@ export default function CursosPage() {
         <h1 className="text-2xl font-bold">Cursos</h1>
         <button
           className="bg-sky-600 text-white px-4 py-2 rounded cursor-pointer text-sm"
-          onClick={() => handleNovoCurso}
+          onClick={handleNovoCurso}
         >
           + Novo Curso
         </button>

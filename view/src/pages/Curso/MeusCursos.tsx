@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Play, Clock, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
+import { Play, Clock, ChevronLeft, ChevronRight, TrendingUp, CheckCircle } from "lucide-react";
 import type { Curso } from "../../types/EstruturaCurso";
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import { getMeusCursos } from "../../services/apiCurso";
@@ -131,7 +131,7 @@ function CursoCard({ curso, onOpen }: { curso: CursoListItem; onOpen: (id: numbe
   const progresso = Math.max(0, Math.min(100, Number(curso.progresso ?? 0)));
 
   return (
-    <div className="min-w-[240px] w-[240px] bg-white rounded-xl p-4">
+    <div className="min-w-[240px] w-[240px] bg-white rounded-xl p-4 flex flex-col">
       <div className="relative aspect-video overflow-hidden rounded-xl bg-gray-100 ring-1 ring-gray-200">
         {curso.thumbUrl ? (
           <img
@@ -159,19 +159,19 @@ function CursoCard({ curso, onOpen }: { curso: CursoListItem; onOpen: (id: numbe
         )}
       </div>
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-col flex-1">
         <h3 className="text-sm font-bold text-sky-700 line-clamp-2">{curso.titulo}</h3>
         <p className="text-xs text-gray-500 mt-1 line-clamp-2">{curso.descricao}</p>
 
-        <div className="flex items-center gap-2 mt-2 select-none">
-          <ToolTip text={`Carga Horária`}>
+        <div className="flex items-center gap-2 mt-2 select-none mb-3">
+          <ToolTip text="Carga Horária">
             <div className="flex items-center text-xs text-blue-600 gap-1 bg-sky-100 border border-blue-400 px-2 rounded-full">
               <Clock className="w-3 h-3" />
               <span className="italic">{Number(curso.cargaHoraria ?? 0)}h</span>
             </div>
           </ToolTip>
 
-          <ToolTip text={`Progresso`}>
+          <ToolTip text="Progresso">
             <div
               className={`flex items-center text-xs gap-1 px-2 rounded-full border transition-colors duration-300 ease-in-out ${getProgressoClass(progresso)}`}
             >
@@ -184,9 +184,19 @@ function CursoCard({ curso, onOpen }: { curso: CursoListItem; onOpen: (id: numbe
         <button
           type="button"
           onClick={() => onOpen(curso.idCurso)}
-          className="mt-3 w-full inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-3 py-2 shadow-sm cursor-pointer"
+          className={`mt-auto w-full inline-flex items-center justify-center gap-2 rounded-md text-white text-sm font-semibold px-3 py-2 shadow-sm cursor-pointer
+            ${progresso === 100
+              ? "bg-green-600 hover:bg-green-700"
+              : "bg-blue-600 hover:bg-blue-700"}`}
         >
-          Ver Curso
+          {progresso === 100 ? (
+            <>
+              <CheckCircle className="w-4 h-4" />
+              Concluído
+            </>
+          ) : (
+            "Ver Curso"
+          )}
         </button>
       </div>
     </div>

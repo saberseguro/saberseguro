@@ -322,15 +322,21 @@ export const resultadoAvaliacao = {
             (r) => r.fkPerguntaId === pergunta.idPergunta
           );
 
+          const isDissertativa = pergunta.tipo === "dissertativa";
+
           return {
             idPergunta: pergunta.idPergunta,
             enunciado: pergunta.enunciado,
-            alternativas: pergunta.alternativas.map((alt) => ({
-              idAlternativa: alt.idAlternativa,
-              texto: alt.texto,
-              correta: alt.correta === 1,
-              selecionada: alt.idAlternativa === respostaDoUsuario?.fkAlternativaId
-            }))
+            tipo: pergunta.tipo, // <=== Adiciona também o tipo da pergunta
+            respostaTexto: isDissertativa ? respostaDoUsuario?.resposta ?? "" : null,
+            alternativas: isDissertativa
+              ? [] // se for dissertativa, não envia alternativas
+              : pergunta.alternativas.map((alt) => ({
+                idAlternativa: alt.idAlternativa,
+                texto: alt.texto,
+                correta: alt.correta === 1,
+                selecionada: alt.idAlternativa === respostaDoUsuario?.fkAlternativaId
+              }))
           };
         })
       };
@@ -389,12 +395,46 @@ export const responderAvaliacao = {
       const idPergunta = Number(respostaItem.idPergunta);
       const alternativas = respostaItem.alternativas ?? [];
 
+      const ehDissertativa = typeof alternativas[0] === "string";
+
+      if (ehDissertativa) {
+        const respostaTexto = alternativas[0];
+
+        const respostaExistente = await prisma.resposta.findFirst({
+          where: {
+            fkAvaliacaoUsuarioId: avaliacaoUsuario.idAvaliacaoUsuario,
+            fkPerguntaId: idPergunta,
+          }
+        });
+
+        const resposta = respostaExistente
+          ? await prisma.resposta.update({
+            where: { idResposta: respostaExistente.idResposta },
+            data: {
+              resposta: respostaTexto,
+              fkAlternativaId: null,  // dissertativa não tem alternativa
+            },
+          })
+          : await prisma.resposta.create({
+            data: {
+              resposta: respostaTexto,
+              fkPerguntaId: idPergunta,
+              fkAvaliacaoUsuarioId: avaliacaoUsuario.idAvaliacaoUsuario,
+              fkAlternativaId: null,
+            }
+          });
+
+        respostasCriadas.push(resposta);
+        continue; // pula para a próxima pergunta
+      }
+
+      // Caso seja objetiva (com alternativas numéricas)
       for (const idAlternativa of alternativas) {
         const respostaExistente = await prisma.resposta.findFirst({
           where: {
             fkAvaliacaoUsuarioId: avaliacaoUsuario.idAvaliacaoUsuario,
             fkPerguntaId: idPergunta,
-            fkAlternativaId: idAlternativa
+            fkAlternativaId: Number(idAlternativa),
           }
         });
 
@@ -403,14 +443,14 @@ export const responderAvaliacao = {
             where: { idResposta: respostaExistente.idResposta },
             data: {
               resposta: '',
-              fkAlternativaId: idAlternativa,
+              fkAlternativaId: Number(idAlternativa),
             },
           })
           : await prisma.resposta.create({
             data: {
               resposta: '',
               fkPerguntaId: idPergunta,
-              fkAlternativaId: idAlternativa,
+              fkAlternativaId: Number(idAlternativa),
               fkAvaliacaoUsuarioId: avaliacaoUsuario.idAvaliacaoUsuario
             }
           });
