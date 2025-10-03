@@ -9,7 +9,7 @@ const HomePage = lazy(() => import('../pages/Home/HomePage'));
 const EmpresaPage = lazy(() => import('../pages/Empresa/EmpresaPage'));
 const CursoPage = lazy(() => import('../pages/Curso/CursoPage'));
 const MeusCursos = lazy(() => import('../pages/Curso/MeusCursos'));
-const PlayerCurso = lazy(() => import('../pages/Curso/PlayerCurso'));
+const PlayerCurso = lazy(() => import('../pages/Curso/PlayerCursoNew'));
 const MedidaPage = lazy(() => import('../pages/Medida/MedidaPage'));
 const CertificadoPreview = lazy(() => import('../pages/CertificadoPreview'));
 

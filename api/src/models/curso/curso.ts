@@ -63,114 +63,105 @@ type AvaliacaoPayload = {
 
 export const buscarCursoCompleto = {
   async execute(id: number, usuario: any) {
-    return await prisma.curso.findUnique({
+    const curso = await prisma.curso.findUnique({
       where: { idCurso: id },
       include: {
         categorias: { include: { categoria: true } },
         modulos: {
-          orderBy: { ordem: 'asc' },
+          orderBy: { ordem: "asc" },
           include: {
-            avaliacoes: {
+            aulas: {
+              orderBy: { ordem: "asc" },
               include: {
-                perguntas: {
-                  include: { alternativas: true },
-                },
-                avaliacoesUsuarios: {
-                  where: {
-                    fkUsuarioId: usuario.idUsuario,
-                    status: 'concluida',
-                  },
-                  select: {
-                    idAvaliacaoUsuario: true,
-                    nota: true,
-                    dataFim: true,
-                    respostas: {
-                      select: {
-                        fkPerguntaId: true,
-                        fkAlternativaId: true,
-                      },
+                steps: true,
+                materiais: true,
+                videos: true,
+                avaliacoes: {
+                  include: {
+                    perguntas: { include: { alternativas: true } },
+                    avaliacoesUsuarios: {
+                      where: { fkUsuarioId: usuario.idUsuario },
                     },
                   },
+                },
+                aulausuarios: {
+                  where: { fkUsuarioId: usuario.idUsuario },
                 },
               },
             },
-            aulas: {
-              orderBy: { ordem: 'asc' },
+            avaliacoes: {
               include: {
-                avaliacoes: {
-                  include: {
-                    perguntas: {
-                      include: { alternativas: true },
-                    },
-                    avaliacoesUsuarios: {
-                      where: {
-                        fkUsuarioId: usuario.idUsuario,
-                        status: 'concluida',
-                      },
-                      select: {
-                        idAvaliacaoUsuario: true,
-                        nota: true,
-                        dataFim: true,
-                        respostas: true,
-                      },
-                    },
-                  },
-                },
-                materiais: true,
-                videos: true,
-                steps: true,
-                aulausuarios: {
+                perguntas: { include: { alternativas: true } },
+                avaliacoesUsuarios: {
                   where: { fkUsuarioId: usuario.idUsuario },
-                  select: {
-                    fkAulaId: true,
-                    assistiuVideo: true,
-                    baixouMateriais: true,
-                    respondeuQuiz: true,
-                    concluida: true,
-                  },
                 },
-              }
-            }
-          }
+              },
+            },
+          },
         },
         avaliacoes: {
           include: {
-            perguntas: {
-              include: { alternativas: true },
-            },
+            perguntas: { include: { alternativas: true } },
             avaliacoesUsuarios: {
-              where: {
-                fkUsuarioId: usuario.idUsuario,
-                status: 'concluida',
-              },
-              select: {
-                idAvaliacaoUsuario: true,
-                nota: true,
-                dataFim: true,
-                respostas: {
-                  select: {
-                    fkPerguntaId: true,
-                    fkAlternativaId: true,
-                  },
-                },
-              },
+              where: { fkUsuarioId: usuario.idUsuario },
             },
           },
         },
         responsaveltecnico: true,
         acessos: {
-          where: {
-            fkUsuarioId: usuario.idUsuario,
-          },
-          select: {
-            concluido: true,
-            dataConclusao: true,
-            percentual: true,
-          },
-        }
+          where: { fkUsuarioId: usuario.idUsuario },
+        },
       },
     });
-  }
+
+    if (!curso) return null;
+
+    // 🔹 Montar steps unificados
+    const steps: any[] = [];
+
+    curso.modulos.forEach((mod) => {
+      mod.aulas.forEach((aula) => {
+        aula.steps.forEach((s) =>
+          steps.push({ ...s, tipoStep: "aula", idModulo: mod.idModulo, idAula: aula.idAula })
+        );
+
+        aula.avaliacoes.forEach((av) =>
+          steps.push({
+            idAulaStep: `av-aula-${aula.idAula}-${av.idAvaliacao}`,
+            tipo: "avaliacao",
+            obrigatorio: true,
+            fkAvaliacaoId: av.idAvaliacao,
+            idModulo: mod.idModulo,
+            idAula: aula.idAula,
+            avaliacao: av,
+          })
+        );
+      });
+
+      mod.avaliacoes.forEach((av) =>
+        steps.push({
+          idAulaStep: `av-mod-${mod.idModulo}-${av.idAvaliacao}`,
+          tipo: "avaliacao_modulo",
+          obrigatorio: true,
+          fkAvaliacaoId: av.idAvaliacao,
+          idModulo: mod.idModulo,
+          avaliacao: av,
+        })
+      );
+    });
+
+    curso.avaliacoes.forEach((av) =>
+      steps.push({
+        idAulaStep: `av-curso-${curso.idCurso}-${av.idAvaliacao}`,
+        tipo: "avaliacao_curso",
+        obrigatorio: true,
+        fkAvaliacaoId: av.idAvaliacao,
+        avaliacao: av,
+      })
+    );
+
+    return { ...curso, steps };
+  },
 };
 
 export const buscarCursos = {

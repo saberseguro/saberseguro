@@ -67,37 +67,12 @@ export default function PlayCursoPage() {
   >({});
 
   useEffect(() => {
-    if (!aulaSelecionada?.steps) return;
-
-    const usuarioAula = aulaSelecionada?.aulausuarios?.[0];
-
-    const concluidos = aulaSelecionada?.steps
-      ?.filter((step: any) => {
-        if (!usuarioAula) return false;
-        switch (step.tipo) {
-          case "video": return usuarioAula.assistiuVideo === 1;
-          case "material": return usuarioAula.baixouMateriais === 1;
-          case "avaliacao": return usuarioAula.respondeuQuiz === 1;
-          default: return false;
-        }
-      })
-      .map((step: any) => step.idAulaStep) ?? [];
-
-    setStepsConcluidos(concluidos);
-
-    const indexNaoConcluido = aulaSelecionada?.steps.findIndex(
-      (s: any) => !concluidos.includes(s.idAulaStep)
-    );
-
-    setStepAtualIndex(indexNaoConcluido >= 0 ? indexNaoConcluido : 0);
-  }, [aulaSelecionada]);
-
-  useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
         const data = await getCursoCompleto(Number(idCurso));
         setCurso(data);
+        console.log("Curso Completo: ", data);
 
         const finalizado = data.acessos?.some((ac: CursoAcesso) => ac.concluido === 1);
         setCursoFinalizado(finalizado ?? false);
@@ -105,6 +80,7 @@ export default function PlayCursoPage() {
         const mapResp: Record<number, { nota: number | null; dataFim?: string }> = {};
 
         // 🔹 Avaliações do curso
+        // Posso ter mais de 1 avaliação no curso
         for (const av of data.avaliacoes ?? []) {
           const au = av.avaliacoesUsuarios?.[0];
           if (au && typeof av.idAvaliacao === "number") {
@@ -141,6 +117,7 @@ export default function PlayCursoPage() {
           }
         }
 
+        // As avaliações do usuario vem com status (andamento, concluida, cancelada) entao nao precisa fazer esses 3 fors acima
         setAvaliacoesRespondidasMap(mapResp);
 
         const todasAulas = data.modulos.flatMap((m) => m.aulas);
@@ -176,6 +153,32 @@ export default function PlayCursoPage() {
 
     if (idCurso) load();
   }, [idCurso, aulaInicialId]);
+
+  useEffect(() => {
+    if (!aulaSelecionada?.steps) return;
+
+    const usuarioAula = aulaSelecionada?.aulausuarios?.[0];
+
+    const concluidos = aulaSelecionada?.steps
+      ?.filter((step: any) => {
+        if (!usuarioAula) return false;
+        switch (step.tipo) {
+          case "video": return usuarioAula.assistiuVideo === 1;
+          case "material": return usuarioAula.baixouMateriais === 1;
+          case "avaliacao": return usuarioAula.respondeuQuiz === 1;
+          default: return false;
+        }
+      })
+      .map((step: any) => step.idAulaStep) ?? [];
+
+    setStepsConcluidos(concluidos);
+
+    const indexNaoConcluido = aulaSelecionada?.steps.findIndex(
+      (s: any) => !concluidos.includes(s.idAulaStep)
+    );
+
+    setStepAtualIndex(indexNaoConcluido >= 0 ? indexNaoConcluido : 0);
+  }, [aulaSelecionada]);
 
   useEffect(() => {
     const carregarTentativas = async () => {

@@ -1,3 +1,15 @@
+export interface Step {
+  idAulaStep: string | number;
+  tipo: "video" | "material" | "avaliacao" | "avaliacao_modulo" | "avaliacao_curso";
+  obrigatorio?: boolean;
+  fkAvaliacaoId?: number;
+  fkMaterialId?: number;
+  fkAulaVideoId?: number;
+  avaliacao?: any;
+  idAula?: number;
+  idModulo?: number;
+}
+
 export interface Curso {
   idCurso: number;
   titulo: string;
@@ -10,6 +22,7 @@ export interface Curso {
   fkResponsavelTecnicoId: number;
   fkEmpresaId?: number;
 
+  steps?: Step[];
   responsaveltecnico?: ResponsavelTecnico;
   categorias?: CategoriaCurso[];
   modulos: Modulo[];
@@ -37,6 +50,8 @@ export type CursoCompleto = Omit<Curso, 'categorias'> & {
   avaliacoes: Avaliacao[];
   responsaveltecnico?: ResponsavelTecnico;
   acessos?: CursoAcesso[];
+  progresso?: Progresso;
+  steps?: Step[];
 };
 
 export interface Modulo {
@@ -45,6 +60,7 @@ export interface Modulo {
   cargaHoraria?: number;
   ordem?: number;
   ativo?: number;
+  progresso?: Progresso;
 
   aulas: Aula[];
   avaliacoes?: Avaliacao[];
@@ -180,4 +196,11 @@ export interface CertificadoDados {
     registro: string;
   };
   pdfBase64?: string;
+}
+
+export interface Progresso {
+  concluido: boolean;
+  percentual?: number;
+  dataInicio?: string;
+  dataConclusao?: string;
 }
