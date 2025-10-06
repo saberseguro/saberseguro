@@ -73,26 +73,21 @@ export const buscarCursoCompleto = {
             aulas: {
               orderBy: { ordem: "asc" },
               include: {
-                steps: true,
-                materiais: true,
-                videos: true,
-                avaliacoes: {
+                steps: {
                   include: {
-                    perguntas: { include: { alternativas: true } },
-                    avaliacoesUsuarios: {
-                      where: { fkUsuarioId: usuario.idUsuario },
+                    avaliacao: {
+                      include: {
+                        perguntas: { include: { alternativas: true } },
+                        avaliacoesUsuarios: {
+                          where: { fkUsuarioId: usuario.idUsuario },
+                        },
+                      },
                     },
                   },
                 },
+                materiais: true,
+                videos: true,
                 aulausuarios: {
-                  where: { fkUsuarioId: usuario.idUsuario },
-                },
-              },
-            },
-            avaliacoes: {
-              include: {
-                perguntas: { include: { alternativas: true } },
-                avaliacoesUsuarios: {
                   where: { fkUsuarioId: usuario.idUsuario },
                 },
               },
@@ -116,38 +111,20 @@ export const buscarCursoCompleto = {
 
     if (!curso) return null;
 
-    // 🔹 Montar steps unificados
+    // 🔹 Montar steps: apenas os steps reais do banco + avaliações de curso
     const steps: any[] = [];
 
     curso.modulos.forEach((mod) => {
       mod.aulas.forEach((aula) => {
         aula.steps.forEach((s) =>
-          steps.push({ ...s, tipoStep: "aula", idModulo: mod.idModulo, idAula: aula.idAula })
-        );
-
-        aula.avaliacoes.forEach((av) =>
           steps.push({
-            idAulaStep: `av-aula-${aula.idAula}-${av.idAvaliacao}`,
-            tipo: "avaliacao",
-            obrigatorio: true,
-            fkAvaliacaoId: av.idAvaliacao,
+            ...s,
+            tipoStep: "aula",
             idModulo: mod.idModulo,
             idAula: aula.idAula,
-            avaliacao: av,
           })
         );
       });
-
-      mod.avaliacoes.forEach((av) =>
-        steps.push({
-          idAulaStep: `av-mod-${mod.idModulo}-${av.idAvaliacao}`,
-          tipo: "avaliacao_modulo",
-          obrigatorio: true,
-          fkAvaliacaoId: av.idAvaliacao,
-          idModulo: mod.idModulo,
-          avaliacao: av,
-        })
-      );
     });
 
     curso.avaliacoes.forEach((av) =>
@@ -161,7 +138,7 @@ export const buscarCursoCompleto = {
     );
 
     return { ...curso, steps };
-  },
+  }
 };
 
 export const buscarCursos = {

@@ -110,6 +110,19 @@ export async function registrarStepAula(params: RegistrarStepParams): Promise<{ 
   });
 }
 
+export async function registrarStepCurso(params: {
+  idCurso: number,
+  idReferencia: number;
+  tipo: "avaliacao";
+  progressoVideo?: number;
+}): Promise<{ sucesso: boolean }> {
+  return apiFetch("/curso/usuariostep", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+
 export async function verificarConclusaoModulo(idModulo: number): Promise<{ sucesso: boolean }> {
   return apiFetch("/curso/aulausuario/modulo/verificar-conclusao", {
     method: "POST",

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CursoCompleto, Step } from "../../types/EstruturaCurso";
 import { Link, useParams } from "react-router-dom";
-import { getCursoCompleto } from "../../services/apiCurso";
-import { ArrowLeft, CheckCircle, ChevronRight, Circle, ClipboardList, Video } from "lucide-react";
+import { getCursoCompleto, registrarStepAula, registrarStepCurso } from "../../services/apiCurso";
+import { ArrowLeft, BookOpen, CheckCircle, ChevronRight, Circle, ClipboardList, Clock, Video } from "lucide-react";
 import ReactPlayer from "react-player";
 import ModalVisualizador from "../../components/Modais/ModalVisualizador";
+import toast from "react-hot-toast";
+import AvaliacaoControle from "../../components/AvaliacaoControle";
 
 function isStepConcluido(step: any, usuarioAula: any, avaliacoesRespondidasMap: any) {
   switch (step.tipo) {
@@ -85,7 +87,7 @@ function SidebarCurso({ curso, stepAtualIndex, setStepAtualIndex, stepsConcluido
                   {stepsAula
                     .filter((s) => s.tipo.startsWith("avaliacao") && s.avaliacao?.idAvaliacao)
                     .length > 0 && (
-                      <ul className="mt-1 space-y-1 ml-6">   {/* ✅ precisa de um UL */}
+                      <ul className="mt-1 space-y-1 ml-6">
                         {stepsAula
                           .filter((s) => s.tipo.startsWith("avaliacao") && s.avaliacao?.idAvaliacao)
                           .map((s) => {
@@ -107,9 +109,21 @@ function SidebarCurso({ curso, stepAtualIndex, setStepAtualIndex, stepsConcluido
                                         ? "bg-green-50 border-green-400 text-green-600"
                                         : "bg-white hover:bg-gray-50 border-gray-200 text-gray-500"}`}
                                 >
-                                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <ClipboardList className="w-4 h-4" />
-                                    <span>{s.avaliacao?.titulo ?? "Avaliação Inválida"}</span>
+                                  <div className="flex items-center justify-between gap-2 flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                      <ClipboardList className="w-4 h-4" />
+                                      <span className="text-ellipsis overflow-hidden whitespace-nowrap">
+                                        {s.avaliacao?.titulo ?? "Avaliação"}
+                                      </span>
+                                    </div>
+
+                                    <span className="flex-shrink-0">
+                                      {concluido ? (
+                                        <CheckCircle className="w-4 h-4 text-green-500" />
+                                      ) : (
+                                        <Circle className="w-4 h-4 text-gray-400" />
+                                      )}
+                                    </span>
                                   </div>
                                 </button>
                               </li>
@@ -117,7 +131,6 @@ function SidebarCurso({ curso, stepAtualIndex, setStepAtualIndex, stepsConcluido
                           })}
                       </ul>
                     )}
-
                 </li>
               );
             })}
@@ -168,13 +181,19 @@ function SidebarCurso({ curso, stepAtualIndex, setStepAtualIndex, stepsConcluido
 
 interface StepRendererProps {
   step: Step | null;
-  registrarStepBackend: (step: Step) => void;
+  registrarStepBackend: (step: Step) => Promise<void>;
   avaliacoesRespondidasMap: Record<number, any>;
-
-  // extras para materiais e vídeos
   aulaSelecionada?: any;
   setMaterialSelecionado: React.Dispatch<React.SetStateAction<{ titulo: string; url: string } | null>>;
   setModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
+
+  setAvaliacoesRespondidasMap: React.Dispatch<React.SetStateAction<Record<number, any>>>;
+  marcarConcluido: (idAulaStep: number | string) => void;
+  setVerDetalhes: (valor: boolean) => void;
+  setAvaliacaoIniciada: (valor: boolean) => void;
+  setInicioAvaliacao: (valor: Date) => void;
+  setRespostasSelecionadas: React.Dispatch<React.SetStateAction<Record<number, string[] | number[]>>>;
+  idCurso: number;
 }
 
 function StepRenderer({
@@ -184,6 +203,14 @@ function StepRenderer({
   aulaSelecionada,
   setMaterialSelecionado,
   setModalOpen,
+
+  setAvaliacoesRespondidasMap,
+  marcarConcluido,
+  setVerDetalhes,
+  setAvaliacaoIniciada,
+  setInicioAvaliacao,
+  setRespostasSelecionadas,
+  idCurso
 }: StepRendererProps) {
   if (!step) return <div>Selecione um step</div>;
 
@@ -239,6 +266,13 @@ function StepRenderer({
         avaliacao={step.avaliacao}
         avaliacoesRespondidasMap={avaliacoesRespondidasMap}
         registrarStepBackend={registrarStepBackend}
+        setAvaliacoesRespondidasMap={setAvaliacoesRespondidasMap}
+        marcarConcluido={marcarConcluido}
+        setVerDetalhes={setVerDetalhes}
+        setAvaliacaoIniciada={setAvaliacaoIniciada}
+        setInicioAvaliacao={setInicioAvaliacao}
+        setRespostasSelecionadas={setRespostasSelecionadas}
+        idCurso={idCurso}
       />
     );
   }
@@ -250,27 +284,179 @@ interface AvaliacaoStepProps {
   step: Step;
   avaliacao: any;
   avaliacoesRespondidasMap: Record<number, any>;
-  registrarStepBackend: (step: Step) => void;
+  registrarStepBackend: (step: Step) => Promise<void>;
+  handleGerarCertificado?: () => void;
+  atualizarTentativas?: () => Promise<void>;
+  setAvaliacoesRespondidasMap: React.Dispatch<React.SetStateAction<Record<number, any>>>;
+  marcarConcluido: (idAulaStep: number | string) => void;
+  setVerDetalhes: (valor: boolean) => void;
+  setAvaliacaoIniciada: (valor: boolean) => void;
+  setInicioAvaliacao: (valor: Date) => void;
+  setRespostasSelecionadas: React.Dispatch<React.SetStateAction<Record<number, string[] | number[]>>>;
+  idCurso: number;
 }
 
-function AvaliacaoStep({ step, avaliacao, avaliacoesRespondidasMap, registrarStepBackend }: AvaliacaoStepProps) {
-  const jaConcluida = avaliacoesRespondidasMap[step.fkAvaliacaoId as number]?.status === "concluida";
+function AvaliacaoStep({
+  step,
+  avaliacao,
+  avaliacoesRespondidasMap,
+  registrarStepBackend,
+  handleGerarCertificado,
+  atualizarTentativas,
+  setAvaliacoesRespondidasMap,
+  marcarConcluido,
+  setVerDetalhes,
+  idCurso
+}: AvaliacaoStepProps) {
+  const tentativa = avaliacoesRespondidasMap[step.fkAvaliacaoId as number];
+  const [mostrarResultados, setMostrarResultados] = useState(false);
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
 
-  if (jaConcluida) {
+  const status = tentativa?.status;
+  const nota = tentativa?.nota ?? 0;
+  const notaMinima = avaliacao?.notaMinima ?? 70;
+  const isCurso = avaliacao?.tipo === "avaliacao_curso";
+
+  const iniciarOuRefazer = () => {
+    registrarStepBackend(step);
+    setMostrarFormulario(true);
+  };
+
+  const handleFinalizarAvaliacao = async () => {
+    setMostrarFormulario(false);
+    await atualizarTentativas?.();
+  };
+
+  if (mostrarFormulario) {
     return (
-      <div>
-        <h3>{avaliacao.titulo}</h3>
-        <p>✅ Você já concluiu essa avaliação</p>
-      </div>
+      <AvaliacaoControle
+        step={step}
+        avaliacao={avaliacao}
+        onFinalizar={handleFinalizarAvaliacao}
+        handleGerarCertificado={handleGerarCertificado}
+        registrarStepBackend={registrarStepBackend}
+        setAvaliacoesRespondidasMap={setAvaliacoesRespondidasMap}
+        marcarConcluido={marcarConcluido}
+        setVerDetalhes={setVerDetalhes}
+        idCurso={idCurso}
+      />
     );
   }
 
   return (
-    <div>
-      <h3>{avaliacao.titulo}</h3>
-      <button onClick={() => registrarStepBackend(step)}>Iniciar Avaliação</button>
+    <div className="p-4 space-y-4">
+      {/* Cabeçalho fixo da avaliação */}
+      <div className="text-center rounded-lg w-full mb-4">
+        <div className="flex items-center justify-center gap-2 text-purple-600 mb-2">
+          <h3 className="text-xl font-bold text-gray-800">
+            {avaliacao?.titulo}
+          </h3>
+        </div>
+
+        <div className="flex items-center gap-3 justify-center text-xs text-gray-600 mt-2 mb-6">
+          {/* Quantidade de Perguntas */}
+          <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full">
+            <BookOpen className="w-4 h-4 text-purple-600" />
+            <span className="font-medium">
+              {avaliacao?.perguntas?.length ?? 0} pergunta
+              {avaliacao?.perguntas?.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          {/* Tempo estimado */}
+          <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full">
+            <Clock className="w-4 h-4 text-blue-600" />
+            <span className="font-medium">
+              {avaliacao?.tempo_limite ?? 0} min
+            </span>
+          </div>
+
+          {/* Tipo da avaliação */}
+          <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full">
+            {avaliacao?.tipoAplicacao === "quiz" ? (
+              <ClipboardList className="w-4 h-4 text-green-500" />
+            ) : (
+              <CheckCircle className="w-4 h-4 text-green-500" />
+            )}
+            <span className="font-medium capitalize">
+              {avaliacao?.tipoAplicacao ?? "avaliação"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 1. AVALIAÇÃO NÃO REALIZADA */}
+      {!status && (
+        <div className="w-full flex justify-center">
+          <button onClick={iniciarOuRefazer} className=" px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm shadow-sm cursor-pointer">
+            Iniciar Avaliação
+          </button>
+        </div>
+      )}
+
+      {/* 2. AVALIAÇÃO RESPONDIDA */}
+      {status === "concluida" && (
+        <div className="space-y-2">
+          {isCurso ? (
+            // 3. AVALIAÇÃO DE CURSO
+            nota >= notaMinima ? (
+              <>
+                <p className="text-green-600">
+                  ✅ Aprovado com nota {nota}
+                </p>
+                <button
+                  onClick={handleGerarCertificado}
+                  className="btn btn-success"
+                >
+                  Gerar Certificado
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-red-600">
+                  ❌ Reprovado com nota {nota}
+                </p>
+                <button
+                  onClick={iniciarOuRefazer}
+                  className="btn btn-warning"
+                >
+                  Refazer Prova
+                </button>
+              </>
+            )
+          ) : (
+            <>
+              {!mostrarResultados ? (
+                <button
+                  onClick={() => setMostrarResultados(true)}
+                  className="btn btn-secondary"
+                >
+                  Ver Resultados
+                </button>
+              ) : (
+                <div>
+                  <p>Nota: {nota}</p>
+                  <button
+                    onClick={() => setMostrarResultados(false)}
+                    className="text-sm underline"
+                  >
+                    Ocultar Resultados
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={iniciarOuRefazer}
+                className="btn btn-warning"
+              >
+                Refazer Avaliação
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
+
 }
 
 interface FooterProps {
@@ -316,6 +502,11 @@ export default function PlayCursoPage() {
   const [stepAtualIndex, setStepAtualIndex] = useState<number>(0);
   const [materialSelecionado, setMaterialSelecionado] = useState<{ titulo: string; url: string } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [_avaliacaoIniciada, setAvaliacaoIniciada] = useState(false);
+  const [_inicioAvaliacao, setInicioAvaliacao] = useState<Date | null>(null);
+  const [_respostasSelecionadas, setRespostasSelecionadas] = useState<Record<number, string[] | number[]>>({});
+  const [_verDetalhes, setVerDetalhes] = useState(false);
+  const [avaliacoesRespondidasMap, setAvaliacoesRespondidasMap] = useState<Record<number, any>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -330,11 +521,23 @@ export default function PlayCursoPage() {
       const concluidos: (string | number)[] = [];
 
       data.steps?.forEach((s) => {
-        // Encontrar o usuário da aula relacionada
-        const aula = data.modulos.flatMap(m => m.aulas).find(a => a.idAula === s.idAula);
-        const usuarioAula = aula?.aulausuarios?.[0];
+        let concluido = false;
 
-        if (isStepConcluido(s, usuarioAula, {})) {
+        // Step de aula (vídeo/material/avaliacao no aulastep)
+        if (s.idAula) {
+          const aula = data.modulos.flatMap(m => m.aulas).find(a => a.idAula === s.idAula);
+          const usuarioAula = aula?.aulausuarios?.[0];
+
+          concluido = isStepConcluido(s, usuarioAula, {});
+        }
+
+        // Step de avaliação de curso
+        if (s.tipo === "avaliacao_curso" || s.tipo === "avaliacao") {
+          const tentativa = s.avaliacao?.avaliacoesUsuarios?.[0];
+          concluido ||= tentativa?.status === "concluida";
+        }
+
+        if (concluido) {
           concluidos.push(s.idAulaStep);
         }
       });
@@ -345,37 +548,63 @@ export default function PlayCursoPage() {
     load();
   }, [idCurso]);
 
-  const avaliacoesRespondidasMap = useMemo(() => {
+  useEffect(() => {
+    if (!curso) return;
+
     const map: Record<number, any> = {};
     curso?.avaliacoes?.forEach(av => {
       const tentativa = av.avaliacoesUsuarios?.[0];
-      if (tentativa) {
-        map[av.idAvaliacao!] = tentativa;
-      }
+      if (tentativa) map[av.idAvaliacao!] = tentativa;
     });
+
     curso?.modulos?.forEach(m => {
       m.avaliacoes?.forEach(av => {
         const tentativa = av.avaliacoesUsuarios?.[0];
-        if (tentativa) {
-          map[av.idAvaliacao!] = tentativa;
-        }
+        if (tentativa) map[av.idAvaliacao!] = tentativa;
       });
       m.aulas?.forEach(a => {
         a.avaliacoes?.forEach(av => {
           const tentativa = av.avaliacoesUsuarios?.[0];
-          if (tentativa) {
-            map[av.idAvaliacao!] = tentativa;
-          }
+          if (tentativa) map[av.idAvaliacao!] = tentativa;
         });
       });
     });
-    return map;
+
+    setAvaliacoesRespondidasMap(map);
   }, [curso]);
 
   const stepAtual: Step | null = curso?.steps?.[stepAtualIndex] ?? null;
 
-  const registrarStepBackend = (step: Step) => {
-    setStepsConcluidos((prev) => [...prev, step.idAulaStep]);
+  const registrarStepBackend = async (step: Step, progressoVideo?: number): Promise<void> => {
+    try {
+      if (!step.fkAvaliacaoId) {
+        toast.error("Nenhuma avaliação encontrada!");
+        return;
+      }
+
+      if (step.idAula) {
+        await registrarStepAula({
+          fkAulaId: step.idAula,
+          idReferencia: step.fkAulaVideoId ?? step.fkAvaliacaoId ?? step.fkMaterialId,
+          tipo: step.tipo as any,
+          progressoVideo,
+        });
+      } else {
+        await registrarStepCurso({
+          idCurso: Number(idCurso),
+          idReferencia: step.fkAvaliacaoId!,
+          tipo: step.tipo as any,
+          progressoVideo,
+        });
+      }
+
+      setStepsConcluidos(prev =>
+        prev.includes(step.idAulaStep) ? prev : [...prev, step.idAulaStep]
+      );
+
+    } catch (e) {
+      console.error("Erro ao registrar step:", e);
+    }
   };
 
   if (!curso) return <div>Carregando...</div>;
@@ -415,8 +644,8 @@ export default function PlayCursoPage() {
 
         {/* Conteúdo */}
         <section className="flex-1 min-w-0 max-h-[88vh] overflow-y-auto bg-white border border-gray-200 rounded-lg px-5 py-3 custom-scrollbar">
-          <div className="w-full mb-2">
-            <div className="flex items-center justify-between px-4 py-3">
+          <div className="w-full mb-3">
+            <div className="flex items-center justify-between mb-3">
               {/* Título da Aula */}
               <h2 className="text-lg sm:text-xl font-semibold text-gray-700 truncate max-w-[60%]">
                 {stepAtual?.tipo === "avaliacao"
@@ -435,13 +664,21 @@ export default function PlayCursoPage() {
             </div>
 
             {/* Barra de progresso */}
-            <div className="w-full bg-gray-200 h-2">
-              <div
-                className="bg-green-500 h-2 transition-all"
-                style={{
-                  width: `${(stepsConcluidos.length / (curso.steps?.length ?? 1)) * 100}%`,
-                }}
-              />
+            <div className="">
+              <div className="w-full bg-gray-200 h-2 rounded-full mb-1">
+                <div
+                  className="bg-green-500 h-2 transition-all rounded-full"
+                  style={{
+                    width: `${(stepsConcluidos.length / (curso.steps?.length ?? 1)) * 100}%`,
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-start text-xs text-gray-500 italic">{stepsConcluidos.length} de {curso.steps?.length} etapas concluidas</p>
+                <p className="text-end text-xs text-gray-400 italic">
+                  {Math.floor((stepsConcluidos.length / (curso.steps?.length ?? 1)) * 100)}%
+                </p>
+              </div>
             </div>
           </div>
 
@@ -452,6 +689,13 @@ export default function PlayCursoPage() {
             aulaSelecionada={curso.modulos.flatMap(m => m.aulas).find(a => a.idAula === stepAtual?.idAula)}
             setMaterialSelecionado={setMaterialSelecionado}
             setModalOpen={setModalOpen}
+            setAvaliacoesRespondidasMap={setAvaliacoesRespondidasMap}
+            marcarConcluido={(id) => setStepsConcluidos((prev) => prev.includes(id) ? prev : [...prev, id])}
+            setVerDetalhes={setVerDetalhes}
+            setAvaliacaoIniciada={setAvaliacaoIniciada}
+            setInicioAvaliacao={(val) => setInicioAvaliacao(val)}
+            setRespostasSelecionadas={setRespostasSelecionadas}
+            idCurso={Number(idCurso)}
           />
         </section>
       </div>

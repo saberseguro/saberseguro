@@ -4,6 +4,7 @@ import {
   verificarInicioCurso,
   verificarConclusaoModulo,
   buscarProgressoAula,
+  registrarUsuarioStep,
 } from "../../models/curso/aulausuario";
 
 export const buscarProgressoAulaController = async (req: Request, res: Response) => {
@@ -31,6 +32,19 @@ export const registrarAulaStepController = async (req: Request, res: Response) =
     return res.json(result);
   } catch (error: any) {
     return res.status(400).json({ error: error.message });
+  }
+};
+
+export const registrarUsuarioStepController = async (req: Request, res: Response) => {
+  try {
+    const result = await registrarUsuarioStep.execute({
+      ...req.body,
+      user: req.user,
+    });
+    res.json(result);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ erro: "Erro ao registrar step do curso" });
   }
 };
 
