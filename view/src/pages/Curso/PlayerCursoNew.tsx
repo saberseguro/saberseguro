@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CursoCompleto, Step } from "../../types/EstruturaCurso";
-import { Link, useParams } from "react-router-dom";
-import { getCursoCompleto, registrarStepAula, registrarStepCurso } from "../../services/apiCurso";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { fetchResultadoAvaliacao, getCursoCompleto, registrarStepAula, registrarStepCurso } from "../../services/apiCurso";
 import { ArrowLeft, BookOpen, CheckCircle, ChevronRight, Circle, ClipboardList, Clock, Video } from "lucide-react";
 import ReactPlayer from "react-player";
 import ModalVisualizador from "../../components/Modais/ModalVisualizador";
 import toast from "react-hot-toast";
 import AvaliacaoControle from "../../components/AvaliacaoControle";
+import AvaliacaoProva from "../../components/AvaliacaoProva";
 
 function isStepConcluido(step: any, usuarioAula: any, avaliacoesRespondidasMap: any) {
   switch (step.tipo) {
@@ -207,11 +208,17 @@ function StepRenderer({
   setAvaliacoesRespondidasMap,
   marcarConcluido,
   setVerDetalhes,
-  setAvaliacaoIniciada,
-  setInicioAvaliacao,
-  setRespostasSelecionadas,
   idCurso
 }: StepRendererProps) {
+
+  const navigate = useNavigate();
+
+  const handleGerarCertificado = () => {
+    if (idCurso) {
+      navigate(`/certificado/${idCurso}`);
+    }
+  };
+
   if (!step) return <div>Selecione um step</div>;
 
   if (step.tipo === "video") {
@@ -261,202 +268,20 @@ function StepRenderer({
 
   if (step.tipo.startsWith("avaliacao")) {
     return (
-      <AvaliacaoStep
+      <AvaliacaoProva
         step={step}
         avaliacao={step.avaliacao}
-        avaliacoesRespondidasMap={avaliacoesRespondidasMap}
         registrarStepBackend={registrarStepBackend}
         setAvaliacoesRespondidasMap={setAvaliacoesRespondidasMap}
         marcarConcluido={marcarConcluido}
         setVerDetalhes={setVerDetalhes}
-        setAvaliacaoIniciada={setAvaliacaoIniciada}
-        setInicioAvaliacao={setInicioAvaliacao}
-        setRespostasSelecionadas={setRespostasSelecionadas}
+        handleGerarCertificado={handleGerarCertificado}
         idCurso={idCurso}
       />
     );
   }
 
   return <div>Conteúdo não suportado</div>;
-}
-
-interface AvaliacaoStepProps {
-  step: Step;
-  avaliacao: any;
-  avaliacoesRespondidasMap: Record<number, any>;
-  registrarStepBackend: (step: Step) => Promise<void>;
-  handleGerarCertificado?: () => void;
-  atualizarTentativas?: () => Promise<void>;
-  setAvaliacoesRespondidasMap: React.Dispatch<React.SetStateAction<Record<number, any>>>;
-  marcarConcluido: (idAulaStep: number | string) => void;
-  setVerDetalhes: (valor: boolean) => void;
-  setAvaliacaoIniciada: (valor: boolean) => void;
-  setInicioAvaliacao: (valor: Date) => void;
-  setRespostasSelecionadas: React.Dispatch<React.SetStateAction<Record<number, string[] | number[]>>>;
-  idCurso: number;
-}
-
-function AvaliacaoStep({
-  step,
-  avaliacao,
-  avaliacoesRespondidasMap,
-  registrarStepBackend,
-  handleGerarCertificado,
-  atualizarTentativas,
-  setAvaliacoesRespondidasMap,
-  marcarConcluido,
-  setVerDetalhes,
-  idCurso
-}: AvaliacaoStepProps) {
-  const tentativa = avaliacoesRespondidasMap[step.fkAvaliacaoId as number];
-  const [mostrarResultados, setMostrarResultados] = useState(false);
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
-
-  const status = tentativa?.status;
-  const nota = tentativa?.nota ?? 0;
-  const notaMinima = avaliacao?.notaMinima ?? 70;
-  const isCurso = avaliacao?.tipo === "avaliacao_curso";
-
-  const iniciarOuRefazer = () => {
-    registrarStepBackend(step);
-    setMostrarFormulario(true);
-  };
-
-  const handleFinalizarAvaliacao = async () => {
-    setMostrarFormulario(false);
-    await atualizarTentativas?.();
-  };
-
-  if (mostrarFormulario) {
-    return (
-      <AvaliacaoControle
-        step={step}
-        avaliacao={avaliacao}
-        onFinalizar={handleFinalizarAvaliacao}
-        handleGerarCertificado={handleGerarCertificado}
-        registrarStepBackend={registrarStepBackend}
-        setAvaliacoesRespondidasMap={setAvaliacoesRespondidasMap}
-        marcarConcluido={marcarConcluido}
-        setVerDetalhes={setVerDetalhes}
-        idCurso={idCurso}
-      />
-    );
-  }
-
-  return (
-    <div className="p-4 space-y-4">
-      {/* Cabeçalho fixo da avaliação */}
-      <div className="text-center rounded-lg w-full mb-4">
-        <div className="flex items-center justify-center gap-2 text-purple-600 mb-2">
-          <h3 className="text-xl font-bold text-gray-800">
-            {avaliacao?.titulo}
-          </h3>
-        </div>
-
-        <div className="flex items-center gap-3 justify-center text-xs text-gray-600 mt-2 mb-6">
-          {/* Quantidade de Perguntas */}
-          <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full">
-            <BookOpen className="w-4 h-4 text-purple-600" />
-            <span className="font-medium">
-              {avaliacao?.perguntas?.length ?? 0} pergunta
-              {avaliacao?.perguntas?.length === 1 ? "" : "s"}
-            </span>
-          </div>
-
-          {/* Tempo estimado */}
-          <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full">
-            <Clock className="w-4 h-4 text-blue-600" />
-            <span className="font-medium">
-              {avaliacao?.tempo_limite ?? 0} min
-            </span>
-          </div>
-
-          {/* Tipo da avaliação */}
-          <div className="flex items-center gap-1 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full">
-            {avaliacao?.tipoAplicacao === "quiz" ? (
-              <ClipboardList className="w-4 h-4 text-green-500" />
-            ) : (
-              <CheckCircle className="w-4 h-4 text-green-500" />
-            )}
-            <span className="font-medium capitalize">
-              {avaliacao?.tipoAplicacao ?? "avaliação"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 1. AVALIAÇÃO NÃO REALIZADA */}
-      {!status && (
-        <div className="w-full flex justify-center">
-          <button onClick={iniciarOuRefazer} className=" px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm shadow-sm cursor-pointer">
-            Iniciar Avaliação
-          </button>
-        </div>
-      )}
-
-      {/* 2. AVALIAÇÃO RESPONDIDA */}
-      {status === "concluida" && (
-        <div className="space-y-2">
-          {isCurso ? (
-            // 3. AVALIAÇÃO DE CURSO
-            nota >= notaMinima ? (
-              <>
-                <p className="text-green-600">
-                  ✅ Aprovado com nota {nota}
-                </p>
-                <button
-                  onClick={handleGerarCertificado}
-                  className="btn btn-success"
-                >
-                  Gerar Certificado
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="text-red-600">
-                  ❌ Reprovado com nota {nota}
-                </p>
-                <button
-                  onClick={iniciarOuRefazer}
-                  className="btn btn-warning"
-                >
-                  Refazer Prova
-                </button>
-              </>
-            )
-          ) : (
-            <>
-              {!mostrarResultados ? (
-                <button
-                  onClick={() => setMostrarResultados(true)}
-                  className="btn btn-secondary"
-                >
-                  Ver Resultados
-                </button>
-              ) : (
-                <div>
-                  <p>Nota: {nota}</p>
-                  <button
-                    onClick={() => setMostrarResultados(false)}
-                    className="text-sm underline"
-                  >
-                    Ocultar Resultados
-                  </button>
-                </div>
-              )}
-              <button
-                onClick={iniciarOuRefazer}
-                className="btn btn-warning"
-              >
-                Refazer Avaliação
-              </button>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
 }
 
 interface FooterProps {
