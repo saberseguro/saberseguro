@@ -26,6 +26,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
 import { withCalculatedCargaHoraria } from "../../auxiliares/cursoCalc";
 import FormAvaliacao from "./FormAvaliacao";
+import Swal from "sweetalert2";
+import toast from "react-hot-toast";
 
 interface Props {
   curso: Curso & { modulos: Modulo[] };
@@ -115,14 +117,35 @@ export default function FormModulos({ curso, setCurso, setUploadsPendentes }: Pr
 
   const removeModulo = (idModulo: number | undefined) => {
     if (idModulo == null) return;
-    setCurso((c) => {
-      const sem = (c.modulos ?? []).filter((m) => m.idModulo !== idModulo);
-      return { ...c, modulos: renumerarOrdem(sem) };
-    });
-    if (expandedModuloId === idModulo) setExpandedModuloId(null);
-    setModTabs((prev) => {
-      const { [idModulo!]: _, ...rest } = prev;
-      return rest;
+
+    Swal.fire({
+      title: "Tem certeza?",
+      text: "O módulo e todas as suas aulas serão removidos.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setCurso((c) => {
+          const sem = (c.modulos ?? []).filter((m) => m.idModulo !== idModulo);
+          return { ...c, modulos: renumerarOrdem(sem) };
+        });
+
+        if (expandedModuloId === idModulo) {
+          setExpandedModuloId(null);
+        }
+
+        setModTabs((prev) => {
+          const { [idModulo!]: _, ...rest } = prev;
+          return rest;
+        });
+
+        toast.success("Módulo removido com sucesso!");
+      }
     });
   };
 
@@ -177,15 +200,35 @@ export default function FormModulos({ curso, setCurso, setUploadsPendentes }: Pr
 
   const removeAula = (idModulo: number | undefined, idAula: number | undefined) => {
     if (idModulo == null || idAula == null) return;
-    setCurso((c) => ({
-      ...c,
-      modulos: (c.modulos ?? []).map((m) =>
-        m.idModulo === idModulo
-          ? { ...m, aulas: renumerarOrdem((m.aulas ?? []).filter((a) => a.idAula !== idAula)) }
-          : m
-      ),
-    }));
-    if (expandedAulaId === idAula) setExpandedAulaId(null);
+
+    Swal.fire({
+      title: "Remover Aula?",
+      text: "Esta aula será removida do módulo.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setCurso((c) => ({
+          ...c,
+          modulos: (c.modulos ?? []).map((m) =>
+            m.idModulo === idModulo
+              ? { ...m, aulas: renumerarOrdem((m.aulas ?? []).filter((a) => a.idAula !== idAula)) }
+              : m
+          ),
+        }));
+
+        if (expandedAulaId === idAula) {
+          setExpandedAulaId(null);
+        }
+
+        toast.success("Aula removida com sucesso!");
+      }
+    });
   };
 
   // Avaliação do MÓDULO

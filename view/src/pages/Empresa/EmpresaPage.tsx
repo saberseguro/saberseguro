@@ -252,7 +252,6 @@ export default function GerenciaEmpresa() {
     }
   };
 
-
   return (
     <>
       <div className="flex flex-col h-full shadow-md rounded-md bg-white">
@@ -630,6 +629,17 @@ export default function GerenciaEmpresa() {
                                             <button className="text-gray-400 cursor-not-allowed">
                                               <PencilOff size={15} />
                                             </button>
+                                          </ToolTip>
+                                        )}
+
+                                        {/* Ativo/Inativo */}
+                                        {f.ativo === 1 ? (
+                                          <ToolTip text="Ativo">
+                                            <CircleCheck size={16} className="text-green-600" />
+                                          </ToolTip>
+                                        ) : (
+                                          <ToolTip text="Inativo">
+                                            <CircleX size={16} className="text-red-600" />
                                           </ToolTip>
                                         )}
                                       </td>

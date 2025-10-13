@@ -10,25 +10,23 @@ export const buscarMedida = {
 };
 
 export const buscarMedidas = {
-  async execute(query: any, fkEmpresaId: number) {
+  async execute(query: any, fkEmpresaId: number, isAdmin: boolean) {
     const page = Number(query.page) || 1;
     const take = 10;
     const skip = (page - 1) * take;
 
-    const where: any = {
-      AND: [
-        {
-          OR: [
-            { fkEmpresaId: null },
-            { fkEmpresaId }
-          ]
-        }
-      ]
-    };
+    const where: any = { AND: [] };
+
+    // 🔹 Se não for admin, filtra por empresa
+    if (!isAdmin) {
+      where.AND.push({
+        OR: [{ fkEmpresaId: null }, { fkEmpresaId }],
+      });
+    }
 
     if (query.busca) {
       where.AND.push({
-        nome: { contains: String(query.busca), mode: 'insensitive' }
+        nome: { contains: String(query.busca), mode: "insensitive" },
       });
     }
 
@@ -43,7 +41,7 @@ export const buscarMedidas = {
     const [data, total] = await Promise.all([
       prisma.medida.findMany({
         where,
-        orderBy: { nome: 'asc' },
+        orderBy: { nome: "asc" },
         skip,
         take,
       }),
@@ -51,7 +49,7 @@ export const buscarMedidas = {
     ]);
 
     return { data, total, page, take };
-  }
+  },
 };
 
 export const criarMedida = {
@@ -82,7 +80,7 @@ export const criarMedida = {
 export const editarMedida = {
   async execute(id: number, data: any, usuario: any) {
     const antes = await prisma.medida.findUnique({ where: { idMedida: id } });
-    if (!antes || antes.ativo === 0) throw new Error('Nenhuma medida encontrada com esse ID');
+    if (!antes) throw new Error('Nenhuma medida encontrada com esse ID');
 
     const atualizada = await prisma.medida.update({
       where: { idMedida: id },
@@ -90,6 +88,7 @@ export const editarMedida = {
         nome: data.nome,
         descricao: data.descricao,
         tipo: data.tipo,
+        ativo: data.ativo
       }
     });
 
@@ -134,19 +133,17 @@ export const atualizarStatusMedida = {
 export const excluirMedida = {
   async execute(id: number, usuario: any) {
     const antes = await prisma.medida.findUnique({ where: { idMedida: id } });
-    if (!antes || antes.ativo === 0) throw new Error('Nenhuma medida encontrada com esse ID');
+    console.log(antes);
+    if (!antes) throw new Error('Nenhuma medida encontrada com esse ID');
 
-    await prisma.medida.update({
-      where: { idMedida: id },
-      data: { ativo: 0 }
-    });
+    await prisma.medida.delete({ where: { idMedida: id } });
 
     await registrarEvento({
       idUsuario: usuario.idUsuario,
       tipo: 'excluir',
       entidade: 'medida',
       entidadeId: id,
-      descricao: `Medida "${antes.nome}" desativada.`,
+      descricao: `Medida "${antes.nome}" excluida com sucesso.`,
       dadosAntes: antes
     });
   }

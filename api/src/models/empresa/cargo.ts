@@ -52,12 +52,6 @@ export const buscarCargosSetor = {
     // 1) Buscar cargos do setor
     const cargos = await prisma.cargo.findMany({
       where: { fkSetorId: idSetor },
-      select: {
-        idCargo: true,
-        nome: true,
-        ativo: true,
-        fkSetorId: true,
-      },
     });
 
     const cargoIds = cargos.map((c) => c.idCargo);

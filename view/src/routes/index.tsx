@@ -3,15 +3,18 @@ import { Suspense, lazy } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
+import "sweetalert2/dist/sweetalert2.min.css";
 
 const LoginPage = lazy(() => import('../pages/Auth/LoginPage'));
 const HomePage = lazy(() => import('../pages/Home/HomePage'));
 const EmpresaPage = lazy(() => import('../pages/Empresa/EmpresaPage'));
 const CursoPage = lazy(() => import('../pages/Curso/CursoPage'));
 const MeusCursos = lazy(() => import('../pages/Curso/MeusCursos'));
-const PlayerCurso = lazy(() => import('../pages/Curso/PlayerCursoNew'));
+const PlayerCurso = lazy(() => import('../pages/Curso/PlayerCurso'));
 const MedidaPage = lazy(() => import('../pages/Medida/MedidaPage'));
 const CertificadoPreview = lazy(() => import('../pages/CertificadoPreview'));
+const ConfigPage = lazy(() => import('../pages/ConfigPage'));
+const CertificadoPage = lazy(() => import('../pages/Curso/CertificadoPage'));
 
 function PrivateRoute() {
   const { user } = useAuth();
@@ -48,10 +51,14 @@ export default function AppRoutes() {
               <Route path="/cursos/meuscursos" element={<MeusCursos />} />
               <Route path="/cursos/playcurso/:idCurso" element={<PlayerCurso />} />
 
+              <Route path="/cursos/certificados" element={<CertificadoPage />} />
               <Route path="/certificado/:idCurso" element={<CertificadoPreview />} />
 
               {/* Medida */}
               <Route path="/medida" element={<MedidaPage />} />
+
+              {/* Configurações */}
+              <Route path="/configuracoes" element={<ConfigPage />} />
             </Route>
           </Route>
 

@@ -5,6 +5,8 @@ import { SelectInput, TextArea, Input } from "./Inputs";
 import CheckboxStatus from "./Inputs";
 import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import ToolTip from "../Auxiliares/ToolTip";
+import Swal from "sweetalert2";
+import toast from "react-hot-toast";
 
 interface Props {
   perguntas: Pergunta[];
@@ -32,13 +34,28 @@ export default function FormPerguntasDetalhes({ perguntas, onChange }: Props) {
   };
 
   const removePerguntaByIdx = (idx: number) => {
-    const newList = list.filter((_, i) => i !== idx);
-    onChange(newList);
-    setOpenIndexes((prev) =>
-      prev
-        .filter((i) => i !== idx)
-        .map((i) => (i > idx ? i - 1 : i))
-    );
+    Swal.fire({
+      title: "Remover Pergunta?",
+      text: "Esta pergunta e suas alternativas serão removidas.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const newList = list.filter((_, i) => i !== idx);
+        onChange(newList);
+        setOpenIndexes((prev) =>
+          prev
+            .filter((i) => i !== idx)
+            .map((i) => (i > idx ? i - 1 : i))
+        );
+        toast.success("Pergunta removida com sucesso!");
+      }
+    });
   };
 
   const addAlternativaByIdx = (idxPerg: number) => {
@@ -60,27 +77,42 @@ export default function FormPerguntasDetalhes({ perguntas, onChange }: Props) {
       list.map((p, i) =>
         i === idxPerg
           ? {
-              ...p,
-              alternativas: (p.alternativas ?? []).map((a, j) =>
-                j === idxAlt ? { ...a, ...patch } : a
-              ),
-            }
+            ...p,
+            alternativas: (p.alternativas ?? []).map((a, j) =>
+              j === idxAlt ? { ...a, ...patch } : a
+            ),
+          }
           : p
       )
     );
   };
 
   const removeAlternativaByIndex = (idxPerg: number, idxAlt: number) => {
-    onChange(
-      list.map((p, i) =>
-        i === idxPerg
-          ? {
-              ...p,
-              alternativas: (p.alternativas ?? []).filter((_, j) => j !== idxAlt),
-            }
-          : p
-      )
-    );
+    Swal.fire({
+      title: "Remover Alternativa?",
+      text: "Esta alternativa será removida da pergunta.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        onChange(
+          list.map((p, i) =>
+            i === idxPerg
+              ? {
+                ...p,
+                alternativas: (p.alternativas ?? []).filter((_, j) => j !== idxAlt),
+              }
+              : p
+          )
+        );
+        toast.success("Alternativa removida com sucesso!");
+      }
+    });
   };
 
   return (
@@ -113,9 +145,9 @@ export default function FormPerguntasDetalhes({ perguntas, onChange }: Props) {
               >
                 <div className="flex items-center gap-2">
                   {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  <span className="font-medium text-gray-700">
+                  <span className="font-medium text-gray-700 w-full">
                     {p.enunciado?.trim()
-                      ? p.enunciado.slice(0, 50)
+                      ? p.enunciado.slice(0, 150)
                       : "Nova Pergunta"}
                   </span>
                 </div>

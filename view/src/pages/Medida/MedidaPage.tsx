@@ -1,15 +1,15 @@
 import { useEffect, useState, useCallback } from "react";
 import type { Medida, MedidaTipo } from "../../types/EstruturaMedida";
-import { getMedidas, createMedida, updateMedida, deleteMedida, toggleStatusMedida } from "../../services/apiMedida";
+import { getMedidas, createMedida, updateMedida, deleteMedida } from "../../services/apiMedida";
 
 // Componentes
 import TabelaBase from "../../components/Tabelas/TabelaBase";
 import FiltrosMedidas from "../../components/Filtros/FiltrosMedidas";
 import ModalMedida from "../../components/Modais/ModalMedida";
 import { makeMedida } from "../../types/FactoriesMedida";
-import ToolTip from "../../components/Auxiliares/ToolTip";
 import { Plus } from "lucide-react";
-import CheckboxStatus from "../../components/Formularios/Inputs";
+import Swal from "sweetalert2";
+import toast from "react-hot-toast";
 
 export default function MedidaPage() {
   const [medidas, setMedidas] = useState<Medida[]>([]);
@@ -75,6 +75,31 @@ export default function MedidaPage() {
     setIsOpenModal(true);
   };
 
+  const handleRemoverMedida = async (m: Medida) => {
+    Swal.fire({
+      title: "Remover Medida?",
+      text: `A medida "${m.nome}" será excluída do sistema.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await deleteMedida(m.idMedida);
+          toast.success("Medida removida com sucesso!");
+          buscarMedidas();
+        } catch (error) {
+          console.error(error);
+          toast.error("Erro ao remover medida.");
+        }
+      }
+    });
+  };
+
   return (
     <div className="p-4 rounded-md shadow-md bg-white">
       <div className="flex justify-between items-center mb-4">
@@ -93,11 +118,7 @@ export default function MedidaPage() {
         itemsPerPage={10}
         isLoading={loading}
         onEdit={handleEditMedida}
-        onDelete={async (m) => {
-          if (!confirm(`Excluir a medida "${m.nome}"?`)) return;
-          await deleteMedida(m.idMedida);
-          buscarMedidas();
-        }}
+        onDelete={handleRemoverMedida}
       />
 
       <ModalMedida

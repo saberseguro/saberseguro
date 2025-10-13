@@ -6,10 +6,10 @@ const router = Router();
 
 router.get('/', authorize(['ver_medidas']), buscarMedidasController);
 router.get('/:id', authorize(['ver_medidas']), buscarMedidaController);
-router.post('/', authorize(['criar_medidas']),criarMedidaController);
-router.put('/:id', authorize(['editar_medidas']),editarMedidaController);
+router.post('/', authorize(['criar_medidas']), criarMedidaController);
+router.put('/:id', authorize(['editar_medidas']), editarMedidaController);
 router.patch('/:id/status', authorize(['editar_medidas']), atualizarStatusMedidaController);
-router.delete('/:id', authorize(['excluir_medidas']),excluirMedidaController);
+router.delete('/:id', authorize(['excluir_medidas']), excluirMedidaController);
 
 router.post('/:id/vinculo', authorize(['criar_medidas']), criarMedidaVinculoController);
 router.get('/:id/vinculos', authorize(['criar_medidas']), buscarVinculosDaMedidaController);

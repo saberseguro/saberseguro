@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { buscarCursoCompleto, buscarCursoAcessos, buscarCursos, buscarMeusCursos, criarCurso, criarCursoAcesso, editarCurso, excluirCurso, excluirCursoAcesso, syncCurso, finalizarCurso } from '../../models/curso/curso';
+import { buscarCursoCompleto, buscarCursoAcessos, buscarCursos, buscarMeusCursos, criarCurso, criarCursoAcesso, editarCurso, excluirCurso, excluirCursoAcesso, syncCurso, finalizarCurso, registrarCursoAcesso } from '../../models/curso/curso';
 import { desvincularCursoDaMedida, listarMedidasDoCurso, vincularCursoNaMedida } from '../../models/medida';
-import { gerarCertificadoPdf, getCertificadoPreview } from '../../models/curso/gerarCertificado';
+import { gerarCertificado, gerarCertificadoPdf, getCertificadoPreview, listarCertificados } from '../../models/curso/certificado';
 import { registrarEvento } from '../../shared/utils/registrarEvento';
 
 export const buscarCursoController = async (req: Request, res: Response) => {
@@ -17,15 +17,24 @@ export const buscarCursoController = async (req: Request, res: Response) => {
 
 export const buscarCursosController = async (req: Request, res: Response) => {
   try {
-    const resultado = await buscarCursos.execute(req.query);
+    const user = (req as any).user;
+
+    const resultado = await buscarCursos.execute({
+      ...req.query,
+      user,
+    });
+
     if (!resultado.data.length) {
-      return res.status(404).json({ error: 'Nenhum curso encontrado' });
+      return res.status(404).json({ error: "Nenhum curso encontrado" });
     }
+
     return res.json(resultado);
   } catch (err: any) {
+    console.error("Erro ao buscar cursos:", err);
     return res.status(500).json({ error: err.message });
   }
 };
+
 
 export const buscarMeusCursosController = async (req: Request, res: Response) => {
   try {
@@ -219,18 +228,38 @@ export const syncCursoController = async (req: Request, res: Response) => {
   }
 };
 
+export const listarCertificadosController = async (req: Request, res: Response) => {
+  const usuario = req.user;
+
+  if (!usuario) {
+    return res.status(401).json({ erro: "Usuário não autenticado." });
+  }
+
+  try {
+    const certificados = await listarCertificados.execute(usuario);
+
+    if (!certificados.length) {
+      return res.status(200).json([]);
+    }
+
+    return res.status(200).json(certificados);
+  } catch (error) {
+    console.error("Erro ao listar certificados:", error);
+    return res.status(500).json({ erro: "Erro ao listar certificados." });
+  }
+};
 
 export const gerarCertificadoController = async (req: Request, res: Response) => {
   const { dados } = req.body;
   const usuario = req.user;
 
-
   if (!dados || !usuario) {
     return res.status(400).json({ erro: "Dados ou usuário ausente." });
   }
 
-
   try {
+    const certificado = await gerarCertificado.execute(dados, usuario);
+
     const pdfBuffer = await gerarCertificadoPdf(dados);
 
     await registrarEvento({
@@ -238,11 +267,12 @@ export const gerarCertificadoController = async (req: Request, res: Response) =>
       tipo: "gerar_certificado",
       entidade: "curso",
       entidadeId: dados.idCurso,
-      descricao: `Certificado gerado para o aluno "${usuario.nome}" do curso "${dados.titulo}".`,
+      descricao: `Certificado ${certificado.codigo} gerado para "${usuario.nome}" do curso "${dados.titulo}".`,
     });
 
+    // 4. Retorna PDF
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=certificado.pdf`);
+    res.setHeader("Content-Disposition", `inline; filename=${certificado.codigo}.pdf`);
     res.send(pdfBuffer);
   } catch (error) {
     console.error("Erro ao gerar certificado:", error);
@@ -252,29 +282,60 @@ export const gerarCertificadoController = async (req: Request, res: Response) =>
 
 export const previewCertificadoController = async (req: Request, res: Response) => {
   const idCurso = Number(req.params.id);
-  const idUsuario = Number(req.user?.idUsuario);
+  const usuario = req.user;
 
-  if (isNaN(idCurso)) {
-    return res.status(400).json({ error: "ID do curso inválido" });
+  if (isNaN(idCurso) || !usuario) {
+    return res.status(400).json({ error: "Dados inválidos ou usuário não autenticado." });
   }
 
   try {
-    const dadosCertificado = await getCertificadoPreview.execute(idCurso, idUsuario);
+    // 🔍 Busca os dados completos do certificado
+    const dadosCertificado = await getCertificadoPreview.execute(idCurso, usuario.idUsuario);
 
     if (!dadosCertificado) {
       return res.status(404).json({ error: "Certificado não encontrado ou curso não concluído." });
     }
 
-    // Gerar PDF
-    const pdfBuffer = await gerarCertificadoPdf(dadosCertificado as any);
+    // ⚙️ Gera ou reaproveita o registro no banco
+    await gerarCertificado.execute(
+      { idCurso, idEmpresa: dadosCertificado.idEmpresa, titulo: dadosCertificado.curso },
+      usuario
+    );
+
+    // 🧾 Gera o PDF em buffer
+    const pdfBuffer = await gerarCertificadoPdf(dadosCertificado);
     const pdfBase64 = pdfBuffer.toString("base64");
 
+    // 🧠 Loga o evento
+    await registrarEvento({
+      idUsuario: usuario.idUsuario,
+      tipo: "gerar_certificado",
+      entidade: "curso",
+      entidadeId: idCurso,
+      descricao: `Certificado visualizado (e contabilizado) para o aluno "${usuario.nome}" no curso "${dadosCertificado.curso}".`,
+    });
+
+    // Retorna o preview com PDF
     return res.json({
       ...dadosCertificado,
-      pdfBase64, // ← inclui o PDF no retorno
+      pdfBase64,
     });
   } catch (error) {
     console.error("Erro ao gerar preview do certificado:", error);
     return res.status(500).json({ error: "Erro ao gerar preview do certificado." });
+  }
+};
+
+export const registrarCursoAcessoController = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user?.idUsuario;
+    const idCurso = Number(req.params.id);
+
+    const resultado = await registrarCursoAcesso.execute(Number(idCurso), Number(userId));
+
+    return res.status(200).json(resultado);
+  } catch (err: any) {
+    console.error("Erro ao registrar curso acesso:", err);
+    return res.status(500).json({ error: err.message || "Erro ao registrar acesso ao curso" });
   }
 };

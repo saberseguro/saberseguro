@@ -1,5 +1,5 @@
 import { apiFetch } from './apiFetch';
-import type { Curso, Categoria, CursoCompleto, CertificadoDados, ResponsavelTecnico } from '../types/EstruturaCurso';
+import type { Curso, Categoria, CursoCompleto, CertificadoDados, ResponsavelTecnico, Certificado, CertificadoPreview } from '../types/EstruturaCurso';
 import type { MedidaCurso } from "../types/EstruturaMedida";
 
 interface Filtros {
@@ -46,10 +46,42 @@ export const getCategorias = async (): Promise<Categoria[]> => {
   return res as Categoria[];
 };
 
+export const createCategoria = async (data: Partial<Categoria>): Promise<Categoria> => {
+  const res = await apiFetch("/categoria", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return res as Categoria;
+};
+
+export const updateCategoria = async (id: number, data: Partial<Categoria>): Promise<Categoria> => {
+  const res = await apiFetch(`/categoria/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return res as Categoria;
+};
+
 export const getResponsaveisTecnicos = async (): Promise<ResponsavelTecnico[]> => {
   const res = await apiFetch("/responsaveltecnico");
   return res as ResponsavelTecnico[];
 }
+
+export const createResponsavelTecnico = async (data: Partial<ResponsavelTecnico>): Promise<ResponsavelTecnico> => {
+  const res = await apiFetch("/responsaveltecnico", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return res as ResponsavelTecnico;
+};
+
+export const updateResponsavelTecnico = async (id: number, data: Partial<ResponsavelTecnico>): Promise<ResponsavelTecnico> => {
+  const res = await apiFetch(`/responsaveltecnico/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  return res as ResponsavelTecnico;
+};
 
 export async function syncCurso(curso: Curso): Promise<Curso> {
   const isNovo = !curso.idCurso || curso.idCurso <= 0;
@@ -116,12 +148,11 @@ export async function registrarStepCurso(params: {
   tipo: "avaliacao";
   progressoVideo?: number;
 }): Promise<{ sucesso: boolean }> {
-  return apiFetch("/curso/usuariostep", {
+  return apiFetch("/curso/aulausuario/usuariostep", {
     method: "POST",
     body: JSON.stringify(params),
   });
 }
-
 
 export async function verificarConclusaoModulo(idModulo: number): Promise<{ sucesso: boolean }> {
   return apiFetch("/curso/aulausuario/modulo/verificar-conclusao", {
@@ -178,4 +209,28 @@ export async function finalizarCurso(idCurso: number): Promise<{ sucesso: boolea
 
 export async function getCertificadoPreview(idCurso: number): Promise<CertificadoDados> {
   return await apiFetch(`/curso/certificado/preview/${idCurso}`);
+}
+
+export async function iniciarCursoAcesso(idCurso: number) {
+  return await apiFetch(`/curso/${idCurso}/cursoacesso`, {
+    method: "POST",
+  });
+}
+
+export async function getCertificados(): Promise<Certificado[]> {
+  return await apiFetch("/curso/certificado/listar");
+}
+
+// Gerar visualização (PDF base64)
+export async function previewCertificado(idCurso: number): Promise<CertificadoPreview> {
+  return await apiFetch(`/curso/curso/certificado/preview/${idCurso}`);
+}
+
+// Gerar certificado definitivo (PDF binário)
+export async function gerarCertificado(dados: any) {
+  const res = await apiFetch("/curso/certificado/gerar", {
+    method: "POST",
+    body: JSON.stringify({ dados }),
+  });
+  return res;
 }

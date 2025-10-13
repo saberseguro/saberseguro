@@ -1,3 +1,4 @@
+import type { CertificadosResumo } from "../types/EstruturaCurso";
 import type { Empresa, Unidade, Setor, Cargo, Funcionario } from "../types/EstruturaEmpresa";
 import { apiFetch } from "./apiFetch";
 
@@ -27,4 +28,8 @@ export async function getCargos(idSetor: number, fkEmpresaId: number): Promise<C
 
 export async function getFuncionarios(idCargo: number, fkEmpresaId: number): Promise<Funcionario[]> {
   return apiFetch(`/cargo/funcionariosCargo/${idCargo}?includeCursos=1&includeMedidas=1&fkEmpresaId=${fkEmpresaId}`);
+}
+
+export async function getResumoCertificadoEmpresa(): Promise<CertificadosResumo> {
+  return await apiFetch("/empresa/certificado/resumo");
 }

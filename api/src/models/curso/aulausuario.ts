@@ -68,8 +68,8 @@ export const registrarAulaStep = {
     }
 
     if (tipo === "video") {
-      const tempo = progressoVideo ?? 0;
-      const assistido = tempo >= 50;
+      const tempo = progressoVideo ?? 100;
+      const assistido = tempo >= 100;
 
       await prisma.aulavideoprogresso.upsert({
         where: {
@@ -103,10 +103,10 @@ export const registrarAulaStep = {
       create: {
         fkAulaId,
         fkUsuarioId: user.idUsuario,
-        assistiuVideo: 0,
-        baixouMateriais: 0,
-        respondeuQuiz: 0,
-        concluida: 0,
+        assistiuVideo: 1,
+        baixouMateriais: 1,
+        respondeuQuiz: 1,
+        concluida: 1,
       },
     });
 
@@ -205,7 +205,6 @@ export const registrarUsuarioStep = {
       throw new Error("Dados incompletos.");
     }
 
-    // Aqui só lida com steps do tipo avaliação do curso (sem fkAula)
     if (tipo === "avaliacao") {
       const avaliacao = await prisma.avaliacao.findUnique({
         where: { idAvaliacao: idReferencia },
@@ -367,21 +366,15 @@ async function atualizarProgressoCurso(fkAulaId: number, fkUsuarioId: number) {
   // Descobre o curso via aula diretamente
   const aula = await prisma.aula.findUnique({
     where: { idAula: fkAulaId },
-    select: {
-      modulo: {
-        select: { fkCursoId: true },
-      },
-    },
+    select: { modulo: { select: { fkCursoId: true } } },
   });
 
   if (!aula?.modulo?.fkCursoId) return;
   const cursoId = aula.modulo.fkCursoId;
 
-  // Busca todas as aulas do curso com status do usuário
+  // === 1️⃣ Buscar aulas e progresso
   const aulas = await prisma.aula.findMany({
-    where: {
-      modulo: { fkCursoId: cursoId },
-    },
+    where: { modulo: { fkCursoId: cursoId } },
     include: {
       aulausuarios: {
         where: { fkUsuarioId },
@@ -390,19 +383,37 @@ async function atualizarProgressoCurso(fkAulaId: number, fkUsuarioId: number) {
   });
 
   const totalAulas = aulas.length;
-  const concluidas = aulas.filter(
-    (a) => a.aulausuarios[0]?.concluida === 1
-  ).length;
-
+  const concluidas = aulas.filter(a => a.aulausuarios[0]?.concluida === 1).length;
   const percentual = totalAulas > 0 ? (concluidas / totalAulas) * 100 : 0;
-  const concluido = percentual === 100;
+  let concluido = percentual === 100;
 
+  // === 2️⃣ Buscar avaliação final do curso (sem estar em aula)
+  const avaliacaoCurso = await prisma.avaliacao.findFirst({
+    where: {
+      fkCursoId: cursoId,
+    },
+    select: { idAvaliacao: true },
+  });
+
+  // === 3️⃣ Se existir, checar se o usuário concluiu
+  if (avaliacaoCurso) {
+    const avaliacaoConcluida = await prisma.avaliacaousuario.findFirst({
+      where: {
+        fkUsuarioId,
+        fkAvaliacaoId: avaliacaoCurso.idAvaliacao,
+        status: "concluida",
+      },
+    });
+
+    if (!avaliacaoConcluida) {
+      concluido = false;
+    }
+  }
+
+  // === 4️⃣ Atualizar cursoacesso
   await prisma.cursoacesso.upsert({
     where: {
-      fkUsuarioId_fkCursoId: {
-        fkUsuarioId,
-        fkCursoId: cursoId,
-      },
+      fkUsuarioId_fkCursoId: { fkUsuarioId, fkCursoId: cursoId },
     },
     update: { percentual, concluido: concluido ? 1 : 0 },
     create: {
@@ -417,10 +428,9 @@ async function atualizarProgressoCurso(fkAulaId: number, fkUsuarioId: number) {
 }
 
 async function atualizarProgressoCursoPorIdCurso(fkCursoId: number, fkUsuarioId: number) {
+  // === 1️⃣ Buscar aulas e progresso do usuário
   const aulas = await prisma.aula.findMany({
-    where: {
-      modulo: { fkCursoId },
-    },
+    where: { modulo: { fkCursoId } },
     include: {
       aulausuarios: {
         where: { fkUsuarioId },
@@ -429,19 +439,38 @@ async function atualizarProgressoCursoPorIdCurso(fkCursoId: number, fkUsuarioId:
   });
 
   const totalAulas = aulas.length;
-  const concluidas = aulas.filter(
-    (a) => a.aulausuarios[0]?.concluida === 1
-  ).length;
+  const concluidas = aulas.filter(a => a.aulausuarios[0]?.concluida === 1).length;
 
   const percentual = totalAulas > 0 ? (concluidas / totalAulas) * 100 : 0;
-  const concluido = percentual === 100;
+  let concluido = percentual === 100;
 
+  // === 2️⃣ Buscar avaliação final do curso (fora das aulas)
+  const avaliacaoCurso = await prisma.avaliacao.findFirst({
+    where: {
+      fkCursoId,
+    },
+    select: { idAvaliacao: true },
+  });
+
+  // === 3️⃣ Se o curso tiver avaliação final, verificar se foi concluída
+  if (avaliacaoCurso) {
+    const avaliacaoConcluida = await prisma.avaliacaousuario.findFirst({
+      where: {
+        fkUsuarioId,
+        fkAvaliacaoId: avaliacaoCurso.idAvaliacao,
+        status: "concluida",
+      },
+    });
+
+    if (!avaliacaoConcluida) {
+      concluido = false;
+    }
+  }
+
+  // === 4️⃣ Atualizar progresso no cursoacesso
   await prisma.cursoacesso.upsert({
     where: {
-      fkUsuarioId_fkCursoId: {
-        fkUsuarioId,
-        fkCursoId,
-      },
+      fkUsuarioId_fkCursoId: { fkUsuarioId, fkCursoId },
     },
     update: { percentual, concluido: concluido ? 1 : 0 },
     create: {

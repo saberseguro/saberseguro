@@ -34,12 +34,6 @@ export const buscarSetoresUnidade = {
     // 1) Buscar setores da unidade
     const setores = await prisma.setor.findMany({
       where: { fkUnidadeId: idUnidade },
-      select: {
-        idSetor: true,
-        nome: true,
-        ativo: true,
-        fkUnidadeId: true,
-      },
     });
 
     const setorIds = setores.map((s) => s.idSetor);

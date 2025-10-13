@@ -1,5 +1,4 @@
 // components/Formularios/FormAvaliacao.tsx
-import { useState } from "react";
 import type { Avaliacao, Pergunta } from "../../types/EstruturaCurso";
 import { Input, SelectInput } from "./Inputs";
 import ToolTip from "../Auxiliares/ToolTip";
@@ -14,7 +13,6 @@ interface Props {
 }
 
 export default function FormAvaliacao({ avaliacao, onChange, onRemove, compact }: Props) {
-  const [tab, setTab] = useState<"dados" | "perguntas">("dados");
   const perguntas: Pergunta[] = avaliacao.perguntas ?? [];
 
   return (

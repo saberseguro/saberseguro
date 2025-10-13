@@ -6,10 +6,12 @@ import CheckboxStatus, { Input, SelectInput, TextArea } from "./Inputs";
 import { GripVertical, Trash2, UploadCloud } from "lucide-react";
 import ToolTip from "../Auxiliares/ToolTip";
 import FormAvaliacao from "./FormAvaliacao";
-import { uploadMaterialArquivo } from "../../services/uploadMaterial";
+import { uploadMaterialArquivo } from "../../services/upload";
 import SortableItem from "../Auxiliares/SortableItem";
 import { closestCenter, DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import toast from "react-hot-toast";
+import Swal from "sweetalert2";
 
 interface Props {
   modulo: Modulo;
@@ -230,8 +232,24 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
 
   const removeVideo = (idAulaVideo: number | undefined) => {
     if (idAulaVideo == null) return;
-    onChange({
-      videos: videos.filter((v) => v.idAulaVideo !== idAulaVideo),
+
+    Swal.fire({
+      title: "Remover Vídeo?",
+      text: "Este vídeo será excluído da aula.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        onChange({
+          videos: videos.filter((v) => v.idAulaVideo !== idAulaVideo),
+        });
+        toast.success("Vídeo removido com sucesso!");
+      }
     });
   };
 
@@ -260,8 +278,24 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
 
   const removeMaterial = (id: number | undefined) => {
     if (id == null) return;
-    onChange({
-      materiais: materiais.filter((m) => m.idMaterialComplementar !== id),
+
+    Swal.fire({
+      title: "Remover Material?",
+      text: "Este material será excluído da aula.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        onChange({
+          materiais: materiais.filter((m) => m.idMaterialComplementar !== id),
+        });
+        toast.success("Material removido com sucesso!");
+      }
     });
   };
 
@@ -283,8 +317,24 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
 
   const removeAvaliacaoAula = (idAvaliacao: number | undefined) => {
     if (idAvaliacao == null) return;
-    onChange({
-      avaliacoes: avaliacoesAula.filter((av) => av.idAvaliacao !== idAvaliacao),
+
+    Swal.fire({
+      title: "Remover Avaliação?",
+      text: "Essa avaliação será excluída da aula.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        onChange({
+          avaliacoes: avaliacoesAula.filter((av) => av.idAvaliacao !== idAvaliacao),
+        });
+        toast.success("Avaliação removida com sucesso!");
+      }
     });
   };
 
@@ -480,14 +530,61 @@ function FluxoEditor({ steps, setSteps, videos, materiais, avaliacoes }: FluxoEd
   }
 
   const adicionarStep = (tipo: AulaStep["tipo"] = "video") => {
+    const jaExisteStepSemItem = steps.some((s) => {
+      if (s.tipo !== tipo) return false;
+      if (tipo === "video" && !s.fkAulaVideoId) return true;
+      if (tipo === "material" && !s.fkMaterialId) return true;
+      if (tipo === "avaliacao" && !s.fkAvaliacaoId) return true;
+      return false;
+    });
+
+    if (jaExisteStepSemItem) {
+      toast.error(`Já existe uma etapa de ${tipo} sem item selecionado.`);
+      return;
+    }
+
     const novoStep: AulaStep = {
       idAulaStep: nextTempId(),
       tipo,
       ordem: steps.length + 1,
       obrigatorio: 1,
     };
+
     setSteps([...steps, novoStep]);
   };
+
+  const removerStep = (id: number | string) => {
+    if (id === undefined || id === null) return toast.error("Erro ao excluir item do fluxo!");
+
+    Swal.fire({
+      title: "Tem certeza?",
+      text: "Esta etapa será removida da aula.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      reverseButtons: true,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        try {
+          const atualizados = steps
+            .filter((s) => s.idAulaStep !== id)
+            .map((s, index) => ({
+              ...s,
+              ordem: index + 1,
+            }));
+
+          setSteps(atualizados);
+          toast.success("Etapa removida com sucesso!");
+        } catch (error) {
+          console.error(error);
+          toast.error("Erro ao remover etapa.");
+        }
+      }
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -500,97 +597,111 @@ function FluxoEditor({ steps, setSteps, videos, materiais, avaliacoes }: FluxoEd
             <button
               type="button"
               onClick={() => adicionarStep("video")}
-              className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded"
+              className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded cursor-pointer"
             >
               + Adicionar Etapa
             </button>
           </div>
           {steps.map((step, i) => (
             <SortableItem key={`step-${step.idAulaStep}`} id={`step-${step.idAulaStep}`}>
-              <div className="bg-white border border-gray-300 rounded-md p-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="cursor-grab text-gray-400" title="Arraste para reordenar">
-                    <GripVertical />
+              {({ attributes, listeners }) => (
+                <div className="bg-white border border-gray-300 rounded-md p-4 mb-4">
+                  <div className="flex items-center gap-2">
+                    {/* handle de drag */}
+                    <div
+                      {...attributes}
+                      {...listeners}
+                      className="cursor-grab text-gray-400"
+                      title="Arraste para reordenar"
+                    >
+                      <GripVertical />
+                    </div>
+
+                    {/* selects e botões */}
+                    <SelectInput
+                      name={`tipo-${i}`}
+                      value={step.tipo}
+                      onChange={(e) => {
+                        const tipo = e.target.value as AulaStep["tipo"];
+                        const updated = steps.map((s, idx) =>
+                          idx === i
+                            ? { ...s, tipo, fkAulaVideoId: null, fkMaterialId: null, fkAvaliacaoId: null }
+                            : s
+                        );
+                        setSteps(updated);
+                      }}
+                      options={[
+                        { label: "Vídeo", value: "video" },
+                        { label: "Material", value: "material" },
+                        { label: "Avaliação", value: "avaliacao" },
+                      ]}
+                    />
+
+                    {step.tipo === "video" && (
+                      <SelectInput
+                        name={`video-${i}`}
+                        value={step.fkAulaVideoId?.toString() ?? ""}
+                        onChange={(e) => {
+                          const updated = steps.map((s, idx) =>
+                            idx === i ? { ...s, fkAulaVideoId: Number(e.target.value) } : s
+                          );
+                          setSteps(updated);
+                        }}
+                        options={videos.map((v) => ({
+                          value: v.idAulaVideo!.toString(),
+                          label: v.url,
+                        }))}
+                      />
+                    )}
+
+                    {step.tipo === "material" && (
+                      <SelectInput
+                        name={`material-${i}`}
+                        value={step.fkMaterialId?.toString() ?? ""}
+                        onChange={(e) => {
+                          const updated = steps.map((s, idx) =>
+                            idx === i ? { ...s, fkMaterialId: Number(e.target.value) } : s
+                          );
+                          setSteps(updated);
+                        }}
+                        options={materiais.map((m) => ({
+                          value: m.idMaterialComplementar!.toString(),
+                          label: m.titulo ?? m.material,
+                        }))}
+                      />
+                    )}
+
+                    {step.tipo === "avaliacao" && (
+                      <SelectInput
+                        name={`avaliacao-${i}`}
+                        value={step.fkAvaliacaoId?.toString() ?? ""}
+                        onChange={(e) => {
+                          const updated = steps.map((s, idx) =>
+                            idx === i ? { ...s, fkAvaliacaoId: Number(e.target.value) } : s
+                          );
+                          setSteps(updated);
+                        }}
+                        options={avaliacoes.map((a) => ({
+                          value: a.idAvaliacao!.toString(),
+                          label: a.titulo ?? `Avaliação ${a.idAvaliacao}`,
+                        }))}
+                      />
+                    )}
+
+                    {/* botão de excluir (fora da área de drag) */}
+                    <button
+                      className="text-red-500 hover:text-red-600 cursor-pointer"
+                      type="button"
+                      onClick={() => removerStep(step.idAulaStep!)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                  <SelectInput
-                    name={`tipo-${i}`}
-                    value={step.tipo}
-                    onChange={(e) => {
-                      const tipo = e.target.value as AulaStep["tipo"];
-                      const updated = steps.map((s, idx) =>
-                        idx === i
-                          ? {
-                            ...s,
-                            tipo,
-                            fkAulaVideoId: null,
-                            fkMaterialId: null,
-                            fkAvaliacaoId: null,
-                          }
-                          : s
-                      );
-                      setSteps(updated);
-                    }}
-                    options={[
-                      { label: "Vídeo", value: "video" },
-                      { label: "Material", value: "material" },
-                      { label: "Avaliação", value: "avaliacao" },
-                    ]}
-                  />
-
-                  {step.tipo === "video" && (
-                    <SelectInput
-                      name={`video-${i}`}
-                      value={step.fkAulaVideoId?.toString() ?? ""}
-                      onChange={(e) => {
-                        const updated = steps.map((s, idx) =>
-                          idx === i ? { ...s, fkAulaVideoId: Number(e.target.value) } : s
-                        );
-                        setSteps(updated);
-                      }}
-                      options={videos.map((v) => ({
-                        value: v.idAulaVideo!.toString(),
-                        label: v.url,
-                      }))}
-                    />
-                  )}
-
-                  {step.tipo === "material" && (
-                    <SelectInput
-                      name={`material-${i}`}
-                      value={step.fkMaterialId?.toString() ?? ""}
-                      onChange={(e) => {
-                        const updated = steps.map((s, idx) =>
-                          idx === i ? { ...s, fkMaterialId: Number(e.target.value) } : s
-                        );
-                        setSteps(updated);
-                      }}
-                      options={materiais.map((m) => ({
-                        value: m.idMaterialComplementar!.toString(),
-                        label: m.titulo ?? m.material,
-                      }))}
-                    />
-                  )}
-
-                  {step.tipo === "avaliacao" && (
-                    <SelectInput
-                      name={`avaliacao-${i}`}
-                      value={step.fkAvaliacaoId?.toString() ?? ""}
-                      onChange={(e) => {
-                        const updated = steps.map((s, idx) =>
-                          idx === i ? { ...s, fkAvaliacaoId: Number(e.target.value) } : s
-                        );
-                        setSteps(updated);
-                      }}
-                      options={avaliacoes.map((a) => ({
-                        value: a.idAvaliacao!.toString(),
-                        label: a.titulo ?? `Avaliação ${a.idAvaliacao}`,
-                      }))}
-                    />
-                  )}
                 </div>
-              </div>
+              )}
             </SortableItem>
           ))}
+
         </SortableContext>
       </DndContext>
     </div>

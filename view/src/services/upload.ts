@@ -1,4 +1,4 @@
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, uploadString } from "firebase/storage";
 import { storage } from "./firebase";
 
 export function uploadMaterialArquivo(
@@ -28,4 +28,11 @@ export function uploadMaterialArquivo(
       }
     );
   });
+}
+
+export async function uploadAssinatura(base64: string, idResponsavel: number | string): Promise<string> {
+  const storageRef = ref(storage, `assinaturas/${idResponsavel}/assinatura.png`);
+  await uploadString(storageRef, base64, "data_url");
+  const url = await getDownloadURL(storageRef);
+  return url;
 }

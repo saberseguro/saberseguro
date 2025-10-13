@@ -95,9 +95,7 @@ export default function CursosPage() {
         columns={columns}
         data={cursos}
         itemsPerPage={10}
-        isLoading={false}
         onEdit={handleEditCurso}
-        onDelete={(curso) => console.log("Deletar curso:", curso)}
       />
 
       <ModalCurso

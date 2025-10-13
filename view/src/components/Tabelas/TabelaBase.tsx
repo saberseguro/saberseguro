@@ -37,22 +37,38 @@ export default function TabelaBase<T extends object>({
   const [currentPage, setCurrentPage] = useState(1);
 
   const sortedData = useMemo(() => {
-    if (!sortConfig.key) return data;
-    return [...data].sort((a, b) => {
-      const aVal = a[sortConfig.key as keyof T];
-      const bVal = b[sortConfig.key as keyof T];
+    if (!sortConfig.key) {
+      return [...data].sort((a, b) => {
+        const aAtivo = "ativo" in a ? a.ativo : 1;
+        const bAtivo = "ativo" in b ? b.ativo : 1;
+        return Number(bAtivo ?? 1) - Number(aAtivo ?? 1);
+      });
+    }
 
-      if (aVal === null || aVal === undefined) return 1;
-      if (bVal === null || bVal === undefined) return -1;
+    return [...data]
+      .sort((a, b) => {
+        const aVal = a[sortConfig.key as keyof T];
+        const bVal = b[sortConfig.key as keyof T];
 
-      if (typeof aVal === "string") {
+        if (aVal === null || aVal === undefined) return 1;
+        if (bVal === null || bVal === undefined) return -1;
+
+        if (typeof aVal === "string") {
+          return sortConfig.direction === "asc"
+            ? aVal.localeCompare(bVal as string)
+            : (bVal as string).localeCompare(aVal);
+        }
+
         return sortConfig.direction === "asc"
-          ? aVal.localeCompare(bVal as string)
-          : (bVal as string).localeCompare(aVal);
-      }
-
-      return sortConfig.direction === "asc" ? Number(aVal) - Number(bVal) : Number(bVal) - Number(aVal);
-    });
+          ? Number(aVal) - Number(bVal)
+          : Number(bVal) - Number(aVal);
+      })
+      .sort((a, b) => {
+        // ORDEM SECUNDÁRIA: ativos primeiro
+        const aAtivo = "ativo" in a ? a.ativo : 1;
+        const bAtivo = "ativo" in b ? b.ativo : 1;
+        return Number(bAtivo ?? 1) - Number(aAtivo ?? 1);
+      });
   }, [data, sortConfig]);
 
   const totalItems = sortedData.length;
@@ -119,7 +135,13 @@ export default function TabelaBase<T extends object>({
                 </tr>
               ) : (
                 currentData.map((row, idx) => (
-                  <tr key={idx} className={`${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}`}>
+                  <tr
+                    key={idx}
+                    className={`
+                      ${idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                      ${("ativo" in row && row.ativo !== 1) ? "text-gray-300 line-through" : ""}
+                    `}
+                  >
                     {columns.map((col, i) => (
                       <td key={i} className="px-4 py-3">
                         {col.render ? col.render(row[col.accessor], row) : (row[col.accessor] as any) ?? "—"}

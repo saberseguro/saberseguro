@@ -1,6 +1,7 @@
 import { responsaveltecnico_tipoDocumento } from '@prisma/client';
 import { prisma } from '../../config/prisma-client';
 import { registrarEvento } from '../../shared/utils/registrarEvento';
+import { criarUsuario, editarUsuario } from '../usuario';
 
 export const buscarResponsaveisTecnicos = {
   async execute() {
@@ -25,68 +26,94 @@ export const buscarResponsavelTecnico = {
 
 export const criarResponsavelTecnico = {
   async execute(data: any, usuario: any) {
-    const responsavel = await prisma.responsaveltecnico.create({
-      data: {
-        nome: data.nome,
-        tipoDocumento: data.tipoDocumento as responsaveltecnico_tipoDocumento,
-        documento: data.documento,
-        registro: data.registro,
-        funcao: data.funcao,
-        telefone: data.telefone,
-        criado_em: new Date(),
-        editado_em: new Date(),
-        ativo: data.ativo
-      }
-    });
+    return await prisma.$transaction(async (tx) => {
+      // === 1. Cria o responsável técnico ===
+      const responsavel = await tx.responsaveltecnico.create({
+        data: {
+          nome: data.nome,
+          tipoDocumento: data.tipoDocumento as responsaveltecnico_tipoDocumento,
+          documento: data.documento,
+          registro: data.registro,
+          funcao: data.funcao,
+          telefone: data.telefone,
+          assinatura: data.assinatura,
+          criado_em: new Date(),
+          editado_em: new Date(),
+          ativo: data.ativo ?? 1,
+        },
+      });
 
-    await registrarEvento({
-      idUsuario: usuario.idUsuario,
-      tipo: 'criar',
-      entidade: 'responsaveltecnico',
-      entidadeId: responsavel.idResponsavelTecnico,
-      descricao: `Responsável Técnico "${responsavel.nome}" criado.`,
-      dadosDepois: responsavel
-    });
+      // === 2. Busca role padrão ===
+      const role = await tx.role.findFirst({
+        where: { nome: "responsavelTecnico" },
+      });
 
-    return responsavel;
-  }
+      // === 3. Cria usuário vinculado ===
+      const novoUsuario = await criarUsuario({
+        nome: responsavel.nome,
+        cpf: responsavel.documento,
+        email: data.email,
+        senha: data.senha || "trocar123",
+        ativo: responsavel.ativo,
+        fkResponsavelTecnicoId: responsavel.idResponsavelTecnico,
+        roles: role ? [role.idRole] : [],
+        idUsuario: usuario.idUsuario,
+      });
+
+      // === 4. Log ===
+      await registrarEvento({
+        idUsuario: usuario.idUsuario,
+        tipo: "criar",
+        entidade: "responsaveltecnico",
+        entidadeId: responsavel.idResponsavelTecnico,
+        descricao: `Responsável Técnico "${responsavel.nome}" criado com usuário vinculado (${novoUsuario.email}).`,
+        dadosDepois: { responsavel, usuario: novoUsuario },
+      });
+
+      return { responsavel, usuario: novoUsuario };
+    });
+  },
 };
 
 export const editarResponsavelTecnico = {
   async execute(id: number, data: any, usuario: any) {
-    const antes = await prisma.responsaveltecnico.findUnique({ where: { idResponsavelTecnico: id } });
+    return await prisma.$transaction(async (tx) => {
+      const antes = await tx.responsaveltecnico.findUnique({
+        where: { idResponsavelTecnico: id },
+      });
 
-    if (!antes) {
-      throw new Error(`Nenhum responsável técnico encontrado!`);
-    }
+      if (!antes) throw new Error("Nenhum responsável técnico encontrado!");
 
-    const responsavelAtualizado = await prisma.responsaveltecnico.update({
-      where: { idResponsavelTecnico: id },
-      data: {
-        nome: data.nome,
-        tipoDocumento: data.tipoDocumento as responsaveltecnico_tipoDocumento,
-        documento: data.documento,
-        registro: data.registro,
-        funcao: data.funcao,
-        telefone: data.telefone,
-        criado_em: new Date(),
-        editado_em: new Date(),
-        ativo: data.ativo
-      }
+      // === 1. Atualiza o responsável ===
+      const responsavelAtualizado = await tx.responsaveltecnico.update({
+        where: { idResponsavelTecnico: id },
+        data: {
+          nome: data.nome,
+          tipoDocumento: data.tipoDocumento as responsaveltecnico_tipoDocumento,
+          documento: data.documento,
+          registro: data.registro,
+          funcao: data.funcao,
+          telefone: data.telefone,
+          assinatura: data.assinatura,
+          editado_em: new Date(),
+          ativo: data.ativo ?? 1,
+        },
+      });
+
+      // === 3. Log ===
+      await registrarEvento({
+        idUsuario: usuario.idUsuario,
+        tipo: "editar",
+        entidade: "responsaveltecnico",
+        entidadeId: id,
+        descricao: `Responsável Técnico "${antes.nome}" atualizado.`,
+        dadosAntes: antes,
+        dadosDepois: responsavelAtualizado,
+      });
+
+      return responsavelAtualizado;
     });
-
-    await registrarEvento({
-      idUsuario: usuario.idUsuario,
-      tipo: 'editar',
-      entidade: 'responsaveltecnico',
-      entidadeId: id,
-      descricao: `Responsável Técnico "${antes?.nome}" atualizado.`,
-      dadosAntes: antes,
-      dadosDepois: responsavelAtualizado
-    });
-
-    return responsavelAtualizado;
-  }
+  },
 };
 
 export const excluirResponsavelTecnico = {

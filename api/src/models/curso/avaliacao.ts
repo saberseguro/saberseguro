@@ -310,40 +310,41 @@ export const resultadoAvaliacao = {
       }
     });
 
-    if (!tentativas.length) throw new Error("Nenhuma tentativa encontrada.");
+    // 🔄 Em vez de lançar erro, retorna lista vazia
+    if (!tentativas.length) {
+      return { tentativas: [] };
+    }
 
-    const resultadoFinal = tentativas.map((tentativa) => {
-      return {
-        idAvaliacaoUsuario: tentativa.idAvaliacaoUsuario,
-        nota: tentativa.nota,
-        dataFim: tentativa.dataFim,
-        resultado: tentativa.avaliacao.perguntas.map((pergunta) => {
-          const respostaDoUsuario = tentativa.respostas.find(
-            (r) => r.fkPerguntaId === pergunta.idPergunta
-          );
+    const resultadoFinal = tentativas.map((tentativa) => ({
+      idAvaliacaoUsuario: tentativa.idAvaliacaoUsuario,
+      nota: tentativa.nota,
+      dataFim: tentativa.dataFim,
+      resultado: tentativa.avaliacao.perguntas.map((pergunta) => {
+        const respostaDoUsuario = tentativa.respostas.find(
+          (r) => r.fkPerguntaId === pergunta.idPergunta
+        );
 
-          const isDissertativa = pergunta.tipo === "dissertativa";
+        const isDissertativa = pergunta.tipo === "dissertativa";
 
-          return {
-            idPergunta: pergunta.idPergunta,
-            enunciado: pergunta.enunciado,
-            tipo: pergunta.tipo, // <=== Adiciona também o tipo da pergunta
-            respostaTexto: isDissertativa ? respostaDoUsuario?.resposta ?? "" : null,
-            alternativas: isDissertativa
-              ? [] // se for dissertativa, não envia alternativas
-              : pergunta.alternativas.map((alt) => ({
+        return {
+          idPergunta: pergunta.idPergunta,
+          enunciado: pergunta.enunciado,
+          tipo: pergunta.tipo,
+          respostaTexto: isDissertativa ? respostaDoUsuario?.resposta ?? "" : null,
+          alternativas: isDissertativa
+            ? []
+            : pergunta.alternativas.map((alt) => ({
                 idAlternativa: alt.idAlternativa,
                 texto: alt.texto,
                 correta: alt.correta === 1,
-                selecionada: alt.idAlternativa === respostaDoUsuario?.fkAlternativaId
-              }))
-          };
-        })
-      };
-    });
+                selecionada: alt.idAlternativa === respostaDoUsuario?.fkAlternativaId,
+              })),
+        };
+      }),
+    }));
 
     return { tentativas: resultadoFinal };
-  }
+  },
 };
 
 // Responder avaliação

@@ -1,4 +1,5 @@
 import { AuthProvider } from './contexts/AuthContext';
+import { CertificadosProvider } from './contexts/CertificadosContext';
 import AppRoutes from './routes';
 
 import { Toaster } from "react-hot-toast";
@@ -6,11 +7,13 @@ import { Toaster } from "react-hot-toast";
 function App() {
   return (
     <AuthProvider>
-      <Toaster
-        position="bottom-right"
-        reverseOrder={true}
-      />
-      <AppRoutes />
+      <CertificadosProvider>
+        <Toaster
+          position="bottom-right"
+          reverseOrder={true}
+        />
+        <AppRoutes />
+      </CertificadosProvider>
     </AuthProvider>
   );
 }

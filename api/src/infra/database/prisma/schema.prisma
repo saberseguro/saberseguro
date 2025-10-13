@@ -19,6 +19,7 @@ model usuario {
   fkCargoId              Int?
   firebaseId             String               @unique
   cpf                    String?              @unique(map: "cpf_UNIQUE") @db.VarChar(12)
+
   aulas                  aulausuario[]
   avaliacoes             avaliacaousuario[]
   cursoacessos           cursoacesso[]
@@ -31,6 +32,7 @@ model usuario {
   usuariorole            usuariorole[]
   progressoVideos        aulavideoprogresso[]
   acessosMateriais       materialacesso[]
+  certificados           certificado[]
 
   @@index([fkCargoId], map: "fk_usuario_fkCargoId")
   @@index([fkEmpresaId], map: "fk_usuario_fkEmpresaId")
@@ -242,14 +244,16 @@ model curso {
   ativo                  Int                @default(1) @db.TinyInt
   fkResponsavelTecnicoId Int
   fkEmpresaId            Int?
+
   avaliacoes             avaliacao[]
   categorias             categoriacurso[]
-  empresa                empresa?           @relation(fields: [fkEmpresaId], references: [idEmpresa], map: "fk_curso_fkEmpresaId")
-  responsaveltecnico     responsaveltecnico @relation(fields: [fkResponsavelTecnicoId], references: [idResponsavelTecnico], map: "fk_curso_fkResponsavelTecnicoId")
   acessos                cursoacesso[]
   medidas                medidacurso[]
   modulos                modulo[]
+  certificados           certificado[]
 
+  responsaveltecnico     responsaveltecnico @relation(fields: [fkResponsavelTecnicoId], references: [idResponsavelTecnico], map: "fk_curso_fkResponsavelTecnicoId")
+  empresa                empresa?           @relation(fields: [fkEmpresaId], references: [idEmpresa], map: "fk_curso_fkEmpresaId")
   @@index([fkEmpresaId], map: "fk_curso_fkEmpresaId")
   @@index([fkResponsavelTecnicoId], map: "fk_curso_fkResponsavelTecnicoId")
 }
@@ -284,29 +288,32 @@ model cursoacesso {
 }
 
 model empresa {
-  idEmpresa       Int                   @id @default(autoincrement())
-  nomeFantasia    String                @db.VarChar(45)
-  razaoSocial     String                @db.VarChar(45)
-  tipoDocumento   empresa_tipoDocumento
-  documento       String                @db.VarChar(20)
-  cep             String                @db.VarChar(10)
-  endereco        String                @db.VarChar(45)
-  numero          String?               @db.VarChar(10)
-  bairro          String                @db.VarChar(45)
-  cidade          String                @db.VarChar(45)
-  uf              String                @db.VarChar(2)
-  logoUrl         String?               @db.Text
-  criado_em       DateTime              @default(now()) @db.DateTime(0)
-  editado_em      DateTime              @default(now()) @db.DateTime(0)
-  ativo           Int                   @default(1) @db.TinyInt
-  complemento     String?               @db.VarChar(50)
-  cnaevinculos    cnaevinculo[]
-  cursos          curso[]
-  cursoacessos    cursoacesso[]
-  medidas         medida[]
-  medidasvinculos medidavinculo[]
-  unidades        unidade[]
-  funcionarios    usuario[]
+  idEmpresa             Int                   @id @default(autoincrement())
+  nomeFantasia          String                @db.VarChar(45)
+  razaoSocial           String                @db.VarChar(45)
+  tipoDocumento         empresa_tipoDocumento
+  documento             String                @db.VarChar(20)
+  cep                   String                @db.VarChar(10)
+  endereco              String                @db.VarChar(45)
+  numero                String?               @db.VarChar(10)
+  bairro                String                @db.VarChar(45)
+  cidade                String                @db.VarChar(45)
+  uf                    String                @db.VarChar(2)
+  logoUrl               String?               @db.Text
+  criado_em             DateTime              @default(now()) @db.DateTime(0)
+  editado_em            DateTime              @default(now()) @db.DateTime(0)
+  ativo                 Int                   @default(1) @db.TinyInt
+  complemento           String?               @db.VarChar(50)
+
+  cnaevinculos          cnaevinculo[]
+  cursos                curso[]
+  cursoacessos          cursoacesso[]
+  medidas               medida[]
+  medidasvinculos       medidavinculo[]
+  unidades              unidade[]
+  funcionarios          usuario[]
+  certificados          certificado[]
+  certificadosEmpresa   certificadoempresa[]
 }
 
 model materialcomplementar {
@@ -450,6 +457,7 @@ model responsaveltecnico {
   registro             String                           @db.VarChar(45)
   funcao               String                           @db.VarChar(45)
   telefone             String                           @db.VarChar(45)
+  assinatura           String?                          @db.Text
   criado_em            DateTime                         @default(now()) @db.DateTime(0)
   editado_em           DateTime                         @default(now()) @db.DateTime(0)
   ativo                Int                              @default(1) @db.TinyInt
@@ -524,10 +532,12 @@ model unidade {
   copiarEmpresa   Int?                  @default(0) @db.TinyInt
   fkEmpresaId     Int
   complemento     String?               @db.VarChar(50)
+
   cnaevinculos    cnaevinculo[]
   cursoacessos    cursoacesso[]
   medidasvinculos medidavinculo[]
   setores         setor[]
+
   empresa         empresa               @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: Cascade, map: "fk_unidade_fkEmpresaId")
 
   @@index([fkEmpresaId], map: "fk_unidade_fkEmpresaId")
@@ -568,6 +578,33 @@ model usuariohorario {
   usuario       usuario @relation(fields: [fkUsuarioId], references: [idUsuario], map: "usuarioHorario_fkUsuarioId_fkey")
 
   @@unique([fkUsuarioId, diaSemana], map: "usuarioHorario_fkUsuarioId_diaSemana_key")
+}
+
+model certificado {
+  idCertificado   Int       @id @default(autoincrement())
+  codigo          String?   @unique
+  fkUsuarioId     Int
+  fkCursoId       Int
+  fkEmpresaId     Int
+  dataGeracao     DateTime  @default(now())
+  urlArquivo      String?
+  valido          Boolean   @default(true)
+
+  usuario         usuario   @relation(fields: [fkUsuarioId], references: [idUsuario])
+  curso           curso     @relation(fields: [fkCursoId], references: [idCurso])
+  empresa         empresa   @relation(fields: [fkEmpresaId], references: [idEmpresa])
+}
+
+model certificadoempresa {
+  idCertificadoEmpresa Int     @id @default(autoincrement())
+  fkEmpresaId          Int
+  totalGerados         Int     @default(0)
+  limiteMensal         Int?
+  competencia          String  // ex: "10/2025"
+
+  empresa              empresa @relation(fields: [fkEmpresaId], references: [idEmpresa])
+
+  @@unique([fkEmpresaId, competencia])
 }
 
 enum materialcomplementar_tipo {

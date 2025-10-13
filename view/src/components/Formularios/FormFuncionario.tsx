@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import type { Funcionario } from "../../types/EstruturaEmpresa";
-import { Input, SearchableSelect, SelectInput, SelectMultiInput } from "./Inputs";
+import { Input, SelectInput, SelectMultiInput } from "./Inputs";
 import toast from "react-hot-toast";
 import { formatarCPF } from "../../auxiliares/formatters";
 import Spinner from "../Spinner";
-import { Plus, Trash2 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -36,7 +35,7 @@ type MedidaVincRow = {
   origem: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" | "FUNCIONARIO";
 };
 
-export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFuncionario, fetchFuncionarios, fkCargoId, isOpen, fkEmpresaId, cursosOptions, medidasOptions }: FormFuncionarioProps) {
+export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFuncionario, fetchFuncionarios, fkCargoId, isOpen, fkEmpresaId }: FormFuncionarioProps) {
 
   const diasSemana = ["Domingo", "Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado"];
 
@@ -81,8 +80,8 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
   const [rolesDisponiveis, setRolesDisponiveis] = useState<{ idRole: number; nome: string }[]>([]);
 
   const [loading, setLoading] = useState(false);
-  const [selCurso, setSelCurso] = useState<{ label: string; value: number } | null>(null);
-  const [selMedida, setSelMedida] = useState<{ label: string; value: number } | null>(null);
+  // const [selCurso, setSelCurso] = useState<{ label: string; value: number } | null>(null);
+  // const [selMedida, setSelMedida] = useState<{ label: string; value: number } | null>(null);
 
   useEffect(() => {
     if (onEdit && rolesDisponiveis.length > 0) {
@@ -160,6 +159,16 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const temHorarioSelecionado = horarios.some(
+      (h) => h.horarioInicio && h.horarioFim
+    );
+
+    if (!temHorarioSelecionado) {
+      toast.error("Selecione pelo menos um horário de acesso antes de salvar.");
+      setAbaAtiva("horarios");
+      return;
+    }
+
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
@@ -236,74 +245,74 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
     );
   };
 
-  const handleAdicionarCursoSelecionado = () => {
-    if (!selCurso) return;
+  // const handleAdicionarCursoSelecionado = () => {
+  //   if (!selCurso) return;
 
-    const jaExiste = form.cursos.some((c) => c.idCurso === selCurso.value);
-    if (jaExiste) {
-      toast.error("Curso já vinculado");
-      return;
-    }
+  //   const jaExiste = form.cursos.some((c) => c.idCurso === selCurso.value);
+  //   if (jaExiste) {
+  //     toast.error("Curso já vinculado");
+  //     return;
+  //   }
 
-    const novoCurso: CursoVincRow = {
-      idCurso: selCurso.value,
-      titulo: selCurso.label,
-      ativo: 1,
-      origem: "FUNCIONARIO",
-    };
+  //   const novoCurso: CursoVincRow = {
+  //     idCurso: selCurso.value,
+  //     titulo: selCurso.label,
+  //     ativo: 1,
+  //     origem: "FUNCIONARIO",
+  //   };
 
-    setForm((prev) => ({
-      ...prev,
-      cursos: [...prev.cursos, novoCurso],
-    }));
+  //   setForm((prev) => ({
+  //     ...prev,
+  //     cursos: [...prev.cursos, novoCurso],
+  //   }));
 
-    setSelCurso(null);
-  };
+  //   setSelCurso(null);
+  // };
 
-  const handleRemoverCurso = (idCurso: number) => {
-    setForm((prev) => ({
-      ...prev,
-      cursos: prev.cursos.filter((c: any) => c.idCurso !== idCurso),
-    }));
-  };
+  // const handleRemoverCurso = (idCurso: number) => {
+  //   setForm((prev) => ({
+  //     ...prev,
+  //     cursos: prev.cursos.filter((c: any) => c.idCurso !== idCurso),
+  //   }));
+  // };
 
-  const handleAdicionarMedidaSelecionada = () => {
-    if (!selMedida) return;
+  // const handleAdicionarMedidaSelecionada = () => {
+  //   if (!selMedida) return;
 
-    const jaExiste = form.medidas.some((m) => m.idMedida === selMedida.value);
-    if (jaExiste) {
-      toast.error("Medida já vinculada");
-      return;
-    }
+  //   const jaExiste = form.medidas.some((m) => m.idMedida === selMedida.value);
+  //   if (jaExiste) {
+  //     toast.error("Medida já vinculada");
+  //     return;
+  //   }
 
-    const novaMedida: MedidaVincRow = {
-      idMedida: selMedida.value,
-      nome: selMedida.label,
-      ativo: 1,
-      origem: "FUNCIONARIO",
-    };
+  //   const novaMedida: MedidaVincRow = {
+  //     idMedida: selMedida.value,
+  //     nome: selMedida.label,
+  //     ativo: 1,
+  //     origem: "FUNCIONARIO",
+  //   };
 
-    setForm((prev) => ({
-      ...prev,
-      medidas: [...prev.medidas, novaMedida],
-    }));
+  //   setForm((prev) => ({
+  //     ...prev,
+  //     medidas: [...prev.medidas, novaMedida],
+  //   }));
 
-    setSelMedida(null);
-  };
+  //   setSelMedida(null);
+  // };
 
-  const handleRemoverMedida = (idMedida: number) => {
-    setForm((prev) => ({
-      ...prev,
-      medidas: prev.medidas.filter((m: any) => m.idMedida !== idMedida),
-    }));
-  };
+  // const handleRemoverMedida = (idMedida: number) => {
+  //   setForm((prev) => ({
+  //     ...prev,
+  //     medidas: prev.medidas.filter((m: any) => m.idMedida !== idMedida),
+  //   }));
+  // };
 
 
   // Listas
-  const medidasFuncionario = form.medidas.filter((m: any) => m.origem === "FUNCIONARIO");
-  const outrasMedidas = form.medidas.filter((m: any) => m.origem !== "FUNCIONARIO");
-  const cursosFuncionario = form.cursos.filter((c: any) => c.origem === "FUNCIONARIO");
-  const outrosCursos = form.cursos.filter((c: any) => c.origem !== "FUNCIONARIO");
+  // const medidasFuncionario = form.medidas.filter((m: any) => m.origem === "FUNCIONARIO");
+  // const outrasMedidas = form.medidas.filter((m: any) => m.origem !== "FUNCIONARIO");
+  // const cursosFuncionario = form.cursos.filter((c: any) => c.origem === "FUNCIONARIO");
+  // const outrosCursos = form.cursos.filter((c: any) => c.origem !== "FUNCIONARIO");
 
   return (
     <>
@@ -444,7 +453,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
           </>
         )}
 
-        {abaAtiva === "cursos" && (
+        {/* {abaAtiva === "cursos" && (
           <div>
             <div className="grid grid-cols-12 gap-4 items-end mb-4">
               <div className="col-span-11">
@@ -475,9 +484,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
               </div>
             </div>
 
-            {/* Lista */}
             <div>
-              {/* Cursos do Setor */}
               <div className="mb-4">
                 <h4 className="text-sm font-semibold mb-2">Cursos do Funcionario</h4>
                 <ul className="space-y-2">
@@ -502,7 +509,6 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
                 </ul>
               </div>
 
-              {/* Outros Cursos */}
               <div>
                 <h4 className="text-sm font-semibold mb-2">Outros Cursos (herdados)</h4>
                 <ul className="space-y-2">
@@ -566,8 +572,6 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
             </div>
 
 
-            {/* Lista */}
-            {/* Medidas do Cargo */}
             <div className="mb-4">
               <h4 className="text-sm font-semibold mb-2">Medidas do Funcionario</h4>
               <ul className="space-y-2">
@@ -592,7 +596,6 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
               </ul>
             </div>
 
-            {/* Outras Medidas (Setor, Unidade, Empresa) */}
             <div>
               <h4 className="text-sm font-semibold mb-2">Outras Medidas (herdadas)</h4>
               <ul className="space-y-2">
@@ -622,9 +625,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
             </div>
 
           </div>
-        )}
-
-
+        )} */}
         <div className="flex justify-end">
           <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-400" disabled={loading}>
             {loading ? <Spinner /> : "Salvar"}

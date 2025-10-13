@@ -1,6 +1,7 @@
 import { empresa_tipoDocumento } from "@prisma/client";
 import { prisma } from "../../config/prisma-client";
 import { registrarEvento } from "../../shared/utils/registrarEvento";
+import { format } from "date-fns";
 
 interface EmpresaInput {
   nomeFantasia: string;
@@ -131,5 +132,25 @@ export const editarEmpresa = {
       });
       throw new Error("Erro ao editar empresa: " + e.message);
     }
+  },
+};
+
+export const getResumoCertificadoEmpresa = {
+  async execute(fkEmpresaId: number) {
+    const competencia = format(new Date(), "MM/yyyy");
+
+    const registro = await prisma.certificadoempresa.findFirst({
+      where: { fkEmpresaId, competencia },
+    });
+
+    const totalGerados = registro?.totalGerados ?? 0;
+    const limiteMensal = registro?.limiteMensal ?? null;
+
+    return {
+      competencia,
+      totalGerados,
+      limiteMensal,
+      restante: limiteMensal ? Math.max(limiteMensal - totalGerados, 0) : null,
+    };
   },
 };

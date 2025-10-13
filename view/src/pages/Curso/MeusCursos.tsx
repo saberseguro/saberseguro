@@ -236,6 +236,7 @@ export default function MeusCursos() {
         setLoading(true);
         setErro(null);
         const lista = await getMeusCursos();
+
         const cursosAdaptados: CursoListItem[] = lista.map((c: any) => ({
           idCurso: c.idCurso,
           titulo: c.titulo,
@@ -253,6 +254,11 @@ export default function MeusCursos() {
           ultimaAulaId: c.ultimaAulaId ?? undefined,
         }));
 
+        cursosAdaptados.sort((a, b) => {
+          if (a.concluido === b.concluido) return 0;
+          return a.concluido ? 1 : -1;
+        });
+
         setCursos(cursosAdaptados);
       } catch (e: any) {
         setErro(e?.message ?? "Falha ao carregar seus cursos.");
@@ -260,6 +266,7 @@ export default function MeusCursos() {
         setLoading(false);
       }
     };
+
     load();
   }, []);
 

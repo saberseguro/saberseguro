@@ -63,6 +63,16 @@ type AvaliacaoPayload = {
 
 export const buscarCursoCompleto = {
   async execute(id: number, usuario: any) {
+    // 🔀 Função auxiliar para embaralhar arrays
+    const shuffleArray = <T,>(array: T[]): T[] => {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
+
     const curso = await prisma.curso.findUnique({
       where: { idCurso: id },
       include: {
@@ -111,6 +121,31 @@ export const buscarCursoCompleto = {
 
     if (!curso) return null;
 
+    // 🔀 Embaralhar as alternativas de todas as perguntas (aulas e curso)
+    curso.modulos.forEach((mod) => {
+      mod.aulas.forEach((aula) => {
+        aula.steps.forEach((s) => {
+          if (s.avaliacao?.perguntas) {
+            s.avaliacao.perguntas.forEach((p: any) => {
+              if (p.alternativas?.length > 1) {
+                p.alternativas = shuffleArray(p.alternativas);
+              }
+            });
+          }
+        });
+      });
+    });
+
+    curso.avaliacoes.forEach((av) => {
+      if (av.perguntas) {
+        av.perguntas.forEach((p: any) => {
+          if (p.alternativas?.length > 1) {
+            p.alternativas = shuffleArray(p.alternativas);
+          }
+        });
+      }
+    });
+
     // 🔹 Montar steps: apenas os steps reais do banco + avaliações de curso
     const steps: any[] = [];
 
@@ -138,7 +173,7 @@ export const buscarCursoCompleto = {
     );
 
     return { ...curso, steps };
-  }
+  },
 };
 
 export const buscarCursos = {
@@ -150,23 +185,33 @@ export const buscarCursos = {
 
     const where: any = {};
 
-    if (query.ativo !== undefined && query.ativo !== "") {
-      where.ativo = Number(query.ativo);
+    const user = query.user;
+    const isAdmin = user?.roles?.includes("admin");
+
+    if (!isAdmin && user?.fkEmpresaId) {
+      where.fkEmpresaId = user.fkEmpresaId;
     }
 
-    if (query.fkEmpresaId) {
-      const idEmp = Number(query.fkEmpresaId);
-      const includeGlobais = String(query.includeGlobais ?? "") === "1";
-      where.AND = where.AND ?? [];
-      where.AND.push(
-        includeGlobais
-          ? { OR: [{ fkEmpresaId: idEmp }, { fkEmpresaId: null }] }
-          : { fkEmpresaId: idEmp }
-      );
+    if (isAdmin) {
+      if (query.fkEmpresaId) {
+        const idEmp = Number(query.fkEmpresaId);
+        const includeGlobais = String(query.includeGlobais ?? "") === "1";
+
+        where.AND = where.AND ?? [];
+        where.AND.push(
+          includeGlobais
+            ? { OR: [{ fkEmpresaId: idEmp }, { fkEmpresaId: null }] }
+            : { fkEmpresaId: idEmp }
+        );
+      }
     }
 
     if (query.busca) {
-      where.titulo = { contains: query.busca, mode: 'insensitive' };
+      where.titulo = { contains: query.busca, mode: "insensitive" };
+    }
+
+    if (query.ativo !== undefined && query.ativo !== "") {
+      where.ativo = Number(query.ativo);
     }
 
     if (query.categoria) {
@@ -178,7 +223,7 @@ export const buscarCursos = {
         prisma.curso.findMany({
           where,
           select: { idCurso: true, titulo: true, ativo: true, fkEmpresaId: true },
-          orderBy: { criado_em: 'desc' },
+          orderBy: { criado_em: "desc" },
           take,
           skip,
         }),
@@ -193,24 +238,24 @@ export const buscarCursos = {
         include: {
           categorias: { include: { categoria: true } },
           modulos: {
-            orderBy: { ordem: 'asc' },
+            orderBy: { ordem: "asc" },
             include: {
               avaliacoes: { include: { perguntas: { include: { alternativas: true } } } },
               aulas: {
-                orderBy: { ordem: 'asc' },
+                orderBy: { ordem: "asc" },
                 include: {
                   avaliacoes: { include: { perguntas: { include: { alternativas: true } } } },
                   materiais: true,
                   videos: true,
                   steps: true,
-                }
-              }
-            }
+                },
+              },
+            },
           },
           avaliacoes: { include: { perguntas: { include: { alternativas: true } } } },
           responsaveltecnico: true,
         },
-        orderBy: { criado_em: 'desc' },
+        orderBy: { criado_em: "desc" },
         take,
         skip,
       }),
@@ -638,6 +683,34 @@ export const criarCursoAcesso = {
   },
 };
 
+export const registrarCursoAcesso = {
+  async execute(idCurso: number, idUsuario: number) {
+    if (!idCurso || !idUsuario) {
+      throw new Error("Curso e usuário são obrigatórios.");
+    }
+
+    // 🔍 Verifica se já existe acesso
+    const existente = await prisma.cursoacesso.findFirst({
+      where: { fkCursoId: idCurso, fkUsuarioId: idUsuario },
+    });
+
+    if (existente) return existente;
+
+    // 🆕 Cria o novo acesso
+    const novo = await prisma.cursoacesso.create({
+      data: {
+        fkCursoId: idCurso,
+        fkUsuarioId: idUsuario,
+        dataInicio: new Date(),
+      },
+    });
+
+    await registrarEvento({ idUsuario, tipo: "cursoacesso", descricao: "Novo acesso ao curso", entidade: "curso", entidadeId: idCurso });
+
+    return novo;
+  },
+};
+
 export const excluirCursoAcesso = {
   async execute(id: number, usuario: any) {
     const antes = await prisma.cursoacesso.findUnique({
@@ -665,7 +738,7 @@ export const excluirCursoAcesso = {
 export const syncCurso = {
   async execute(idCursoParam: number, payload: any, user: any): Promise<CursoCompleto> {
     return prisma.$transaction(async (tx) => {
-      // 1) Upsert curso
+      // === 1. Upsert do curso ===
       const cursoData = {
         titulo: payload.titulo,
         descricao: payload.descricao,
@@ -675,33 +748,44 @@ export const syncCurso = {
         fkEmpresaId: payload.fkEmpresaId && payload.fkEmpresaId > 0 ? payload.fkEmpresaId : null,
       };
 
-      let cursoBase = idCursoParam > 0
-        ? await tx.curso.update({ where: { idCurso: idCursoParam }, data: cursoData })
-        : await tx.curso.create({ data: cursoData });
+      const cursoBase =
+        idCursoParam > 0
+          ? await tx.curso.update({ where: { idCurso: idCursoParam }, data: cursoData })
+          : await tx.curso.create({ data: cursoData });
 
       const idCurso = cursoBase.idCurso;
 
-      // Avaliações do Curso
-      await syncAvaliacoes(tx, { fkCursoId: idCurso }, arr(payload.avaliacoes));
+      // === 2. Avaliações do curso ===
+      if (Array.isArray(payload.avaliacoes)) {
+        await syncAvaliacoes(tx, { fkCursoId: idCurso }, arr(payload.avaliacoes));
+      }
 
-      // 2) Módulos: excluir os que sumiram
-      const modPayload = (payload.modulos ?? []);
+      // === 3. Módulos ===
+      const modPayload = Array.isArray(payload.modulos) ? payload.modulos : [];
       const modIdsPos = modPayload.filter((m: any) => m.idModulo > 0).map((m: any) => m.idModulo);
       const modExist = await tx.modulo.findMany({ where: { fkCursoId: idCurso }, select: { idModulo: true } });
-      const toDeleteMods = modExist.map(m => m.idModulo).filter(id => !modIdsPos.includes(id));
+      const toDeleteMods = modExist.map((m) => m.idModulo).filter((id) => !modIdsPos.includes(id));
+
       if (toDeleteMods.length) {
-        await tx.aula.deleteMany({ where: { fkModuloId: { in: toDeleteMods } } }).catch(() => { });
+        const aulasToDel = await tx.aula.findMany({ where: { fkModuloId: { in: toDeleteMods } }, select: { idAula: true } });
+        const idsAula = aulasToDel.map((a) => a.idAula);
+        if (idsAula.length) {
+          await tx.aulastep.deleteMany({ where: { fkAulaId: { in: idsAula } } }).catch(() => { });
+          await tx.aulavideo.deleteMany({ where: { fkAulaId: { in: idsAula } } }).catch(() => { });
+          await tx.materialcomplementar.deleteMany({ where: { fkAulaId: { in: idsAula } } }).catch(() => { });
+          await tx.aula.deleteMany({ where: { idAula: { in: idsAula } } });
+        }
         await tx.modulo.deleteMany({ where: { idModulo: { in: toDeleteMods } } });
       }
 
-      // 3) Upsert módulos (+ordem)
+      // === 4. Upsert de módulos e suas aulas ===
       for (const [mIdx, m] of modPayload.entries()) {
         const modData = {
           titulo: m.titulo,
           descricao: m.descricao,
           ordem: mIdx + 1,
           ativo: m.ativo ?? 1,
-          cargaHoraria: Number(m.cargaHoraria) || 0, // era '00h'
+          cargaHoraria: Number(m.cargaHoraria) || 0,
           fkCursoId: idCurso,
         };
 
@@ -713,17 +797,19 @@ export const syncCurso = {
           idModulo = created.idModulo;
         }
 
-        // Avaliações do Módulo
-        await syncAvaliacoes(tx, { fkModuloId: idModulo }, arr(m.avaliacoes));
+        // === Avaliações do módulo ===
+        if (Array.isArray(m.avaliacoes)) {
+          await syncAvaliacoes(tx, { fkModuloId: idModulo }, arr(m.avaliacoes));
+        }
 
-        // 4) Aulas do módulo
-        const aulasPayload = m.aulas ?? [];
+        // === Aulas ===
+        const aulasPayload = Array.isArray(m.aulas) ? m.aulas : [];
         const aulasIdsPos = aulasPayload.filter((a: any) => a.idAula > 0).map((a: any) => a.idAula);
         const aulasExist = await tx.aula.findMany({ where: { fkModuloId: idModulo }, select: { idAula: true } });
-        const toDeleteAulas = aulasExist.map(a => a.idAula).filter(id => !aulasIdsPos.includes(id));
+        const toDeleteAulas = aulasExist.map((a) => a.idAula).filter((id) => !aulasIdsPos.includes(id));
 
-        // Remove aulas que sumiram (com filhos)
         if (toDeleteAulas.length) {
+          await tx.aulastep.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } }).catch(() => { });
           await tx.aulavideo.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } }).catch(() => { });
           await tx.materialcomplementar.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } }).catch(() => { });
           await tx.aula.deleteMany({ where: { idAula: { in: toDeleteAulas } } });
@@ -736,143 +822,139 @@ export const syncCurso = {
             ordem: aIdx + 1,
             ativo: a.ativo ?? 1,
             duracao: Number(a.duracao) || 0,
-            tipo: a.tipo ?? '',
+            tipo: a.tipo ?? "",
             fkModuloId: idModulo,
           };
 
           let idAula = a.idAula > 0 ? a.idAula : 0;
-
           if (a.idAula > 0) {
-            // UPDATE aula
             await tx.aula.update({ where: { idAula }, data: aulaData });
           } else {
-            // CREATE aula e pega o id para filhos
             const created = await tx.aula.create({ data: aulaData });
             idAula = created.idAula;
           }
 
-          // Avaliações da Aula
-          await syncAvaliacoes(tx, { fkAulaId: idAula }, arr(a.avaliacoes));
+          // === Avaliações da aula ===
+          if (Array.isArray(a.avaliacoes)) {
+            await syncAvaliacoes(tx, { fkAulaId: idAula }, arr(a.avaliacoes));
+          }
 
-          const videosPayload = Array.isArray(a.videos) ? a.videos : [];
-          const keepVideoIds = videosPayload
-            .filter((v: any) => (v.idAulaVideo ?? 0) > 0)
-            .map((v: any) => v.idAulaVideo);
-
-          // apaga os vídeos que sumiram
-          await tx.aulavideo.deleteMany({
-            where: {
-              fkAulaId: idAula,
-              idAulaVideo: { notIn: keepVideoIds.length ? keepVideoIds : [0] },
-            },
-          });
-
-          // cria/atualiza vídeos
+          // === Vídeos ===
           const videoIdMap: Record<number, number> = {};
-          for (const v of videosPayload) {
-            if (!v.idAulaVideo || v.idAulaVideo < 0) {
-              const created = await tx.aulavideo.create({
-                data: { url: v.url, fkAulaId: idAula },
-              });
-              videoIdMap[v.idAulaVideo ?? -1] = created.idAulaVideo;
-            } else {
-              await tx.aulavideo.update({
-                where: { idAulaVideo: v.idAulaVideo },
-                data: { url: v.url },
-              });
-              videoIdMap[v.idAulaVideo] = v.idAulaVideo;
+          if (Array.isArray(a.videos)) {
+            const videosPayload = a.videos;
+            const keepVideoIds = videosPayload.filter((v: any) => (v.idAulaVideo ?? 0) > 0).map((v: any) => v.idAulaVideo);
+
+            await tx.aulavideo.deleteMany({
+              where: { fkAulaId: idAula, idAulaVideo: { notIn: keepVideoIds.length ? keepVideoIds : [0] } },
+            });
+
+            for (const v of videosPayload) {
+              if (!v.idAulaVideo || v.idAulaVideo < 0) {
+                const created = await tx.aulavideo.create({
+                  data: { url: v.url, fkAulaId: idAula },
+                });
+                videoIdMap[v.idAulaVideo ?? -1] = created.idAulaVideo;
+              } else {
+                await tx.aulavideo.update({
+                  where: { idAulaVideo: v.idAulaVideo },
+                  data: { url: v.url },
+                });
+                videoIdMap[v.idAulaVideo] = v.idAulaVideo;
+              }
             }
           }
 
-          const matsPayload = Array.isArray(a.materiais) ? a.materiais : [];
-          const keepMatIds = matsPayload
-            .filter((m: any) => (m.idMaterialComplementar ?? 0) > 0)
-            .map((m: any) => m.idMaterialComplementar);
-
-          // apaga os materiais que sumiram
-          await tx.materialcomplementar.deleteMany({
-            where: {
-              fkAulaId: idAula,
-              idMaterialComplementar: { notIn: keepMatIds.length ? keepMatIds : [0] },
-            },
-          });
-
+          // === Materiais ===
           const matIdMap: Record<number, number> = {};
-          for (const m of matsPayload) {
-            const matData = {
-              titulo: m.titulo,
-              tipo: m.tipo ?? "LINK",
-              material: m.material,
-              ativo: m.ativo ?? 1,
-              fkAulaId: idAula,
-            };
+          if (Array.isArray(a.materiais)) {
+            const matsPayload = a.materiais;
+            const keepMatIds = matsPayload
+              .filter((m: any) => (m.idMaterialComplementar ?? 0) > 0)
+              .map((m: any) => m.idMaterialComplementar);
 
-            if (!m.idMaterialComplementar || m.idMaterialComplementar < 0) {
-              const created = await tx.materialcomplementar.create({ data: matData });
-              matIdMap[m.idMaterialComplementar ?? -1] = created.idMaterialComplementar;
-            } else {
-              await tx.materialcomplementar.update({
-                where: { idMaterialComplementar: m.idMaterialComplementar },
-                data: matData,
-              });
-              matIdMap[m.idMaterialComplementar] = m.idMaterialComplementar;
+            await tx.materialcomplementar.deleteMany({
+              where: { fkAulaId: idAula, idMaterialComplementar: { notIn: keepMatIds.length ? keepMatIds : [0] } },
+            });
+
+            for (const m of matsPayload) {
+              const matData = {
+                titulo: m.titulo,
+                tipo: m.tipo ?? "LINK",
+                material: m.material,
+                ativo: m.ativo ?? 1,
+                fkAulaId: idAula,
+              };
+
+              if (!m.idMaterialComplementar || m.idMaterialComplementar < 0) {
+                const created = await tx.materialcomplementar.create({ data: matData });
+                matIdMap[m.idMaterialComplementar ?? -1] = created.idMaterialComplementar;
+              } else {
+                await tx.materialcomplementar.update({
+                  where: { idMaterialComplementar: m.idMaterialComplementar },
+                  data: matData,
+                });
+                matIdMap[m.idMaterialComplementar] = m.idMaterialComplementar;
+              }
             }
           }
 
-          // Aulasteps (fluxo)
-          const stepsPayload = Array.isArray(a.steps) ? a.steps : [];
-          const keepStepIds = stepsPayload
-            .filter((s: any) => (s.idAulaStep ?? 0) > 0)
-            .map((s: any) => s.idAulaStep);
+          // === Steps (fluxo) ===
+          if (Array.isArray(a.steps)) {
+            const stepsPayload = a.steps;
+            const keepStepIds = stepsPayload.filter((s: any) => (s.idAulaStep ?? 0) > 0).map((s: any) => s.idAulaStep);
 
-          // Apaga os steps que sumiram
-          await tx.aulastep.deleteMany({
-            where: {
-              fkAulaId: idAula,
-              idAulaStep: { notIn: keepStepIds.length ? keepStepIds : [0] },
-            },
-          });
+            await tx.aulastep.deleteMany({
+              where: { fkAulaId: idAula, idAulaStep: { notIn: keepStepIds.length ? keepStepIds : [0] } },
+            });
 
-          // Cria ou atualiza steps
-          for (const [sIdx, s] of stepsPayload.entries()) {
-            const dataStep = {
-              tipo: aulastep_tipo[s.tipo?.toLowerCase() as keyof typeof aulastep_tipo] ?? aulastep_tipo.video,
-              ordem: sIdx + 1,
-              obrigatorio: s.obrigatorio ?? 1,
-              fkAulaId: idAula,
-              fkAulaVideoId: s.fkAulaVideoId ? videoIdMap[s.fkAulaVideoId] ?? null : null,
-              fkMaterialId: s.fkMaterialId ? matIdMap[s.fkMaterialId] ?? null : null,
-              fkAvaliacaoId: (s.fkAvaliacaoId && s.fkAvaliacaoId > 0) ? s.fkAvaliacaoId : null,
-            };
+            for (const [sIdx, s] of stepsPayload.entries()) {
+              const dataStep = {
+                tipo:
+                  aulastep_tipo[s.tipo?.toLowerCase() as keyof typeof aulastep_tipo] ??
+                  aulastep_tipo.video,
+                ordem: sIdx + 1,
+                obrigatorio: s.obrigatorio ?? 1,
+                fkAulaId: idAula,
+                fkAulaVideoId:
+                  s.fkAulaVideoId && s.fkAulaVideoId > 0
+                    ? s.fkAulaVideoId
+                    : videoIdMap?.[s.fkAulaVideoId] ?? null,
+                fkMaterialId:
+                  s.fkMaterialId && s.fkMaterialId > 0
+                    ? s.fkMaterialId
+                    : matIdMap?.[s.fkMaterialId] ?? null,
+                fkAvaliacaoId: s.fkAvaliacaoId && s.fkAvaliacaoId > 0 ? s.fkAvaliacaoId : null,
+              };
 
-            if (!s.idAulaStep || s.idAulaStep < 0) {
-              await tx.aulastep.create({ data: dataStep });
-            } else {
-              await tx.aulastep.update({
-                where: { idAulaStep: s.idAulaStep },
-                data: dataStep,
-              });
+              if (!s.idAulaStep || s.idAulaStep < 0) {
+                await tx.aulastep.create({ data: dataStep });
+              } else {
+                await tx.aulastep.update({
+                  where: { idAulaStep: s.idAulaStep },
+                  data: dataStep,
+                });
+              }
             }
           }
         }
       }
 
-      // 5) CATEGORIAS — sincroniza a pivot categoriacurso
-      // Aceita payload.categorias como number[] OU [{ idCategoria }] (flex)
+      // === 5. Categorias ===
       const catIdsFromPayload: number[] = Array.isArray(payload.categorias)
         ? payload.categorias
-          .map((c: any) => (typeof c === 'number' ? c : c?.idCategoria ?? c?.fkCategoriaId))
-          .filter((v: any) => typeof v === 'number')
+          .map((c: any) =>
+            typeof c === "number" ? c : c?.idCategoria ?? c?.fkCategoriaId
+          )
+          .filter((v: any) => typeof v === "number")
         : [];
 
-      // estado atual
       const catExist = await tx.categoriacurso.findMany({
         where: { fkCursoId: idCurso },
         select: { fkCategoriaId: true },
       });
       const existIds = catExist.map((x) => x.fkCategoriaId);
 
-      // diff
       const toAdd = catIdsFromPayload.filter((id) => !existIds.includes(id));
       const toRemove = existIds.filter((id) => !catIdsFromPayload.includes(id));
 
@@ -883,14 +965,13 @@ export const syncCurso = {
       }
 
       if (toAdd.length) {
-        // como tem @@unique(fkCursoId, fkCategoriaId), podemos usar createMany com skipDuplicates
         await tx.categoriacurso.createMany({
           data: toAdd.map((fkCategoriaId) => ({ fkCursoId: idCurso, fkCategoriaId })),
           skipDuplicates: true,
         });
       }
 
-      // 6) Retorna curso completo
+      // === 6. Retorno completo ===
       const cursoFull = await tx.curso.findUniqueOrThrow({
         where: { idCurso },
         include: {
@@ -905,15 +986,15 @@ export const syncCurso = {
                       perguntas: { include: { alternativas: true } },
                     },
                   },
-                  steps: { orderBy: { ordem: 'asc' } },
+                  steps: { orderBy: { ordem: "asc" } },
                 },
-                orderBy: { ordem: 'asc' },
+                orderBy: { ordem: "asc" },
               },
               avaliacoes: {
                 include: { perguntas: { include: { alternativas: true } } },
               },
             },
-            orderBy: { ordem: 'asc' },
+            orderBy: { ordem: "asc" },
           },
           avaliacoes: {
             include: { perguntas: { include: { alternativas: true } } },
@@ -924,7 +1005,7 @@ export const syncCurso = {
 
       return cursoFull as any;
     });
-  }
+  },
 };
 
 // Avaliações

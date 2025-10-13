@@ -72,8 +72,6 @@ export default function FormCurso({ curso, setCurso }: FormCursoProps) {
 
   return (
     <div className="space-y-2">
-      <h2 className="text-lg font-semibold">Dados do Curso</h2>
-
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Input
           label="Título"

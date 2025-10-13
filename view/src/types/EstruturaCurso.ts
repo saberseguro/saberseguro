@@ -116,6 +116,7 @@ export interface ResponsavelTecnico {
   registro: string;
   funcao: string;
   telefone: string;
+  assinatura?: string;
   criado_em: string;
   editado_em: string;
   ativo: number;
@@ -203,4 +204,38 @@ export interface Progresso {
   percentual?: number;
   dataInicio?: string;
   dataConclusao?: string;
+}
+
+export interface Certificado {
+  idCertificado: number;
+  codigo: string;
+  curso: string;
+  cargaHoraria: number;
+  empresa: string;
+  funcionario: string;
+  dataGeracao: string;
+  valido: boolean;
+  fkCursoId: number;
+  fkUsuarioId: number;
+  fkEmpresaId: number;
+  urlArquivo?: string;
+}
+
+export interface CertificadosResumo {
+  competencia: string;
+  totalGerados: number;
+  limiteMensal?: number;
+  restante?: number;
+}
+
+export interface CertificadoPreview {
+  pdfBase64: string;
+  [key: string]: any;
+}
+
+export interface CertificadoEmpresa {
+  idCertificadoEmpresa: number;
+  totalGerados: number;
+  limiteMensal: number;
+  competencia: string;
 }

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { buscarEmpresa, criarEmpresa, editarEmpresa, buscarEmpresas, listarEmpresas } from '../../models/empresa/empresa';
+import { buscarEmpresa, criarEmpresa, editarEmpresa, buscarEmpresas, listarEmpresas, getResumoCertificadoEmpresa } from '../../models/empresa/empresa';
 
 export const buscarEmpresaController = async (req: Request, res: Response) => {
   try {
@@ -59,5 +59,21 @@ export const editarEmpresaController = async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ error: err.message });
+  }
+};
+
+export const getResumoCertificadoEmpresaController = async (req: Request, res: Response) => {
+  const usuario = req.user;
+
+  if (!usuario?.fkEmpresaId) {
+    return res.status(400).json({ error: "Usuário sem empresa vinculada." });
+  }
+
+  try {
+    const resumo = await getResumoCertificadoEmpresa.execute(usuario.fkEmpresaId);
+    return res.json(resumo);
+  } catch (error) {
+    console.error("Erro ao buscar resumo de certificados:", error);
+    return res.status(500).json({ error: "Erro ao buscar resumo de certificados." });
   }
 };

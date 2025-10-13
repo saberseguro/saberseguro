@@ -17,9 +17,15 @@ export const buscarMedidaController = async (req: Request, res: Response) => {
 
 export const buscarMedidasController = async (req: Request, res: Response) => {
   try {
-    const empresaId = (req.user as any).fkEmpresaId;
-    const resultado = await buscarMedidas.execute(req.query, empresaId);
-    return res.json(resultado); // { data, total, page, take }
+    const user = req.user as any;
+    const empresaId = user.fkEmpresaId;
+    const roles = user.roles ?? [];
+    const isAdmin = Array.isArray(roles)
+      ? roles.includes("admin")
+      : roles === "admin";
+
+    const resultado = await buscarMedidas.execute(req.query, empresaId, isAdmin);
+    return res.json(resultado);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

@@ -10,11 +10,13 @@ import {
   LogOut,
   ChevronDown,
   ChevronUp,
+  ShieldCheck,
 } from "lucide-react";
-
 import ToolTip from "./Auxiliares/ToolTip";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import CertificadosResumoGrafico from "./Auxiliares/CertificadosResumoGrafico";
+import logo from "../assets/media/logotipos/logo_h_azul_preto.png";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -33,31 +35,56 @@ interface SidebarItemProps {
 const SidebarContext = createContext<{ isOpen: boolean } | undefined>(undefined);
 
 export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
-  const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const { user, logout } = useAuth();
+
+  const isAdmin = user?.role?.includes("admin");
+  const isGestor = user?.role?.includes("gestor");
 
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
 
-  const menuItems = [
-    { label: "Home", icon: <Home />, path: "/", permissoes: [] },
-    { label: "Empresa", icon: <Building />, path: "/empresa", permissoes: ['ver_empresas'] },
+  const baseMenuItems = [
+    { label: "Home", icon: <Home />, path: "/", permissoes: ['acompanhar_progresso'] },
+    { label: "Empresa", icon: <Building />, path: "/empresa", permissoes: ['editar_empresas'] },
     {
       label: "Cursos",
       icon: <BookOpenText />,
       permissoes: ['ver_cursos'],
       children: [
-        { label: "Gerenciar Cursos", path: "/cursos/gerenciar", permissoes: ['criar_cursos'] },
-        { label: "Meus Cursos", path: "/cursos/meuscursos", permissoes: ['ver_cursos'] },
+        { label: "Gerenciar Cursos", icon: <Settings />, path: "/cursos/gerenciar", permissoes: ['criar_cursos'] },
+        { label: "Meus Cursos", icon: <BookOpenText />, path: "/cursos/meuscursos", permissoes: ['ver_cursos'] },
+        { label: "Certificados", icon: <ShieldCheck />, path: "/cursos/certificados", permissoes: ['ver_cursos'] },
       ],
     },
     { label: "Medidas", icon: <HardHat />, path: "/medida", permissoes: ['criar_medidas'] },
   ];
 
+  let menuItems = [] as any[];
+
+  if (Array.isArray(user?.role) && user?.role?.length === 1 && user?.role?.includes("funcionario")) {
+    baseMenuItems.forEach(item => {
+      if (item.children) {
+        item.children.forEach(child => {
+          menuItems.push({
+            ...child,
+          });
+        });
+      } else {
+        menuItems.push(item);
+      }
+    });
+  } else {
+    menuItems = baseMenuItems;
+  }
+
   return (
     <aside className={`min-h-screen transition-all duration-300 ${isOpen ? "w-64" : "w-20"}`}>
       <nav className="h-full flex flex-col bg-white border-r border-gray-300 shadow-sm">
-        <div className={`flex items-center h-16 px-4 border-b border-gray-300 ${isOpen ? "justify-between" : "justify-center"}`}>
-          {isOpen && <span className="text-lg font-bold text-center w-full text-gray-700">AVA</span>}
+        <div className={`flex items-center h-20 px-4 border-b border-gray-300 ${isOpen ? "justify-between" : "justify-center"}`}>
+          {isOpen &&
+            (<img src={logo} className="h-12 mx-auto cursor-pointer" onClick={() => navigate("/")} />)
+          }
           <ToolTip text={isOpen ? "Minimizar" : "Expandir"} position="right" key={isOpen ? "open" : "closed"}>
             <button onClick={toggleSidebar} className="p-2 rounded-md hover:bg-gray-100 transition cursor-pointer">
               {isOpen ? <ChevronFirst size={18} /> : <ChevronLast size={18} />}
@@ -70,17 +97,16 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
             {menuItems
               .filter(item =>
                 item.permissoes.length === 0 ||
-                (user?.permissoes && item.permissoes.some(p => user.permissoes!.includes(p)))
+                (user?.permissoes && item.permissoes.some((p: string) => user.permissoes!.includes(p)))
               )
-              .map(item => {
+              .map((item: any) => {
                 const filteredChildren = item.children?.filter(
-                  child =>
+                  (child: any) =>
                     !child.permissoes ||
                     child.permissoes.length === 0 ||
-                    child.permissoes.some(p => user?.permissoes?.includes(p))
+                    child.permissoes.some((p: string) => user?.permissoes?.includes(p))
                 );
 
-                // Se o item tem filhos mas nenhum filho autorizado, não renderiza o item
                 if (item.children && (!filteredChildren || filteredChildren.length === 0)) return null;
 
                 return (
@@ -98,6 +124,8 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
           </ul>
         </SidebarContext.Provider>
 
+        {isGestor && <CertificadosResumoGrafico isOpen={isOpen} />}
+
         <div className="border-t border-gray-300 p-3">
           <div className={`flex ${isOpen ? "items-center gap-3" : "flex-col items-center"}`}>
             {isOpen ? (
@@ -107,11 +135,19 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                   <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
-                  <ToolTip text="Configurações" position="top">
-                    <button onClick={() => navigate("/")}> <Settings className="text-gray-400 hover:text-gray-700" size={16} /> </button>
-                  </ToolTip>
+                  {isAdmin && (
+                    <>
+                      <ToolTip text="Configurações" position="top">
+                        <button onClick={() => {navigate("/configuracoes");}}
+                          className="cursor-pointer"
+                        >
+                          <Settings className="text-gray-400 hover:text-gray-700" size={16} />
+                        </button>
+                      </ToolTip>
+                    </>
+                  )}
                   <ToolTip text="Sair" position="top">
-                    <button onClick={logout}> <LogOut className="text-gray-400 hover:text-gray-700" size={16} /> </button>
+                    <button onClick={logout} className="cursor-pointer"> <LogOut className="text-gray-400 hover:text-gray-700" size={16} /> </button>
                   </ToolTip>
                 </div>
               </>

@@ -4,6 +4,7 @@ import { Input, SearchableSelect, SelectInput, TextArea } from "./Inputs";
 import toast from "react-hot-toast";
 import Spinner from "../Spinner";
 import { Plus, Trash2 } from "lucide-react";
+import Swal from "sweetalert2";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -165,11 +166,26 @@ export default function FormSetor({ initialData = {}, onEdit, fkUnidadeId, setIs
     setSelCurso(null);
   };
 
-  const handleRemoverCurso = (idCurso: number) => {
-    setForm((prev) => ({
-      ...prev,
-      cursos: prev.cursos.filter((c: any) => c.idCurso !== idCurso),
-    }));
+  const handleRemoverCurso = async (idCurso: number) => {
+    const confirm = await Swal.fire({
+      title: "Remover curso?",
+      text: "Esta ação irá desvincular o curso do setor. Deseja continuar?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#16a34a",
+      cancelButtonColor: "#d33",
+      reverseButtons: true,
+    });
+
+    if (confirm.isConfirmed) {
+      setForm((prev) => ({
+        ...prev,
+        cursos: prev.cursos.filter((c: any) => c.idCurso !== idCurso),
+      }));
+      toast.success("Curso removido com sucesso!");
+    }
   };
 
   const handleAdicionarMedidaSelecionada = () => {
@@ -196,11 +212,26 @@ export default function FormSetor({ initialData = {}, onEdit, fkUnidadeId, setIs
     setSelMedida(null);
   };
 
-  const handleRemoverMedida = (idMedida: number) => {
-    setForm((prev) => ({
-      ...prev,
-      medidas: prev.medidas.filter((m: any) => m.idMedida !== idMedida),
-    }));
+  const handleRemoverMedida = async (idMedida: number) => {
+    const confirm = await Swal.fire({
+      title: "Remover medida?",
+      text: "Esta ação irá desvincular a medida do setor. Deseja continuar?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sim, remover",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#16a34a",
+      cancelButtonColor: "#d33",
+      reverseButtons: true,
+    });
+
+    if (confirm.isConfirmed) {
+      setForm((prev) => ({
+        ...prev,
+        medidas: prev.medidas.filter((m: any) => m.idMedida !== idMedida),
+      }));
+      toast.success("Medida removida com sucesso!");
+    }
   };
 
   // Listas

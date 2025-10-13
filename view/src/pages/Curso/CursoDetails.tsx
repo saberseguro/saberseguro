@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, GraduationCap, Play, UserCircle } from "lucide-react";
-import { getCursoCompleto } from "../../services/apiCurso";
+import { getCursoCompleto, iniciarCursoAcesso } from "../../services/apiCurso";
 import type { CursoCompleto } from "../../types/EstruturaCurso";
 import { ModulosAccordion } from "../../components/Accordions/Accordions";
 
@@ -56,6 +56,16 @@ export default function CursoDetails({ idCurso }: CursoDetailsProps) {
     corBotao = "bg-green-600 hover:bg-green-700";
     IconeBotao = GraduationCap;
   }
+
+  const handleIniciarCurso = async () => {
+    try {
+      await iniciarCursoAcesso(Number(idCurso));
+
+      navigate(`/cursos/playcurso/${idCurso}`);
+    } catch (error) {
+      console.error("Erro ao iniciar curso:", error);
+    }
+  };
 
   return (
     <div className="px-6 py-4">
@@ -120,7 +130,7 @@ export default function CursoDetails({ idCurso }: CursoDetailsProps) {
       {/* Iniciar Curso */}
       <button
         className={`${corBotao} text-white font-medium p-3 rounded mb-6 w-full flex items-center justify-center gap-2 cursor-pointer`}
-        onClick={() => navigate(`/cursos/playcurso/${curso.idCurso}`)}
+        onClick={() => handleIniciarCurso()}
       >
         <IconeBotao size={16} />
         <span className="leading-none">{textoBotao}</span>
