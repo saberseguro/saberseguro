@@ -1,5 +1,4 @@
 import React from "react";
-import { Input, SelectInput } from "../Formularios/Inputs";
 import { Search } from "lucide-react";
 
 interface Props {

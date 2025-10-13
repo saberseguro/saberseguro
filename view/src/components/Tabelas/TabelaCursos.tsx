@@ -1,6 +1,5 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil } from "lucide-react";
 import ToolTip from "../Auxiliares/ToolTip";
-import Checkbox from "../Formularios/Inputs";
 import CheckboxStatus from "../Formularios/Inputs";
 
 interface Curso {

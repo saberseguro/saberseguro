@@ -9,7 +9,7 @@ interface ModuloListProps {
   onRemover: (index: number) => void;
 }
 
-const ListaModulo = ({ modulos, onAdicionar, onAtualizar, onRemover }: ModuloListProps) => {
+const ListaModulo = ({ modulos, onRemover }: ModuloListProps) => {
   const [aberto, setAberto] = useState<number | null>(null);
 
   const handleExpandir = (index: number) => {

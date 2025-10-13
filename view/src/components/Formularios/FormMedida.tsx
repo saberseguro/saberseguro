@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Medida, MedidaTipo } from "../../types/EstruturaMedida";
-import CheckboxStatus, { Input, TextArea, SelectInput } from "./Inputs";
-import ToolTip from "../Auxiliares/ToolTip";
+import { Input, TextArea, SelectInput } from "./Inputs";
 
 interface Props {
   medida: Medida;

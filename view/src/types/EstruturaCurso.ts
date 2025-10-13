@@ -61,6 +61,7 @@ export interface Modulo {
   ordem?: number;
   ativo?: number;
   progresso?: Progresso;
+  descricao?: string;
 
   aulas: Aula[];
   avaliacoes?: Avaliacao[];
