@@ -14,6 +14,7 @@ import unidadeRoutes from './routes/empresa/unidade.routes';
 import setorRoutes from './routes/empresa/setor.routes'
 import cargoRoutes from './routes/empresa/cargo.routes'
 
+
 // Curso
 import cursoRoutes from './routes/curso/curso.routes';
 import aulaRoutes from './routes/curso/aula.routes';
