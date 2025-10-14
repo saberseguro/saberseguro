@@ -770,9 +770,9 @@ export const syncCurso = {
         const aulasToDel = await tx.aula.findMany({ where: { fkModuloId: { in: toDeleteMods } }, select: { idAula: true } });
         const idsAula = aulasToDel.map((a) => a.idAula);
         if (idsAula.length) {
-          await tx.aulastep.deleteMany({ where: { fkAulaId: { in: idsAula } } }).catch(() => { });
-          await tx.aulavideo.deleteMany({ where: { fkAulaId: { in: idsAula } } }).catch(() => { });
-          await tx.materialcomplementar.deleteMany({ where: { fkAulaId: { in: idsAula } } }).catch(() => { });
+          await tx.aulastep.deleteMany({ where: { fkAulaId: { in: idsAula } } });
+          await tx.aulavideo.deleteMany({ where: { fkAulaId: { in: idsAula } } });
+          await tx.materialcomplementar.deleteMany({ where: { fkAulaId: { in: idsAula } } });
           await tx.aula.deleteMany({ where: { idAula: { in: idsAula } } });
         }
         await tx.modulo.deleteMany({ where: { idModulo: { in: toDeleteMods } } });
@@ -809,9 +809,9 @@ export const syncCurso = {
         const toDeleteAulas = aulasExist.map((a) => a.idAula).filter((id) => !aulasIdsPos.includes(id));
 
         if (toDeleteAulas.length) {
-          await tx.aulastep.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } }).catch(() => { });
-          await tx.aulavideo.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } }).catch(() => { });
-          await tx.materialcomplementar.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } }).catch(() => { });
+          await tx.aulastep.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } });
+          await tx.aulavideo.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } });
+          await tx.materialcomplementar.deleteMany({ where: { fkAulaId: { in: toDeleteAulas } } });
           await tx.aula.deleteMany({ where: { idAula: { in: toDeleteAulas } } });
         }
 
@@ -1004,7 +1004,7 @@ export const syncCurso = {
       });
 
       return cursoFull as any;
-    });
+    }, { timeout: 60000 });
   },
 };
 
