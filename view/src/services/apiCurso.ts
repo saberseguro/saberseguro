@@ -207,8 +207,8 @@ export async function finalizarCurso(idCurso: number): Promise<{ sucesso: boolea
   });
 }
 
-export async function getCertificadoPreview(idCurso: number): Promise<CertificadoDados> {
-  return await apiFetch(`/curso/certificado/preview/${idCurso}`);
+export async function getCertificadoPreview(idCurso: number, idFuncionario?: number): Promise<CertificadoDados> {
+  return await apiFetch(`/curso/certificado/preview/${idCurso}?funcionario=${idFuncionario ?? ''}`);
 }
 
 export async function iniciarCursoAcesso(idCurso: number) {

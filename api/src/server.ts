@@ -36,7 +36,7 @@ import medidaRoutes from './routes/medida.routes';
 const app = express();
 
 app.use(cors({
-  origin: 'https://app.sabersegurotreinamentos.com',
+  origin: ['https://app.sabersegurotreinamentos.com', 'http://localhost:5173'],
   credentials: true,
 }));
 

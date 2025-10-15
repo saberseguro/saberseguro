@@ -169,11 +169,11 @@ export const getCertificadoPreview = {
 
 export const gerarCertificado = {
   async execute(dados: any, usuario: any) {
-    const fkUsuarioId = usuario.idUsuario;
+    const fkUsuarioId = dados.idUsuario ?? usuario.idUsuario; // ✅ Usa funcionário se informado
     const fkCursoId = dados.idCurso;
     const fkEmpresaId = dados.idEmpresa ?? usuario.fkEmpresaId;
 
-    // 1️⃣ Verifica se já existe certificado válido
+    // 1️⃣ Verifica se já existe certificado válido para esse funcionário e curso
     const existente = await prisma.certificado.findFirst({
       where: {
         fkUsuarioId,
@@ -189,17 +189,18 @@ export const gerarCertificado = {
     // 2️⃣ Gera código único
     const codigo = `CERT-${Date.now()}`;
 
-    // 3️⃣ Cria registro
+    // 3️⃣ Cria o certificado
     const certificado = await prisma.certificado.create({
       data: {
         codigo,
         fkUsuarioId,
         fkCursoId,
         fkEmpresaId,
+        dataGeracao: new Date(),
       },
     });
 
-    // 4️⃣ Atualiza contagem mensal
+    // 4️⃣ Atualiza contagem mensal da empresa
     const competencia = format(new Date(), "MM/yyyy");
 
     await prisma.certificadoempresa.upsert({
@@ -336,9 +337,9 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
 
           <!-- LOGO SABER -->
           ${logoBase64
-            ? `<img src="${logoBase64}" class="logo" alt="Saber Seguro Treinamentos"/>`
-            : "<div style='height:160px;'></div>"
-          }
+      ? `<img src="${logoBase64}" class="logo" alt="Saber Seguro Treinamentos"/>`
+      : "<div style='height:160px;'></div>"
+    }
 
           <div class="titulo">Certificado de Conclusão</div>
           <div class="subtitulo">Nós da Saber Seguro Treinamentos certificamos que:</div>
@@ -347,32 +348,32 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
 
           <div class="texto">
             Funcionário(a) da empresa <strong>${dados.empresaAluno}</strong>, portador do CPF <strong>${formatarCpf(
-              dados.cpf
-            )}</strong>, concluiu com êxito o curso <strong>${dados.curso}</strong>, com carga horária de <strong>${dados.cargaHoraria
-            }</strong>, finalizado em <strong>${dados.dataConclusao}</strong>.
+      dados.cpf
+    )}</strong>, concluiu com êxito o curso <strong>${dados.curso}</strong>, com carga horária de <strong>${dados.cargaHoraria
+    }</strong>, finalizado em <strong>${dados.dataConclusao}</strong>.
           </div>
 
           ${dados.empresa
-            ? `<div class="texto">Curso promovido por: <strong>${dados.empresa}</strong></div>`
-            : ""
-          }
+      ? `<div class="texto">Curso promovido por: <strong>${dados.empresa}</strong></div>`
+      : ""
+    }
 
           <!-- Assinaturas -->
           <div class="assinaturas">
             <div class="assinatura">
               ${assinaturaBase64
-                ? `<img src="${assinaturaBase64}" alt="Assinatura do instrutor" />`
-                : `<div class="linha"></div>`
-              }
+      ? `<img src="${assinaturaBase64}" alt="Assinatura do instrutor" />`
+      : `<div class="linha"></div>`
+    }
               <div class="linha"></div>
               ${dados.instrutor
-                ? `<div class="textoAssinatura">Instrutor Responsável: <strong>${dados.instrutor.nome}</strong></div>`
-                : ""
-              }
+      ? `<div class="textoAssinatura">Instrutor Responsável: <strong>${dados.instrutor.nome}</strong></div>`
+      : ""
+    }
               ${dados.instrutor
-                ? `<div class="subTextoAssinatura">${dados.instrutor.funcao}: ${dados.instrutor.registro}</div>`
-                : ""
-              }
+      ? `<div class="subTextoAssinatura">${dados.instrutor.funcao}: ${dados.instrutor.registro}</div>`
+      : ""
+    }
             </div>
           </div>
 
@@ -386,51 +387,50 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
           <div class="titulo">Conteúdo Programático</div>
           <div style="text-align: left; max-width: 80%; margin: 40px auto;">
             ${dados.modulos
-              .map(
-                (m: any, i: number) => {
-                  // 🔹 Ordena as aulas pela ordem
-                  const aulasOrdenadas = [...m.aulas].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+      .map(
+        (m: any, i: number) => {
+          // 🔹 Ordena as aulas pela ordem
+          const aulasOrdenadas = [...m.aulas].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 
-                  return `
+          return `
                     <div style="margin-top: 25px;">
                       <div style="font-size: 20px; font-weight: bold; color: #0069A8; margin-bottom: 10px;">
                         Módulo ${i + 1} - ${m.titulo}
                       </div>
                       <ul style="margin-left: 25px; font-size: 16px; line-height: 1.6;">
                         ${aulasOrdenadas
-                          .map((a: any) => {
-                            // 🔹 Converte duração (minutos → horas e minutos)
-                            let duracaoTexto = "";
-                            if (a.duracao != null) {
-                              const minutos = Number(a.duracao);
-                              if (minutos < 60) {
-                                duracaoTexto = `${minutos} min`;
-                              } else {
-                                const horas = Math.floor(minutos / 60);
-                                const restoMin = minutos % 60;
-                                duracaoTexto = restoMin > 0 ? `${horas}h ${restoMin}min` : `${horas}h`;
-                              }
-                            }
+              .map((a: any) => {
+                // 🔹 Converte duração (minutos → horas e minutos)
+                let duracaoTexto = "";
+                if (a.duracao != null) {
+                  const minutos = Number(a.duracao);
+                  if (minutos < 60) {
+                    duracaoTexto = `${minutos} min`;
+                  } else {
+                    const horas = Math.floor(minutos / 60);
+                    const restoMin = minutos % 60;
+                    duracaoTexto = restoMin > 0 ? `${horas}h ${restoMin}min` : `${horas}h`;
+                  }
+                }
 
-                            return `
+                return `
                               <li style="margin-bottom: 8px;">
                                 <strong>${a.titulo}</strong>
                                 ${duracaoTexto ? `<span style="color:#555; font-size:14px;">(${duracaoTexto})</span>` : ""}
-                                ${
-                                  a.descricao
-                                    ? `<div style="font-size:14px; color:#666;">${a.descricao}</div>`
-                                    : ""
-                                }
+                                ${a.descricao
+                    ? `<div style="font-size:14px; color:#666;">${a.descricao}</div>`
+                    : ""
+                  }
                               </li>
                             `;
-                          })
-                          .join("")}
+              })
+              .join("")}
                       </ul>
                     </div>
                   `;
-                }
-              )
-              .join("")}
+        }
+      )
+      .join("")}
           </div>
         </div>
       </body>

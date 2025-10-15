@@ -214,7 +214,7 @@ export default function AvaliacaoProva({
                 <p className="text-green-600 font-medium">
                   ✅ Aprovado com nota {tentativas[0]?.nota}
                 </p>
-              ) : (
+              ) : avaliacao.tipo === "avaliacao_curso" && (
                 <p className="text-gray-600">
                   Última nota: <strong>{tentativas[0]?.nota ?? 0}</strong>
                 </p>

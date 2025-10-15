@@ -4,6 +4,7 @@ import { Clock, GraduationCap, Play, UserCircle } from "lucide-react";
 import { getCursoCompleto, iniciarCursoAcesso } from "../../services/apiCurso";
 import type { CursoCompleto } from "../../types/EstruturaCurso";
 import { ModulosAccordion } from "../../components/Accordions/Accordions";
+import Spinner from "../../components/Spinner";
 
 interface CursoDetailsProps {
   idCurso: number;
@@ -38,7 +39,7 @@ export default function CursoDetails({ idCurso }: CursoDetailsProps) {
     return () => { mounted = false; };
   }, [idCurso]);
 
-  if (loading) return <div className="p-6">Carregando curso...</div>;
+  if (loading) return <div className="p-6 flex flex-col justify-center items-center gap-2 h-64"><Spinner size={38} className="border-sky-700 border-4"/> Carregando Dados do Curso...</div>;
   if (!curso) return <div className="p-6 text-red-500">Curso não encontrado.</div>;
 
   const percentual = curso.acessos?.[0]?.percentual ?? 0;

@@ -282,6 +282,7 @@ export const gerarCertificadoController = async (req: Request, res: Response) =>
 
 export const previewCertificadoController = async (req: Request, res: Response) => {
   const idCurso = Number(req.params.id);
+  const idFuncionario = Number(req.query.funcionario);
   const usuario = req.user;
 
   if (isNaN(idCurso) || !usuario) {
@@ -289,20 +290,28 @@ export const previewCertificadoController = async (req: Request, res: Response) 
   }
 
   try {
-    // 🔍 Busca os dados completos do certificado
-    const dadosCertificado = await getCertificadoPreview.execute(idCurso, usuario.idUsuario);
+    // Determina o usuário-alvo (se veio funcionário, usa ele; senão, o próprio logado)
+    const idUsuarioAlvo = idFuncionario > 0 ? idFuncionario : usuario.idUsuario;
+
+    // 🔍 Busca dados do certificado (baseados no aluno)
+    const dadosCertificado = await getCertificadoPreview.execute(idCurso, idUsuarioAlvo);
 
     if (!dadosCertificado) {
       return res.status(404).json({ error: "Certificado não encontrado ou curso não concluído." });
     }
 
-    // ⚙️ Gera ou reaproveita o registro no banco
-    await gerarCertificado.execute(
-      { idCurso, idEmpresa: dadosCertificado.idEmpresa, titulo: dadosCertificado.curso },
-      usuario
+    // ⚙️ Gera ou reaproveita o registro do certificado
+    const certificado = await gerarCertificado.execute(
+      {
+        idCurso,
+        idEmpresa: dadosCertificado.idEmpresa,
+        titulo: dadosCertificado.curso,
+        idUsuario: idUsuarioAlvo, // <- associar corretamente o funcionário
+      },
+      usuario // quem executou (gestor)
     );
 
-    // 🧾 Gera o PDF em buffer
+    // 🧾 Gera o PDF
     const pdfBuffer = await gerarCertificadoPdf(dadosCertificado);
     const pdfBase64 = pdfBuffer.toString("base64");
 
@@ -312,12 +321,13 @@ export const previewCertificadoController = async (req: Request, res: Response) 
       tipo: "gerar_certificado",
       entidade: "curso",
       entidadeId: idCurso,
-      descricao: `Certificado visualizado (e contabilizado) para o aluno "${usuario.nome}" no curso "${dadosCertificado.curso}".`,
+      descricao: `Certificado visualizado para o funcionário ID ${idUsuarioAlvo} no curso "${dadosCertificado.curso}".`,
     });
 
-    // Retorna o preview com PDF
+    // Retorna preview
     return res.json({
       ...dadosCertificado,
+      idCertificado: certificado.idCertificado,
       pdfBase64,
     });
   } catch (error) {

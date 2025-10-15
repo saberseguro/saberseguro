@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getCertificadoPreview } from "../services/apiCurso";
 import { Download, ShieldCheck, Loader2 } from "lucide-react";
@@ -6,6 +6,8 @@ import { useCertificados } from "../contexts/CertificadosContext";
 
 export default function CertificadoPreview() {
   const { idCurso } = useParams();
+  const location = useLocation();
+  const idFuncionario = location.state?.idFuncionario;
   const { atualizarResumo } = useCertificados();
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -14,7 +16,7 @@ export default function CertificadoPreview() {
     const fetchPreview = async () => {
       try {
         setLoading(true);
-        const json = await getCertificadoPreview(Number(idCurso));
+        const json = await getCertificadoPreview(Number(idCurso), Number(idFuncionario));
         setPdfBase64(json.pdfBase64 ?? null);
         await atualizarResumo();
       } catch (error) {

@@ -6,10 +6,8 @@ import { getCertificados } from "../../services/apiCurso";
 import toast from "react-hot-toast";
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import TabelaBase from "../../components/Tabelas/TabelaBase";
-import { useAuth } from "../../contexts/AuthContext";
 
 export default function CertificadoPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [certificados, setCertificados] = useState<Certificado[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,9 +28,10 @@ export default function CertificadoPage() {
   }, []);
 
   const handlePreview = async (cert: Certificado) => {
-    console.log(cert);
     if (cert.fkCursoId) {
-      navigate(`/certificado/${cert.fkCursoId}`);
+      navigate(`/certificado/${cert.fkCursoId}`, {
+        state: { idFuncionario: cert.fkUsuarioId },
+      });
     } else {
       toast.error("Erro ao gerar certificado.");
     };
@@ -68,8 +67,7 @@ export default function CertificadoPage() {
       header: "Ações",
       accessor: "idCertificado" as keyof Certificado,
       render: (_val: any, row: Certificado) => {
-        const isDono = row.fkUsuarioId === user?.idUsuario;
-        const podeVisualizar = isDono && row?.valido;
+        const podeVisualizar = row?.valido;
 
         return (
           <div className="flex justify-center items-center">

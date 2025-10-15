@@ -7,6 +7,7 @@ import ReactPlayer from "react-player";
 import ModalVisualizador from "../../components/Modais/ModalVisualizador";
 import toast from "react-hot-toast";
 import AvaliacaoProva from "../../components/AvaliacaoProva";
+import Spinner from "../../components/Spinner";
 
 function isStepConcluido(step: any, usuarioAula: any, avaliacoesRespondidasMap: any) {
   switch (step.tipo) {
@@ -485,7 +486,7 @@ export default function PlayCursoPage() {
 
   const stepAtual: Step | null = curso?.steps?.[stepAtualIndex] ?? null;
 
-  if (!curso) return <div>Carregando...</div>;
+  if (!curso) return <div className="p-6 flex flex-col justify-center items-center gap-2 h-64"><Spinner size={38} className="border-sky-700 border-4"/> Carregando curso aguarde...</div>;
 
   return (
     <>
