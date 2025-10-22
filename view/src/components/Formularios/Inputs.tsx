@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Select from "react-select";
 import { normalizeStr } from '../../auxiliares/utils';
+import { Eye, EyeOff } from 'lucide-react'
 
 // Input
 interface InputProps {
@@ -13,7 +14,7 @@ interface InputProps {
   min?: number;
   maxLength?: number;
   disable?: boolean;
-  placeholder?: string
+  placeholder?: string;
 }
 
 export const Input = ({
@@ -22,30 +23,49 @@ export const Input = ({
   value,
   onChange,
   required = true,
-  type = 'text',
+  type = "text",
   min = 0,
   maxLength,
   disable = false,
-  placeholder = ""
-}: InputProps) => (
-  <div className="w-full">
-    <label htmlFor={name} className="block mb-1 text-sm font-medium text-gray-900">
-      {label}{required && ' *'}
-    </label>
-    <input
-      type={name === 'senha' ? 'password' : type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      required={required}
-      min={min}
-      maxLength={maxLength}
-      disabled={disable}
-      placeholder={placeholder}
-      className="border border-gray-300 text-gray-900 text-sm rounded-md focus:border-2 focus:border-blue-500 focus:outline-none block w-full p-2.5 bg-white disabled:opacity-50"
-    />
-  </div>
-);
+  placeholder = "",
+}: InputProps) => {
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const isPassword = type === "password";
+
+  return (
+    <div className="w-full relative">
+      {label && (
+        <label htmlFor={name} className="block mb-1 text-sm font-medium text-gray-900">
+          {label}
+          {required && " *"}
+        </label>
+      )}
+
+      <input
+        type={isPassword && !mostrarSenha ? "password" : "text"}
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        min={min}
+        maxLength={maxLength}
+        disabled={disable}
+        placeholder={placeholder}
+        className="border border-gray-300 text-gray-900 text-sm rounded-md focus:border-2 focus:border-blue-500 focus:outline-none block w-full p-2.5 bg-white disabled:opacity-50 pr-12"
+      />
+
+      {isPassword && (
+        <button
+          type="button"
+          onClick={() => setMostrarSenha((prev) => !prev)}
+          className="absolute right-3 top-9 text-sm text-blue-600 hover:underline cursor-pointer"
+        >
+          {mostrarSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+        </button>
+      )}
+    </div>
+  );
+};
 
 // Select
 export interface SelectOption {

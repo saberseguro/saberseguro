@@ -3,6 +3,8 @@ export interface Usuario {
   email: string;
   nome: string;
   cpf: string;
+  assinatura?: string;
+  trocarsenha: boolean;
   ativo: number;
   role: string[];
   permissoes: string[];

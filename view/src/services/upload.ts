@@ -30,8 +30,15 @@ export function uploadMaterialArquivo(
   });
 }
 
-export async function uploadAssinatura(base64: string, idResponsavel: number | string): Promise<string> {
-  const storageRef = ref(storage, `assinaturas/${idResponsavel}/assinatura.png`);
+export async function uploadAssinaturaResponsavel(base64: string, idResponsavel: number | string): Promise<string> {
+  const storageRef = ref(storage, `assinaturas/responsaveis/${idResponsavel}/assinatura.png`);
+  await uploadString(storageRef, base64, "data_url");
+  const url = await getDownloadURL(storageRef);
+  return url;
+}
+
+export async function uploadAssinaturaUsuario(base64: string, idUsuario: number | string): Promise<string> {
+  const storageRef = ref(storage, `assinaturas/usuarios/${idUsuario}/assinatura.png`);
   await uploadString(storageRef, base64, "data_url");
   const url = await getDownloadURL(storageRef);
   return url;

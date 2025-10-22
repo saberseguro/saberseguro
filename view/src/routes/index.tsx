@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
@@ -15,10 +15,39 @@ const MedidaPage = lazy(() => import('../pages/Medida/MedidaPage'));
 const CertificadoPreview = lazy(() => import('../pages/CertificadoPreview'));
 const ConfigPage = lazy(() => import('../pages/ConfigPage'));
 const CertificadoPage = lazy(() => import('../pages/Curso/CertificadoPage'));
+const AjustesPage = lazy(() => import('../pages/Ajustes'))
 
 function PrivateRoute() {
   const { user } = useAuth();
-  return user ? <Outlet /> : <Navigate to="/login" />;
+  const location = useLocation();
+
+  const precisaTrocarSenha = user?.trocarsenha;
+  const precisaAdicionarAssinatura = !user?.assinatura;
+  const ajustesPendentes = precisaTrocarSenha || precisaAdicionarAssinatura;
+
+  const estaNaPaginaDeAjustes = location.pathname === "/ajustes";
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  // Bloqueia tudo enquanto não fizer os ajustes
+  if (ajustesPendentes && !estaNaPaginaDeAjustes) {
+    return (
+      <Navigate
+        to="/ajustes"
+        state={{
+          precisaTrocarSenha,
+          precisaAdicionarAssinatura,
+          senhaAtual: "",
+        }}
+        replace
+      />
+    );
+  }
+
+  // Tudo certo
+  return <Outlet />;
 }
 
 function PublicRoute() {
@@ -44,6 +73,7 @@ export default function AppRoutes() {
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<HomePage />} />
+              <Route path="/ajustes" element={<AjustesPage />} />
               <Route path="/empresa" element={<EmpresaPage />} />
 
               {/* Curso */}
@@ -52,7 +82,7 @@ export default function AppRoutes() {
               <Route path="/cursos/playcurso/:idCurso" element={<PlayerCurso />} />
 
               <Route path="/cursos/certificados" element={<CertificadoPage />} />
-              <Route path="/certificado/:idCurso" element={<CertificadoPreview />} />
+              <Route path="/certificado/preview/:idCertificado" element={<CertificadoPreview />} />
 
               {/* Medida */}
               <Route path="/medida" element={<MedidaPage />} />

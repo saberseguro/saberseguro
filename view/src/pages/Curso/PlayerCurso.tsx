@@ -428,7 +428,7 @@ export default function PlayCursoPage() {
 
   const handleGerarCertificado = async () => {
     if (idCurso) {
-      navigate(`/certificado/${idCurso}`);
+      navigate(`/cursos/certificados`);
     }
   };
 

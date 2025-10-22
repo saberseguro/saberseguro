@@ -17,7 +17,7 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    await toast.promise(
+    const usuario = await toast.promise(
       login(email, senha),
       {
         loading: "Entrando...",
@@ -25,6 +25,18 @@ export default function LoginPage() {
         error: (err) => err.message || "Erro ao fazer login",
       }
     );
+
+    if (usuario.trocarsenha || !usuario.assinatura) {
+      navigate("/ajustes", {
+        state: {
+          precisaTrocarSenha: usuario.trocarsenha,
+          senhaAtual: senha,
+          precisaAdicionarAssinatura: !usuario.assinatura,
+        },
+      });
+      return;
+    }
+
     navigate("/cursos/meuscursos");
   };
 

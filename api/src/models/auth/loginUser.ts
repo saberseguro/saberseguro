@@ -122,16 +122,61 @@ export async function loginUser(idToken: string) {
 
   return {
     usuario: {
-      idUsuario: usuario.idUsuario,
-      email: usuario.email,
-      nome: usuario.nome,
-      cpf: usuario.cpf,
+      ...usuario,
       role: nomesRoles,
       permissoes,
-      fkEmpresaId: usuario.fkEmpresaId,
-      fkResponsavelTecnicoId: usuario.fkResponsavelTecnicoId,
-      fkCargoId: usuario.fkCargoId,
     },
     token,
   };
+}
+
+export async function trocarSenha(idUsuario: number) {
+  if (!idUsuario || Number.isNaN(Number(idUsuario))) {
+    throw new Error("idUsuario inválido");
+  }
+
+  const usuarioAtualizado = await prisma.usuario.update({
+    where: { idUsuario: Number(idUsuario) },
+    data: { trocarsenha: false },
+  });
+
+  try {
+    await registrarEvento({
+      idUsuario: idUsuario,
+      tipo: "editar",
+      entidade: "usuario",
+      entidadeId: idUsuario,
+      descricao: `Senha alterada com sucesso`,
+    });
+  } catch (e) {
+    throw new Error("Erro ao registrar evento de troca de senha: " + e);
+  }
+
+  return usuarioAtualizado;
+}
+
+export async function atualizarAssinatura(url: string, idUsuario: number) {
+  if (!url || !idUsuario) {
+    throw new Error("Faltando dados");
+  }
+
+  // Atualiza campo trocarsenha para false
+  const usuarioAtualizado = await prisma.usuario.update({
+    where: { idUsuario: Number(idUsuario) },
+    data: { assinatura: url },
+  });
+
+  try {
+    await registrarEvento({
+      idUsuario: idUsuario,
+      tipo: "editar",
+      entidade: "usuario",
+      entidadeId: idUsuario,
+      descricao: `Assinatura atualizada com sucesso`,
+    });
+  } catch (e) {
+    throw new Error("Erro ao registrar evento de atualização de assinatura: " + e);
+  }
+
+  return usuarioAtualizado;
 }

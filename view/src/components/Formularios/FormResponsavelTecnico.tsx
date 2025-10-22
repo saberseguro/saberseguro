@@ -8,7 +8,7 @@ import {
 import type { ResponsavelTecnico } from "../../types/EstruturaCurso";
 import { Input, SelectInput } from "./Inputs";
 import AssinaturaCanvas from "../Auxiliares/AssinaturaCanvas";
-import { uploadAssinatura } from "../../services/upload";
+import { uploadAssinaturaResponsavel } from "../../services/upload";
 
 interface FormResponsavelTecnicoProps {
   initialData?: Partial<ResponsavelTecnico>;
@@ -49,7 +49,7 @@ export default function FormResponsavelTecnico({
       const idResponsavel =
         initialData?.idResponsavelTecnico ?? Date.now();
 
-      const url = await uploadAssinatura(assinaturaBase64, idResponsavel);
+      const url = await uploadAssinaturaResponsavel(assinaturaBase64, idResponsavel);
 
       setForm((prev) => ({ ...prev, assinatura: url }));
       setShowCanvas(false);

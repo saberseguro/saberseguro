@@ -28,13 +28,11 @@ export default function CertificadoPage() {
   }, []);
 
   const handlePreview = async (cert: Certificado) => {
-    if (cert.fkCursoId) {
-      navigate(`/certificado/${cert.fkCursoId}`, {
-        state: { idFuncionario: cert.fkUsuarioId },
-      });
-    } else {
-      toast.error("Erro ao gerar certificado.");
-    };
+    navigate(`/certificado/preview/${cert.idCertificado}`, {
+      state: {
+        nome: cert.funcionario || "",
+      },
+    });
   };
 
   const columns = [

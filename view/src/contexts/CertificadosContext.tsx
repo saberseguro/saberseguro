@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import type { CertificadosResumo } from "../types/EstruturaCurso";
 import { getResumoCertificadoEmpresa } from "../services/apiEmpresa";
+import { useAuth } from "./AuthContext";
 
 interface CertificadosContextType {
   resumo: CertificadosResumo | null;
@@ -11,9 +12,11 @@ const CertificadosContext = createContext<CertificadosContextType | undefined>(u
 
 export function CertificadosProvider({ children }: { children: ReactNode }) {
   const [resumo, setResumo] = useState<CertificadosResumo | null>(null);
+  const { user } = useAuth();
 
   const atualizarResumo = async () => {
     try {
+      if (!user?.fkEmpresaId) return;
       const data = await getResumoCertificadoEmpresa();
       setResumo(data);
     } catch (error) {

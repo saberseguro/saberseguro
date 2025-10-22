@@ -1,6 +1,7 @@
 import { Prisma, aulastep_tipo } from '@prisma/client';
 import { prisma } from '../../config/prisma-client';
 import { registrarEvento } from '../../shared/utils/registrarEvento';
+import { gerarCertificado } from './certificado';
 
 // helper: normalização segura de arrays
 const arr = <T = unknown>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
@@ -505,11 +506,14 @@ export const excluirCurso = {
 
 export const finalizarCurso = {
   async execute(idCurso: number, user: any) {
-    return prisma.cursoacesso.upsert({
+    const idUsuario = user.idUsuario;
+
+    // 1️⃣ Marca como concluído na tabela cursoacesso
+    const acesso = await prisma.cursoacesso.upsert({
       where: {
         fkUsuarioId_fkCursoId: {
           fkCursoId: idCurso,
-          fkUsuarioId: user?.idUsuario,
+          fkUsuarioId: idUsuario,
         },
       },
       update: {
@@ -518,12 +522,46 @@ export const finalizarCurso = {
       },
       create: {
         fkCursoId: idCurso,
-        fkUsuarioId: user?.idUsuario,
+        fkUsuarioId: idUsuario,
         dataInicio: new Date(),
         dataConclusao: new Date(),
         concluido: 1,
       },
     });
+
+    // 2️⃣ Busca o curso para pegar dados do certificado
+    const curso = await prisma.curso.findUnique({
+      where: { idCurso },
+      select: {
+        titulo: true,
+        fkEmpresaId: true,
+      },
+    });
+
+    if (!curso) throw new Error("Curso não encontrado para gerar certificado.");
+
+    // 3️⃣ Gera (ou reaproveita) o certificado
+    const certificado = await gerarCertificado.execute(
+      {
+        idCurso,
+        idUsuario,
+        idEmpresa: curso.fkEmpresaId,
+        titulo: curso.titulo,
+      },
+      user
+    );
+
+    // 4️⃣ Loga evento
+    await registrarEvento({
+      idUsuario,
+      tipo: "concluir_curso",
+      entidade: "curso",
+      entidadeId: idCurso,
+      descricao: `Curso "${curso.titulo}" concluído. Certificado registrado.`,
+    });
+
+    // 5️⃣ Retorna resultado
+    return { acesso, certificado };
   },
 };
 

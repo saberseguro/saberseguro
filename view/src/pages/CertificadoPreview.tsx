@@ -2,13 +2,10 @@ import { useLocation, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { getCertificadoPreview } from "../services/apiCurso";
 import { Download, ShieldCheck, Loader2 } from "lucide-react";
-import { useCertificados } from "../contexts/CertificadosContext";
 
 export default function CertificadoPreview() {
-  const { idCurso } = useParams();
-  const location = useLocation();
-  const idFuncionario = location.state?.idFuncionario;
-  const { atualizarResumo } = useCertificados();
+  const { idCertificado } = useParams();
+  const { state } = useLocation() as { state?: { nome?: string } };
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -16,9 +13,8 @@ export default function CertificadoPreview() {
     const fetchPreview = async () => {
       try {
         setLoading(true);
-        const json = await getCertificadoPreview(Number(idCurso), Number(idFuncionario));
+        const json = await getCertificadoPreview(Number(idCertificado));
         setPdfBase64(json.pdfBase64 ?? null);
-        await atualizarResumo();
       } catch (error) {
         console.error("Erro ao carregar preview do certificado", error);
       } finally {
@@ -26,8 +22,8 @@ export default function CertificadoPreview() {
       }
     };
 
-    if (idCurso) fetchPreview();
-  }, [idCurso]);
+    if (idCertificado) fetchPreview();
+  }, [idCertificado]);
 
   if (loading)
     return (
@@ -50,7 +46,7 @@ export default function CertificadoPreview() {
   const handleDownload = () => {
     const link = document.createElement("a");
     link.href = pdfUrl;
-    link.download = "certificado.pdf";
+    link.download = `Certificado ${state?.nome}.pdf`;
     link.click();
   };
 

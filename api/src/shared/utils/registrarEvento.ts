@@ -27,8 +27,8 @@ export async function registrarEvento({
         descricao,
         entidade,
         entidade_id: entidadeId as any,
-        dados_antes: dadosAntes,
-        dados_depois: dadosDepois,
+        dados_antes: dadosAntes ? JSON.stringify(dadosAntes) : null,
+        dados_depois: dadosDepois ? JSON.stringify(dadosDepois) : null,
       },
     });
   } catch (error) {

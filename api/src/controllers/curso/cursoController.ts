@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { buscarCursoCompleto, buscarCursoAcessos, buscarCursos, buscarMeusCursos, criarCurso, criarCursoAcesso, editarCurso, excluirCurso, excluirCursoAcesso, syncCurso, finalizarCurso, registrarCursoAcesso } from '../../models/curso/curso';
 import { desvincularCursoDaMedida, listarMedidasDoCurso, vincularCursoNaMedida } from '../../models/medida';
-import { gerarCertificado, gerarCertificadoPdf, getCertificadoPreview, listarCertificados } from '../../models/curso/certificado';
+import { listarCertificados, previewCertificado } from '../../models/curso/certificado';
 import { registrarEvento } from '../../shared/utils/registrarEvento';
 
 export const buscarCursoController = async (req: Request, res: Response) => {
@@ -206,16 +206,17 @@ export const excluirCursoAcessoController = async (req: Request, res: Response) 
 export const finalizarCursoController = async (req: Request, res: Response) => {
   try {
     const { idCurso } = req.body;
+    const usuario = req.user as any;
 
-    const resultado = await finalizarCurso.execute(idCurso, req.user as any);
-    if (!resultado) {
-      return res.status(404).json({ error: 'Nenhum acesso encontrado' });
-    }
+    const resultado = await finalizarCurso.execute(idCurso, usuario);
+
     return res.json(resultado);
   } catch (err: any) {
+    console.error("Erro ao finalizar curso:", err);
     return res.status(500).json({ error: err.message });
   }
 };
+
 
 // Sincronização
 export const syncCursoController = async (req: Request, res: Response) => {
@@ -249,90 +250,20 @@ export const listarCertificadosController = async (req: Request, res: Response) 
   }
 };
 
-export const gerarCertificadoController = async (req: Request, res: Response) => {
-  const { dados } = req.body;
-  const usuario = req.user;
-
-  if (!dados || !usuario) {
-    return res.status(400).json({ erro: "Dados ou usuário ausente." });
-  }
-
-  try {
-    const certificado = await gerarCertificado.execute(dados, usuario);
-
-    const pdfBuffer = await gerarCertificadoPdf(dados);
-
-    await registrarEvento({
-      idUsuario: usuario.idUsuario,
-      tipo: "gerar_certificado",
-      entidade: "curso",
-      entidadeId: dados.idCurso,
-      descricao: `Certificado ${certificado.codigo} gerado para "${usuario.nome}" do curso "${dados.titulo}".`,
-    });
-
-    // 4. Retorna PDF
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=${certificado.codigo}.pdf`);
-    res.send(pdfBuffer);
-  } catch (error) {
-    console.error("Erro ao gerar certificado:", error);
-    res.status(500).json({ erro: "Erro ao gerar certificado" });
-  }
-};
-
 export const previewCertificadoController = async (req: Request, res: Response) => {
-  const idCurso = Number(req.params.id);
-  const idFuncionario = Number(req.query.funcionario);
+  const idCertificado = Number(req.params.id);
   const usuario = req.user;
 
-  if (isNaN(idCurso) || !usuario) {
-    return res.status(400).json({ error: "Dados inválidos ou usuário não autenticado." });
+  if (isNaN(idCertificado) || !usuario) {
+    return res.status(400).json({ error: "ID inválido ou usuário não autenticado." });
   }
 
   try {
-    // Determina o usuário-alvo (se veio funcionário, usa ele; senão, o próprio logado)
-    const idUsuarioAlvo = idFuncionario > 0 ? idFuncionario : usuario.idUsuario;
-
-    // 🔍 Busca dados do certificado (baseados no aluno)
-    const dadosCertificado = await getCertificadoPreview.execute(idCurso, idUsuarioAlvo);
-
-    if (!dadosCertificado) {
-      return res.status(404).json({ error: "Certificado não encontrado ou curso não concluído." });
-    }
-
-    // ⚙️ Gera ou reaproveita o registro do certificado
-    const certificado = await gerarCertificado.execute(
-      {
-        idCurso,
-        idEmpresa: dadosCertificado.idEmpresa,
-        titulo: dadosCertificado.curso,
-        idUsuario: idUsuarioAlvo, // <- associar corretamente o funcionário
-      },
-      usuario // quem executou (gestor)
-    );
-
-    // 🧾 Gera o PDF
-    const pdfBuffer = await gerarCertificadoPdf(dadosCertificado);
-    const pdfBase64 = pdfBuffer.toString("base64");
-
-    // 🧠 Loga o evento
-    await registrarEvento({
-      idUsuario: usuario.idUsuario,
-      tipo: "gerar_certificado",
-      entidade: "curso",
-      entidadeId: idCurso,
-      descricao: `Certificado visualizado para o funcionário ID ${idUsuarioAlvo} no curso "${dadosCertificado.curso}".`,
-    });
-
-    // Retorna preview
-    return res.json({
-      ...dadosCertificado,
-      idCertificado: certificado.idCertificado,
-      pdfBase64,
-    });
-  } catch (error) {
+    const resultado = await previewCertificado.execute(idCertificado, usuario);
+    return res.json(resultado);
+  } catch (error: any) {
     console.error("Erro ao gerar preview do certificado:", error);
-    return res.status(500).json({ error: "Erro ao gerar preview do certificado." });
+    return res.status(500).json({ error: error.message || "Erro ao gerar preview." });
   }
 };
 

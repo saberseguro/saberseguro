@@ -3,6 +3,7 @@ import { prisma } from "../../config/prisma-client";
 import { formatarCpf } from "../../auxiliares/formatter";
 import { format } from "date-fns";
 import https from "https";
+import { registrarEvento } from "../../shared/utils/registrarEvento";
 
 export interface DadosCertificado {
   curso: string;
@@ -94,82 +95,162 @@ export const listarCertificados = {
   },
 };
 
-export const getCertificadoPreview = {
-  async execute(idCurso: number, idUsuario: number) {
-    const curso = await prisma.curso.findUnique({
-      where: { idCurso },
+export const previewCertificado = {
+  async execute(idCertificado: number, usuario: any) {
+    // 🔹 Busca o certificado
+    const certificado = await prisma.certificado.findUnique({
+      where: { idCertificado },
       include: {
-        acessos: {
-          where: { fkUsuarioId: idUsuario },
-          select: {
-            concluido: true,
-            dataConclusao: true,
-            usuario: {
-              select: {
-                nome: true,
-                cpf: true,
-                empresa: { select: { nomeFantasia: true, idEmpresa: true } }
-              }
-            }
-          }
-        },
-        responsaveltecnico: true,
-        empresa: true,
-        modulos: {
+        curso: {
           include: {
-            aulas: {
+            empresa: true,
+            responsaveltecnico: true,
+            categorias: { include: { categoria: true } },
+            modulos: {
+              orderBy: { ordem: "asc" },
+              include: {
+                aulas: {
+                  orderBy: { ordem: "asc" },
+                  include: {
+                    steps: {
+                      include: {
+                        avaliacao: {
+                          include: {
+                            perguntas: { include: { alternativas: true } },
+                            avaliacoesUsuarios: {
+                              where: { fkUsuarioId: usuario.idUsuario },
+                            },
+                          },
+                        },
+                      },
+                    },
+                    materiais: true,
+                    videos: true,
+                    aulausuarios: {
+                      where: { fkUsuarioId: usuario.idUsuario },
+                    },
+                  },
+                },
+                avaliacoes: {
+                  include: {
+                    perguntas: { include: { alternativas: true } },
+                    avaliacoesUsuarios: {
+                      where: { fkUsuarioId: usuario.idUsuario },
+                    },
+                  },
+                },
+              },
+            },
+            avaliacoes: {
+              include: {
+                perguntas: { include: { alternativas: true } },
+                avaliacoesUsuarios: {
+                  where: { fkUsuarioId: usuario.idUsuario },
+                },
+              },
+            },
+            acessos: {
+              where: { fkUsuarioId: usuario.idUsuario },
               select: {
-                idAula: true,
-                titulo: true,
-                duracao: true,
-                descricao: true,
-                ordem: true,
-              }
-            }
-          }
-        }
-      }
+                concluido: true,
+                dataConclusao: true,
+              },
+            },
+          },
+        },
+        usuario: {
+          select: {
+            idUsuario: true,
+            nome: true,
+            cpf: true,
+            assinatura: true,
+            empresa: {
+              select: {
+                idEmpresa: true,
+                nomeFantasia: true,
+              },
+            },
+          },
+        },
+      },
     });
 
+    if (!certificado) {
+      throw new Error("Certificado não encontrado.");
+    }
 
-    const acesso = curso?.acessos?.[0];
+    const isDono = certificado.fkUsuarioId === usuario.idUsuario;
+    const roles: string[] = usuario.roles || [];
+    const isGestor = roles.includes("admin") || roles.includes("gestor");
 
-    if (!curso || !acesso || acesso.concluido !== 1) return null;
+    if (!isDono && !isGestor) {
+      throw new Error("Você não tem permissão para visualizar este certificado.");
+    }
 
+    const curso = certificado.curso;
+    const acesso = curso.acessos?.[0];
 
-    return {
-      nomeAluno: acesso.usuario?.nome,
-      cpf: acesso.usuario?.cpf,
-      empresaAluno: acesso.usuario?.empresa?.nomeFantasia ?? undefined,
-      idEmpresa: acesso.usuario?.empresa?.idEmpresa,
-      curso: curso.titulo,
-      cargaHoraria: `${curso.cargaHoraria}h`,
-      dataConclusao: new Date(acesso.dataConclusao ?? new Date()).toLocaleDateString("pt-BR"),
-      empresaPromotora: curso.empresa?.nomeFantasia,
-      tipoDocumento: curso.empresa?.tipoDocumento,
-      documento: curso.empresa?.documento,
-      instrutor: {
-        nome: curso.responsaveltecnico.nome,
-        funcao: curso.responsaveltecnico.funcao,
-        registro: curso.responsaveltecnico.registro,
-        assinatura: curso.responsaveltecnico.assinatura
+    if (!curso || !acesso || acesso.concluido !== 1) {
+      throw new Error("Curso não concluído ou dados incompletos.");
+    }
+
+    // 🔹 Monta os dados organizados
+    const dadosOrganizados = {
+      curso: {
+        idCurso: curso.idCurso,
+        titulo: curso.titulo,
+        cargaHoraria: `${curso.cargaHoraria}h`,
+        avaliacoes: !!curso.avaliacoes?.length,
+        grade: curso.modulos.map((m) => ({
+          idModulo: m.idModulo,
+          titulo: m.titulo,
+          avaliacao: !!m.avaliacoes?.length,
+          aulas: m.aulas.map((a) => ({
+            idAula: a.idAula,
+            titulo: a.titulo,
+            descricao: a.descricao,
+            ordem: a.ordem,
+            avaliacao: !!a.steps?.some((s) => s.avaliacao),
+          })),
+        })),
       },
-      modulos: curso.modulos.map(m => ({
-        titulo: m.titulo,
-        aulas: m.aulas.map(a => ({
-          titulo: a.titulo,
-          duracao: a.duracao,
-          ordem: a.ordem,
-          descricao: a.descricao
-        }))
-      }))
+      empresa: {
+        idEmpresa: curso.empresa?.idEmpresa,
+        nomeFantasia: curso.empresa?.nomeFantasia,
+        tipoDocumento: curso.empresa?.tipoDocumento,
+        documento: curso.empresa?.documento,
+      },
+      usuario: {
+        idUsuario: certificado.usuario?.idUsuario,
+        nome: certificado.usuario?.nome,
+        cpf: certificado.usuario?.cpf,
+        assinatura: certificado.usuario?.assinatura,
+        empresa: certificado.usuario?.empresa?.nomeFantasia,
+      },
+      instrutor: {
+        nome: curso.responsaveltecnico?.nome,
+        funcao: curso.responsaveltecnico?.funcao,
+        registro: curso.responsaveltecnico?.registro,
+        assinatura: curso.responsaveltecnico?.assinatura,
+      },
+      certificado: {
+        idCertificado: certificado.idCertificado,
+        codigo: certificado.codigo,
+        dataGeracao: new Date(certificado.dataGeracao ?? new Date()).toLocaleDateString("pt-BR"),
+      },
     };
-  }
+
+    // 🔹 Gera o PDF base64
+    const pdfBuffer = await gerarCertificadoPdf(dadosOrganizados);
+    const pdfBase64 = pdfBuffer.toString("base64");
+
+    return { pdfBase64: pdfBase64 };
+  },
 };
 
 export const gerarCertificado = {
   async execute(dados: any, usuario: any) {
-    const fkUsuarioId = dados.idUsuario ?? usuario.idUsuario; // ✅ Usa funcionário se informado
+    const fkUsuarioId = dados.idUsuario ?? usuario.idUsuario;
     const fkCursoId = dados.idCurso;
     const fkEmpresaId = dados.idEmpresa ?? usuario.fkEmpresaId;
 
@@ -209,6 +290,14 @@ export const gerarCertificado = {
       create: { fkEmpresaId, competencia, totalGerados: 1 },
     });
 
+    await registrarEvento({
+      idUsuario: usuario.idUsuario,
+      tipo: "gerar_certificado",
+      entidade: "certificado",
+      entidadeId: certificado.idCertificado,
+      descricao: `Certificado ${certificado.codigo} criado.`,
+    });
+
     return certificado;
   },
 };
@@ -236,8 +325,12 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
     "https://firebasestorage.googleapis.com/v0/b/ava-cursos-fdbbb.firebasestorage.app/o/logotipo.png?alt=media&token=92083743-f4cf-4033-b579-c824c805c31f";
   const logoBase64 = await toBase64FromUrl(logoUrl);
 
-  const assinaturaBase64 = dados.instrutor?.assinatura
+  const assinaturaInstrutorBase64 = dados.instrutor?.assinatura
     ? await toBase64FromUrl(dados.instrutor.assinatura)
+    : null;
+
+  const assinaturaUsuarioBase64 = dados.usuario?.assinatura
+    ? await toBase64FromUrl(dados.usuario.assinatura)
     : null;
 
   // 🔹 Monta o HTML
@@ -291,18 +384,9 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
             line-height: 1.8;
             margin-bottom: 20px;
           }
-          .textoAssinatura {
-            font-size: 16px;
-            line-height: 1.8;
-          }
-          .subTextoAssinatura {
-            font-size: 14px;
-            line-height: 1.8;
-            margin-bottom: 20px;
-          }
           .assinaturas {
             display: flex;
-            justify-content: space-around;
+            justify-content: center;
             margin-top: 80px;
           }
           .assinatura {
@@ -330,52 +414,136 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
           .rodape strong {
             color: #0069A8;
           }
+
+          /* --- Página 2 --- */
+          .programa-titulo {
+            font-size: 26px;
+            font-weight: bold;
+            color: #0069a8;
+            text-align: center;
+            margin-bottom: 30px;
+          }
+
+          .programa-corpo {
+            max-width: 90%;
+            margin: 0 auto;
+            text-align: left;
+            color: #222;
+            font-family: Arial, sans-serif;
+          }
+
+          .secao-titulo {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0069a8;
+            margin-bottom: 10px;
+          }
+
+          .modulo-bloco {
+            margin-bottom: 15px;
+          }
+
+          .modulo-titulo {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0069a8;
+            margin-bottom: 8px;
+          }
+
+          .aula-bloco {
+            margin-left: 25px;
+            margin-bottom: 8px;
+          }
+
+          .aula-titulo {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+          }
+
+          .aula-descricao {
+            font-size: 14px;
+            color: #555;
+            margin-left: 15px;
+            margin-top: 2px;
+            line-height: 1.4;
+          }
+
+          .avaliacoes-bloco {
+            margin-left: 15px;
+            margin-top: 5px;
+          }
+
+          .avaliacoes-titulo {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+          }
+
+          .avaliacao-item {
+            font-size: 14px;
+            color: #555;
+            margin-left: 15px;
+          }
         </style>
       </head>
       <body>
         <div class="container">
-
-          <!-- LOGO SABER -->
-          ${logoBase64
-      ? `<img src="${logoBase64}" class="logo" alt="Saber Seguro Treinamentos"/>`
-      : "<div style='height:160px;'></div>"
-    }
-
+          ${logoBase64 ? `<img src="${logoBase64}" class="logo" />` : ""}
           <div class="titulo">Certificado de Conclusão</div>
           <div class="subtitulo">Nós da Saber Seguro Treinamentos certificamos que:</div>
-
-          <div class="nome-aluno">${dados.nomeAluno}</div>
+          <div class="nome-aluno">${dados.usuario?.nome}</div>
 
           <div class="texto">
-            Funcionário(a) da empresa <strong>${dados.empresaAluno}</strong>, portador do CPF <strong>${formatarCpf(
-      dados.cpf
-    )}</strong>, concluiu com êxito o curso <strong>${dados.curso}</strong>, com carga horária de <strong>${dados.cargaHoraria
-    }</strong>, finalizado em <strong>${dados.dataConclusao}</strong>.
+            Funcionário(a) da empresa <strong>${dados.usuario?.empresa}</strong>,
+            portador do CPF <strong>${formatarCpf(dados.usuario?.cpf)}</strong>,
+            concluiu com êxito o curso <strong>${dados.curso?.titulo}</strong>,
+            com carga horária de <strong>${dados.curso?.cargaHoraria}</strong>,
+            finalizado em <strong>${dados.certificado?.dataGeracao}</strong>.
           </div>
 
-          ${dados.empresa
-      ? `<div class="texto">Curso promovido por: <strong>${dados.empresa}</strong></div>`
+          ${dados.empresa?.nomeFantasia
+      ? `<div class="texto">Curso promovido por: <strong>${dados.empresa.nomeFantasia}</strong></div>`
       : ""
     }
 
-          <!-- Assinaturas -->
           <div class="assinaturas">
+            <!-- Assinatura do Instrutor -->
             <div class="assinatura">
-              ${assinaturaBase64
-      ? `<img src="${assinaturaBase64}" alt="Assinatura do instrutor" />`
-      : `<div class="linha"></div>`
-    }
+              ${
+                assinaturaInstrutorBase64
+                  ? `<img src="${assinaturaInstrutorBase64}" alt="Assinatura do instrutor" />`
+                  : `<div class="linha"></div>`
+              }
               <div class="linha"></div>
-              ${dados.instrutor
-      ? `<div class="textoAssinatura">Instrutor Responsável: <strong>${dados.instrutor.nome}</strong></div>`
-      : ""
-    }
-              ${dados.instrutor
-      ? `<div class="subTextoAssinatura">${dados.instrutor.funcao}: ${dados.instrutor.registro}</div>`
-      : ""
-    }
+              ${
+                dados.instrutor
+                  ? `
+                    <div>Instrutor Responsável: <strong>${dados.instrutor.nome}</strong></div>
+                    <div>${dados.instrutor.funcao}: ${dados.instrutor.registro}</div>
+                  `
+                  : ""
+              }
+            </div>
+
+            <!-- Assinatura do Funcionario -->
+            <div class="assinatura">
+              ${
+                assinaturaUsuarioBase64
+                  ? `<img src="${assinaturaUsuarioBase64}" alt="Assinatura do Funcionário" />`
+                  : `<div class="linha"></div>`
+              }
+              <div class="linha"></div>
+              ${
+                dados.empresa
+                  ? `
+                    <div>Funcionário: <strong>${dados.usuario.nome}</strong></div>
+                  `
+                  : ""
+              }
             </div>
           </div>
+
 
           <div class="rodape">
             Emitido por <strong>Saber Seguro Treinamentos</strong>
@@ -384,55 +552,67 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
 
         <!-- Página 2: Conteúdo Programático -->
         <div class="container container-programa" style="page-break-before: always;">
-          <div class="titulo">Conteúdo Programático</div>
-          <div style="text-align: left; max-width: 80%; margin: 40px auto;">
-            ${dados.modulos
-      .map(
-        (m: any, i: number) => {
-          // 🔹 Ordena as aulas pela ordem
-          const aulasOrdenadas = [...m.aulas].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+          <div class="programa-titulo">Conteúdo Programático</div>
 
-          return `
-                    <div style="margin-top: 25px;">
-                      <div style="font-size: 20px; font-weight: bold; color: #0069A8; margin-bottom: 10px;">
-                        Módulo ${i + 1} - ${m.titulo}
-                      </div>
-                      <ul style="margin-left: 25px; font-size: 16px; line-height: 1.6;">
-                        ${aulasOrdenadas
-              .map((a: any) => {
-                // 🔹 Converte duração (minutos → horas e minutos)
-                let duracaoTexto = "";
-                if (a.duracao != null) {
-                  const minutos = Number(a.duracao);
-                  if (minutos < 60) {
-                    duracaoTexto = `${minutos} min`;
-                  } else {
-                    const horas = Math.floor(minutos / 60);
-                    const restoMin = minutos % 60;
-                    duracaoTexto = restoMin > 0 ? `${horas}h ${restoMin}min` : `${horas}h`;
-                  }
+          <div class="programa-corpo">
+
+            ${dados.curso?.grade
+      ?.map((m: any, i: number) => {
+        const aulasOrdenadas = [...m.aulas].sort(
+          (a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)
+        );
+
+        return `
+                  <div class="modulo-bloco">
+                    <div class="modulo-titulo">Módulo ${m.titulo}</div>
+
+                    ${aulasOrdenadas
+            .map(
+              (a: any, j: number) => `
+                        <div class="aula-bloco">
+                          <div class="aula-titulo">${a.titulo}</div>
+                          ${a.descricao
+                  ? `<div class="aula-descricao">${a.descricao}</div>`
+                  : ""
                 }
+                          ${a.avaliacao
+                  ? `
+                                <div class="avaliacoes-bloco">
+                                  <div class="avaliacoes-titulo">Avaliações:</div>
+                                  <div class="avaliacao-item">Avaliação da aula</div>
+                                </div>
+                              `
+                  : ""
+                }
+                        </div>
+                      `
+            )
+            .join("")}
 
-                return `
-                              <li style="margin-bottom: 8px;">
-                                <strong>${a.titulo}</strong>
-                                ${duracaoTexto ? `<span style="color:#555; font-size:14px;">(${duracaoTexto})</span>` : ""}
-                                ${a.descricao
-                    ? `<div style="font-size:14px; color:#666;">${a.descricao}</div>`
-                    : ""
-                  }
-                              </li>
-                            `;
-              })
-              .join("")}
-                      </ul>
-                    </div>
-                  `;
-        }
-      )
+                    ${m.avaliacao
+            ? `
+                          <div class="avaliacoes-bloco">
+                            <div class="avaliacoes-titulo">Avaliações:</div>
+                            <div class="avaliacao-item">Avaliação do módulo</div>
+                          </div>
+                        `
+            : ""
+          }
+                  </div>
+                `;
+      })
       .join("")}
+
+            ${dados.curso?.avaliacoes
+      ? `
+                  <div class="modulo-titulo">Avaliações do Curso:</div>
+                  <div class="avaliacao-item">Avaliação final do curso</div>
+                `
+      : ""
+    }
           </div>
         </div>
+
       </body>
     </html>
   `;

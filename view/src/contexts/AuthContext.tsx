@@ -3,13 +3,16 @@ import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "../services/firebase";
 import { apiFetch } from "../services/apiFetch";
 import type { Usuario, HorarioAcesso } from "../types/Usuario";
+import toast from "react-hot-toast";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface AuthContextType {
   user: Usuario | null;
   loading: boolean;
-  login: (email: string, senha: string) => Promise<void>;
+  login: (email: string, senha: string) => Promise<Usuario>;
+  atualizarTrocaSenha: (idUsuario: number) => Promise<void>;
+  atualizarAssinatura: (url: string, idUsuario: number) => Promise<void>;
   logout: () => Promise<void>;
   token: string | null;
   handleVerificarHorarioAcesso: (email: string) => Promise<void>;
@@ -56,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restaurarSessao();
   }, []);
 
-  const login = async (email: string, senha: string): Promise<void> => {
+  const login = async (email: string, senha: string): Promise<Usuario> => {
     try {
       setLoading(true);
       const cred = await signInWithEmailAndPassword(auth, email, senha);
@@ -79,11 +82,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("user", JSON.stringify(data.usuario));
       setUser(data.usuario);
       setToken(data.token);
+
+      return data.usuario;
     } catch (err: any) {
       console.error("Erro no login:", err);
       throw new Error(err.message || "Erro desconhecido");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const atualizarTrocaSenha = async (idUsuario: number): Promise<void> => {
+    try {
+      await apiFetch(`/confirmar-troca-senha`, {
+        method: "POST",
+        body: JSON.stringify({ idUsuario }),
+      });
+
+      if (user) {
+        const usuarioAtualizado = { ...user, trocarsenha: false };
+        setUser(usuarioAtualizado);
+        localStorage.setItem("user", JSON.stringify(usuarioAtualizado));
+      }
+
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar status de troca de senha.");
+      throw error;
+    }
+  };
+
+  const atualizarAssinatura = async (url: string, idUsuario: Number): Promise<void> => {
+    try {
+      await apiFetch(`/atualizar-assinatura`, {
+        method: "POST",
+        body: JSON.stringify({ url: url, idUsuario: idUsuario }),
+      });
+
+      if (user) {
+        const usuarioAtualizado = { ...user, assinatura: url };
+        setUser(usuarioAtualizado);
+        localStorage.setItem("user", JSON.stringify(usuarioAtualizado));
+      }
+
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar status de troca de senha.");
+      throw error;
     }
   };
 
@@ -132,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, token, handleVerificarHorarioAcesso, horarioAcesso, setHorarioAcesso }}>
+    <AuthContext.Provider value={{ user, loading, login, atualizarTrocaSenha, atualizarAssinatura, logout, token, handleVerificarHorarioAcesso, horarioAcesso, setHorarioAcesso }}>
       {children}
     </AuthContext.Provider>
   );

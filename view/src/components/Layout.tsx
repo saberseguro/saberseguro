@@ -11,6 +11,7 @@ export default function Layout() {
   // Telas em que o sidebar não aparece
   const esconderSidebar =
     location.pathname === "/login" ||
+    location.pathname === "/ajustes" ||
     location.pathname.startsWith("/cursos/playcurso");
 
   return (
