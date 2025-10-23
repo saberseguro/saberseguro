@@ -11,8 +11,9 @@ import FormAvaliacoesCurso from "../Formularios/FormAvaliacoesCurso";
 
 // Serviços
 import { syncCurso } from "../../services/apiCurso";
-import { withCalculatedCargaHoraria } from "../../auxiliares/cursoCalc";
 import VinculosCurso from "../Vinculos/VinculosCurso";
+import toast from "react-hot-toast";
+import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
 
 interface ModalCursoProps {
   isOpen: boolean;
@@ -83,7 +84,7 @@ export default function ModalCurso({ isOpen, onClose, cursoSelecionado, onSaved 
   };
 
   const tituloModal = useMemo(() => {
-    const carga = curso.cargaHoraria ? ` (${curso.cargaHoraria})` : "";
+    const carga = curso.cargaHoraria ? ` (${formatarMinutosEmHoras(curso.cargaHoraria)})` : "";
     return `#${curso.idCurso} - ${curso.titulo || "Novo curso"}${carga}`;
   }, [curso.idCurso, curso.titulo, curso.cargaHoraria]);
 
@@ -91,9 +92,12 @@ export default function ModalCurso({ isOpen, onClose, cursoSelecionado, onSaved 
     try {
       setLoading(true);
 
-      const cursoCalculado = withCalculatedCargaHoraria(curso);
+      if (!curso.fkResponsavelTecnicoId || !curso.cargaHoraria || curso.categorias?.length === 0) {
+        toast.error("Preencha todos os campos obrigatórios.");
+        return;
+      }
 
-      const salvo = await syncCurso(cursoCalculado);
+      const salvo = await syncCurso(curso);
       setCurso(salvo);
 
       onSaved?.();

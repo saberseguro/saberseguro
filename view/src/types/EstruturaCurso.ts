@@ -172,15 +172,27 @@ export type Pergunta = {
   alternativas?: Alternativa[];
 };
 
-export type AulaStep = {
-  idAulaStep?: number;
-  tipo: "video" | "material" | "avaliacao";
-  ordem: number;
-  obrigatorio: 0 | 1;
-  fkAulaVideoId?: number | null;
-  fkMaterialId?: number | null;
+export interface AulaStep {
+  idAulaStep: number | string;
+  tipo: string; // "video" | "material" | "avaliacao" | "avaliacao_curso"
+  ordem?: number;
+  obrigatorio?: boolean | number;
   fkAvaliacaoId?: number | null;
-};
+  fkAulaId?: number;
+  fkAulaVideoId?: number;
+  fkMaterialId?: number;
+  avaliacao?: {
+    idAvaliacao: number;
+    titulo: string;
+    tempo_limite?: number;
+    tipoAplicacao?: string;
+    perguntas?: any[];
+    avaliacoesUsuarios?: any[];
+  };
+  tipoStep?: string; // "aula", etc.
+  idModulo?: number;
+  idAula?: number;
+}
 
 export interface CertificadoDados {
   nomeAluno: string;

@@ -1,6 +1,10 @@
-export default function Loading() {
+export default function Loading({ fullScreen = true }: { fullScreen?: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center text-sky-600">
+    <div
+      className={`flex flex-col items-center justify-center text-sky-600 ${
+        fullScreen ? "h-screen w-full" : "h-full w-full"
+      }`}
+    >
       <svg
         className="animate-spin h-10 w-10 text-sky-600 mb-4"
         xmlns="http://www.w3.org/2000/svg"

@@ -33,7 +33,7 @@ export const Input = ({
   const isPassword = type === "password";
 
   return (
-    <div className="w-full relative">
+    <div className={"w-full relative"}>
       {label && (
         <label htmlFor={name} className="block mb-1 text-sm font-medium text-gray-900">
           {label}
@@ -42,7 +42,7 @@ export const Input = ({
       )}
 
       <input
-        type={isPassword && !mostrarSenha ? "password" : "text"}
+        type={isPassword && !mostrarSenha ? "password" : type}
         name={name}
         value={value}
         onChange={onChange}
@@ -51,7 +51,7 @@ export const Input = ({
         maxLength={maxLength}
         disabled={disable}
         placeholder={placeholder}
-        className="border border-gray-300 text-gray-900 text-sm rounded-md focus:border-2 focus:border-blue-500 focus:outline-none block w-full p-2.5 bg-white disabled:opacity-50 pr-12"
+        className={`border border-gray-300 text-gray-900 text-sm rounded-md focus:border-2 focus:border-blue-500 focus:outline-none block w-full p-2.5 bg-white disabled:opacity-50 ${isPassword && "pr-12"}`}
       />
 
       {isPassword && (

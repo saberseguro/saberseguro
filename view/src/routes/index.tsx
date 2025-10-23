@@ -62,7 +62,7 @@ export default function AppRoutes() {
 
   return (
     <BrowserRouter>
-      <Suspense fallback={<Loading />}>
+      <Suspense fallback={<Loading fullScreen={true} />}>
         <Routes>
           {/* Rota pública sem layout */}
           <Route element={<PublicRoute />}>

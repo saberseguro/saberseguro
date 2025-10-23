@@ -8,6 +8,7 @@ import FiltrosCursos from "../../components/Filtros/FiltrosCursos";
 import ModalCurso from "../../components/Modais/ModalCurso";
 import { makeCurso } from "../../types/FactoriesCurso";
 import { useAuth } from "../../contexts/AuthContext";
+import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
 
 export default function CursosPage() {
   const { user } = useAuth();
@@ -41,6 +42,7 @@ export default function CursosPage() {
       header: "Carga Horária",
       accessor: "cargaHoraria" as keyof Curso,
       sortable: true,
+      render: (_val: any, row: Curso) => `${formatarMinutosEmHoras(row.cargaHoraria)}`,
     },
     {
       header: "Descrição",

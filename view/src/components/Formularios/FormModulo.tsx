@@ -24,7 +24,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
-import { withCalculatedCargaHoraria } from "../../auxiliares/cursoCalc";
 import FormAvaliacao from "./FormAvaliacao";
 import Swal from "sweetalert2";
 import toast from "react-hot-toast";
@@ -194,7 +193,7 @@ export default function FormModulos({ curso, setCurso, setUploadsPendentes }: Pr
             : m
         ),
       };
-      return withCalculatedCargaHoraria(c2);
+      return c2;
     });
   };
 
@@ -329,12 +328,23 @@ export default function FormModulos({ curso, setCurso, setUploadsPendentes }: Pr
                           />
                         </div>
 
-                        <div className="flex items-center gap-1">
-                          <p className="text-xs">Carga horária: </p>
-                          <p className="text-xs font-bold">
-                            {formatarMinutosEmHoras(m.cargaHoraria)}
-                          </p>
+                        <div className="">
+                          <p className="text-xs">Carga horária(min):</p>
+                          <input
+                            type="text"
+                            value={m.cargaHoraria || 0}
+                            onChange={(e) => {
+                              const novaCarga = Number(e.target.value);
+                              updateModulo(m.idModulo, { cargaHoraria: novaCarga });
+                            }}
+                            className="w-12 text-xs font-bold border border-gray-300 rounded px-1 py-0.5 text-center focus:outline-none focus:ring-1 focus:ring-sky-500"
+                            min={0}
+                          />
+                          <span className="text-xs text-gray-500 ml-1">
+                            ({formatarMinutosEmHoras(m.cargaHoraria)})
+                          </span>
                         </div>
+
 
                         <ToolTip text={`${(m.ativo ?? 1) === 1 ? "Inativar" : "Ativar"}`}>
                           {/* Se teu CheckboxStatus entende "checked = inativo", mantemos invertido */}

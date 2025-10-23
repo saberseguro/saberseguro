@@ -8,6 +8,7 @@ import ModalVisualizador from "../../components/Modais/ModalVisualizador";
 import toast from "react-hot-toast";
 import AvaliacaoProva from "../../components/AvaliacaoProva";
 import Spinner from "../../components/Spinner";
+import TabsInfoCurso from "./TabsInfoCurso";
 
 function isStepConcluido(step: any, usuarioAula: any, avaliacoesRespondidasMap: any) {
   switch (step.tipo) {
@@ -486,14 +487,14 @@ export default function PlayCursoPage() {
 
   const stepAtual: Step | null = curso?.steps?.[stepAtualIndex] ?? null;
 
-  if (!curso) return <div className="p-6 flex flex-col justify-center items-center gap-2 h-64"><Spinner size={38} className="border-sky-700 border-4"/> Carregando curso aguarde...</div>;
+  if (!curso) return <div className="p-6 flex flex-col justify-center items-center gap-2 h-64"><Spinner size={38} className="border-sky-700 border-4" /> Carregando curso aguarde...</div>;
 
   return (
     <>
       {/* Header */}
       <div className="w-full bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-11/12 mx-auto px-4 py-2 flex items-center gap-3">
-          <button onClick={() => window.history.back()} className="p-2 rounded-full hover:bg-gray-100">
+          <button onClick={() => window.history.back()} className="p-2 rounded-full hover:bg-gray-100 cursor-pointer">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <nav className="flex items-center text-sm text-gray-500">
@@ -599,6 +600,17 @@ export default function PlayCursoPage() {
             setLiberadoProximo={setLiberadoProximo}
             handleGerarCertificado={handleGerarCertificado}
           />
+
+          <div className="mt-2">
+            <TabsInfoCurso
+              curso={curso}
+              materiais={
+                curso.modulos
+                  .flatMap((m) => m.aulas)
+                  .find((a) => a.idAula === stepAtual?.idAula)?.materiais ?? []
+              }
+            />
+          </div>
         </section>
       </div>
 

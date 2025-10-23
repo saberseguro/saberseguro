@@ -6,6 +6,7 @@ import { getMeusCursos } from "../../services/apiCurso";
 import CursoSidePanel from "./CursoSidePanel";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
 
 type CursoListItem = Pick<Curso, "idCurso" | "titulo" | "descricao" | "cargaHoraria" | "ativo"> & {
   thumbUrl?: string | null;
@@ -168,7 +169,7 @@ function CursoCard({ curso, onOpen }: { curso: CursoListItem; onOpen: (id: numbe
           <ToolTip text="Carga Horária">
             <div className="flex items-center text-xs text-blue-600 gap-1 bg-sky-100 border border-blue-400 px-2 rounded-full">
               <Clock className="w-3 h-3" />
-              <span className="italic">{Number(curso.cargaHoraria ?? 0)}h</span>
+              <span className="italic">{formatarMinutosEmHoras(curso.cargaHoraria)}</span>
             </div>
           </ToolTip>
 

@@ -5,6 +5,7 @@ import { getCursoCompleto, iniciarCursoAcesso } from "../../services/apiCurso";
 import type { CursoCompleto } from "../../types/EstruturaCurso";
 import { ModulosAccordion } from "../../components/Accordions/Accordions";
 import Spinner from "../../components/Spinner";
+import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
 
 interface CursoDetailsProps {
   idCurso: number;
@@ -39,7 +40,7 @@ export default function CursoDetails({ idCurso }: CursoDetailsProps) {
     return () => { mounted = false; };
   }, [idCurso]);
 
-  if (loading) return <div className="p-6 flex flex-col justify-center items-center gap-2 h-64"><Spinner size={38} className="border-sky-700 border-4"/> Carregando Dados do Curso...</div>;
+  if (loading) return <div className="p-6 flex flex-col justify-center items-center gap-2 h-64"><Spinner size={38} className="border-sky-700 border-4" /> Carregando Dados do Curso...</div>;
   if (!curso) return <div className="p-6 text-red-500">Curso não encontrado.</div>;
 
   const percentual = curso.acessos?.[0]?.percentual ?? 0;
@@ -96,7 +97,7 @@ export default function CursoDetails({ idCurso }: CursoDetailsProps) {
         {/* Carga horária */}
         <div className="flex items-center text-xs text-gray-600 gap-1 bg-gray-100 px-2 py-1 rounded-full">
           <Clock size={14} className="text-gray-400" />
-          <span>{curso.cargaHoraria}h</span>
+          <span>{formatarMinutosEmHoras(curso.cargaHoraria)}</span>
         </div>
 
         {/* Responsável Técnico */}
@@ -138,7 +139,22 @@ export default function CursoDetails({ idCurso }: CursoDetailsProps) {
       </button>
 
       <h2 className="text-lg font-semibold text-gray-900 mb-2">Conteúdo do curso</h2>
-      <ModulosAccordion modulos={curso.modulos} />
+      <ModulosAccordion
+        modulos={curso.modulos}
+      />
+
+      <div className="mt-4 space-y-1 px-4 font-semibold text-gray-800">
+        {curso.steps && curso.steps
+          .filter((s) => s.tipo === "avaliacao_curso" && s.avaliacao)
+          .map((step) => (
+            <div
+              key={`aval-curso-${step.avaliacao.idAvaliacao}`}
+              className="flex items-center gap-2"
+            >
+              {step.avaliacao.titulo}
+            </div>
+          ))}
+      </div>
     </div>
   );
 }

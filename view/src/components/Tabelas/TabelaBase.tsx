@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { ChevronUp, ChevronDown, ChevronsUpDown, Pencil, Trash2 } from "lucide-react";
-import Loading from "../Loading";
 import ToolTip from "../Auxiliares/ToolTip";
+import Spinner from "../Spinner";
 
 interface Column<T> {
   header: string;
@@ -124,7 +124,7 @@ export default function TabelaBase<T extends object>({
               {isLoading ? (
                 <tr>
                   <td colSpan={columns.length + 1} className="py-6 text-gray-400 text-center">
-                    <Loading />
+                    <Spinner className="border-blue-500 border-2 mx-auto" />
                   </td>
                 </tr>
               ) : currentData.length === 0 ? (

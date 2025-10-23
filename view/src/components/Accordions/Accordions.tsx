@@ -1,30 +1,20 @@
-// components/Curso/ModulosAccordion.tsx
 import { useEffect, useId, useRef, useState } from "react";
-import { ChevronDown, Video, FileText, CheckCircle } from "lucide-react";
+import { ChevronDown, Video, FileText } from "lucide-react";
 import type { Modulo } from "../../types/EstruturaCurso";
 
-export function ModulosAccordion({ modulos }: { modulos: Modulo[] }) {
+export function ModulosAccordion({
+  modulos,
+}: {
+  modulos: Modulo[];
+}) {
   return (
     <div className="space-y-3">
       {modulos.map((mod) => {
-        // Verifica se TODAS as aulas do módulo foram concluídas
-        const todasConcluidas = mod.aulas.length > 0 && mod.aulas.every((aula) => {
-          const usuario = aula.aulausuarios?.[0];
-          return (
-            usuario?.assistiuVideo ||
-            usuario?.baixouMateriais ||
-            usuario?.respondeuQuiz
-          );
-        });
-
         return (
           <AccordionItem
             key={mod.idModulo}
             titulo={
               <div className="flex items-center gap-2">
-                <CheckCircle
-                  className={`w-4 h-4 ${todasConcluidas ? "text-green-700" : "text-gray-400"}`}
-                />
                 <span>{mod.titulo}</span>
               </div>
             }
@@ -32,20 +22,17 @@ export function ModulosAccordion({ modulos }: { modulos: Modulo[] }) {
             <ul className="mt-2 space-y-1 text-sm text-gray-700">
               {mod.aulas.map((aula) => {
                 const isVideo = (aula.tipo ?? "").toString().toUpperCase() === "VIDEO";
-
-                // Verifica se a aula foi concluída
-                const usuario = aula.aulausuarios?.[0];
-                const concluida =
-                  usuario?.assistiuVideo ||
-                  usuario?.baixouMateriais ||
-                  usuario?.respondeuQuiz;
+                const avaliacoesAula = (aula.steps ?? []).filter(
+                  (s) => s.tipo === "avaliacao" && s.avaliacao
+                );
 
                 return (
-                  <li key={aula.idAula} className="flex items-center justify-between gap-2 py-1">
+                  <li key={aula.idAula} className="relative py-1 group">
+                    {/* Linha vertical da aula */}
+                    <div className="absolute left-0 top-0 bottom-0" />
+
+                    {/* Aula */}
                     <div className="flex items-center gap-2">
-                      <CheckCircle
-                        className={`w-4 h-4 ${concluida ? "text-green-700" : "text-gray-400"}`}
-                      />
                       {isVideo ? (
                         <Video className="w-4 h-4 text-blue-500" />
                       ) : (
@@ -53,10 +40,39 @@ export function ModulosAccordion({ modulos }: { modulos: Modulo[] }) {
                       )}
                       <span className="leading-none">{aula.titulo}</span>
                     </div>
+
+                    {/* Sublista de avaliações */}
+                    {avaliacoesAula.length > 0 && (
+                      <ul className="ml-2 mt-2 space-y-1">
+                        {avaliacoesAula.map((step) => (
+                          <li
+                            key={`aval-aula-${step.avaliacao?.idAvaliacao}`}
+                            className="relative pl-4"
+                          >
+                            {/* Linha vertical da avaliação */}
+                            <div className="absolute left-0 top-0 bottom-0 w-px border-l-2 border-gray-400" />
+                            <div className="flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-emerald-600" />
+                              <span className="leading-none">
+                                {step.avaliacao?.titulo}
+                              </span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 );
               })}
             </ul>
+
+            {/* AVALIAÇÕES DO MÓDULO */}
+            {(mod.avaliacoes ?? []).map((aval) => (
+              <li key={`aval-mod-${aval.idAvaliacao}`} className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-600" /> Avaliação do módulo: {aval.titulo}
+              </li>
+            ))}
+
           </AccordionItem>
         );
       })}
@@ -69,7 +85,7 @@ function AccordionItem({
   children,
   defaultOpen = false,
 }: {
-  titulo: React.ReactNode; // alterado de string → ReactNode
+  titulo: React.ReactNode;
   children: React.ReactNode;
   defaultOpen?: boolean;
 }) {
