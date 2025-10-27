@@ -174,13 +174,13 @@ export type Pergunta = {
 
 export interface AulaStep {
   idAulaStep: number | string;
-  tipo: string; // "video" | "material" | "avaliacao" | "avaliacao_curso"
+  tipo: string;
   ordem?: number;
   obrigatorio?: boolean | number;
   fkAvaliacaoId?: number | null;
   fkAulaId?: number;
-  fkAulaVideoId?: number;
-  fkMaterialId?: number;
+  fkAulaVideoId?: number | null;
+  fkMaterialId?: number | null;
   avaliacao?: {
     idAvaliacao: number;
     titulo: string;
