@@ -6,6 +6,7 @@ interface TokenPayload {
   email: string;
   nome?: string;
   cpf: string;
+  telefone?: string;
   roles?: string[];
   permissoes: string[];
   fkEmpresaId?: number;

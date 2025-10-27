@@ -615,6 +615,7 @@ export const buscarFuncionariosDoCargo = {
         idUsuario: f.idUsuario,
         nome: f.nome,
         cpf: f.cpf,
+        telefone: f.telefone,
         email: f.email,
         ativo: f.ativo,
         fkEmpresaId: f.fkEmpresaId,

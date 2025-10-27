@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { Funcionario } from "../../types/EstruturaEmpresa";
 import { Input, SelectInput, SelectMultiInput } from "./Inputs";
 import toast from "react-hot-toast";
-import { formatarCPF } from "../../auxiliares/formatters";
+import { formatarCPF, formatarTelefone } from "../../auxiliares/formatters";
 import Spinner from "../Spinner";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -50,6 +50,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
   const [form, setForm] = useState<{
     nome: string;
     cpf: string;
+    telefone?: string;
     email: string;
     senha: string;
     ativo: number;
@@ -60,6 +61,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
   }>({
     nome: initialData.nome || "",
     cpf: initialData.cpf || "",
+    telefone: initialData.telefone || "",
     email: initialData.email || "",
     senha: initialData.senha || "",
     ativo: initialData.ativo ?? 1,
@@ -80,8 +82,6 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
   const [rolesDisponiveis, setRolesDisponiveis] = useState<{ idRole: number; nome: string }[]>([]);
 
   const [loading, setLoading] = useState(false);
-  // const [selCurso, setSelCurso] = useState<{ label: string; value: number } | null>(null);
-  // const [selMedida, setSelMedida] = useState<{ label: string; value: number } | null>(null);
 
   useEffect(() => {
     if (onEdit && rolesDisponiveis.length > 0) {
@@ -89,6 +89,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
         ...prev,
         nome: onEdit.nome || "",
         cpf: onEdit.cpf || "",
+        telefone: onEdit.telefone || "",
         email: onEdit.email || "",
         senha: "",
         ativo: onEdit.ativo ?? 1,
@@ -181,6 +182,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
         ? {
           nome: form.nome,
           cpf: form.cpf.replace(/\D/g, ""),
+          telefone: form.telefone?.replace(/\D/g, ""),
           ativo: Number(form.ativo),
           fkCargoId: form.fkCargoId,
           fkEmpresaId: fkEmpresaId,
@@ -192,6 +194,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
         : {
           ...form,
           cpf: form.cpf.replace(/\D/g, ""),
+          telefone: form.telefone?.replace(/\D/g, ""),
           horarios: horarios,
           fkEmpresaId: fkEmpresaId,
           cursos: form.cursos.filter((c) => c.origem === "FUNCIONARIO"),
@@ -227,6 +230,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
     setForm({
       nome: "",
       cpf: "",
+      telefone: "",
       email: "",
       senha: "",
       ativo: 1,
@@ -244,75 +248,6 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
       }))
     );
   };
-
-  // const handleAdicionarCursoSelecionado = () => {
-  //   if (!selCurso) return;
-
-  //   const jaExiste = form.cursos.some((c) => c.idCurso === selCurso.value);
-  //   if (jaExiste) {
-  //     toast.error("Curso já vinculado");
-  //     return;
-  //   }
-
-  //   const novoCurso: CursoVincRow = {
-  //     idCurso: selCurso.value,
-  //     titulo: selCurso.label,
-  //     ativo: 1,
-  //     origem: "FUNCIONARIO",
-  //   };
-
-  //   setForm((prev) => ({
-  //     ...prev,
-  //     cursos: [...prev.cursos, novoCurso],
-  //   }));
-
-  //   setSelCurso(null);
-  // };
-
-  // const handleRemoverCurso = (idCurso: number) => {
-  //   setForm((prev) => ({
-  //     ...prev,
-  //     cursos: prev.cursos.filter((c: any) => c.idCurso !== idCurso),
-  //   }));
-  // };
-
-  // const handleAdicionarMedidaSelecionada = () => {
-  //   if (!selMedida) return;
-
-  //   const jaExiste = form.medidas.some((m) => m.idMedida === selMedida.value);
-  //   if (jaExiste) {
-  //     toast.error("Medida já vinculada");
-  //     return;
-  //   }
-
-  //   const novaMedida: MedidaVincRow = {
-  //     idMedida: selMedida.value,
-  //     nome: selMedida.label,
-  //     ativo: 1,
-  //     origem: "FUNCIONARIO",
-  //   };
-
-  //   setForm((prev) => ({
-  //     ...prev,
-  //     medidas: [...prev.medidas, novaMedida],
-  //   }));
-
-  //   setSelMedida(null);
-  // };
-
-  // const handleRemoverMedida = (idMedida: number) => {
-  //   setForm((prev) => ({
-  //     ...prev,
-  //     medidas: prev.medidas.filter((m: any) => m.idMedida !== idMedida),
-  //   }));
-  // };
-
-
-  // Listas
-  // const medidasFuncionario = form.medidas.filter((m: any) => m.origem === "FUNCIONARIO");
-  // const outrasMedidas = form.medidas.filter((m: any) => m.origem !== "FUNCIONARIO");
-  // const cursosFuncionario = form.cursos.filter((c: any) => c.origem === "FUNCIONARIO");
-  // const outrosCursos = form.cursos.filter((c: any) => c.origem !== "FUNCIONARIO");
 
   return (
     <>
@@ -357,19 +292,20 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
               {!onEdit && (
                 <Input label="Senha" type="password" name="senha" value={form.senha} onChange={handleChange} disable={!!onEdit} />
               )}
-              <SelectMultiInput<number>
-                label="Funções"
-                name="roles"
-                value={form.roles}
-                onChange={(selected) => setForm((prev) => ({ ...prev, roles: selected }))}
-                options={rolesDisponiveis.map((r) => ({
-                  value: r.idRole,
-                  label: r.nome.toLowerCase() === "responsaveltecnico" ? "Responsável Técnico" : r.nome.charAt(0).toUpperCase() + r.nome.slice(1).toLowerCase(),
-                }))}
-                placeholder="Selecione as funções"
-                required
-              />
+              <Input label="Telefone" name="telefone" value={formatarTelefone(form.telefone || "")} onChange={handleChange} />
             </div>
+            <SelectMultiInput<number>
+              label="Funções"
+              name="roles"
+              value={form.roles}
+              onChange={(selected) => setForm((prev) => ({ ...prev, roles: selected }))}
+              options={rolesDisponiveis.map((r) => ({
+                value: r.idRole,
+                label: r.nome.toLowerCase() === "responsaveltecnico" ? "Responsável Técnico" : r.nome.charAt(0).toUpperCase() + r.nome.slice(1).toLowerCase(),
+              }))}
+              placeholder="Selecione as funções"
+              required
+            />
           </>
         )}
 

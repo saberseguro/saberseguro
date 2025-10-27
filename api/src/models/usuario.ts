@@ -97,6 +97,7 @@ interface HorarioDTO {
 interface NovoUsuarioDTO {
   nome: string;
   cpf: string;
+  telefone?: string;
   email: string;
   senha: string;
   ativo?: number;
@@ -115,6 +116,7 @@ export async function criarUsuario(data: NovoUsuarioDTO) {
     const {
       nome,
       cpf,
+      telefone,
       email,
       senha,
       ativo = 1,
@@ -145,6 +147,7 @@ export async function criarUsuario(data: NovoUsuarioDTO) {
         data: {
           nome,
           cpf,
+          telefone,
           email,
           firebaseId,
           ativo,
@@ -233,6 +236,7 @@ interface EditarUsuarioDTO {
   idUsuario: number;
   nome?: string;
   cpf?: string;
+  telefone?: string;
   ativo?: number;
   fkEmpresaId?: number;
   fkCargoId?: number;
@@ -249,6 +253,7 @@ export async function editarUsuario(data: EditarUsuarioDTO) {
     idUsuario,
     nome,
     cpf,
+    telefone,
     ativo,
     fkCargoId,
     fkEmpresaId,
@@ -274,6 +279,7 @@ export async function editarUsuario(data: EditarUsuarioDTO) {
         data: {
           nome,
           cpf,
+          telefone,
           ativo,
           fkCargoId,
           fkEmpresaId,

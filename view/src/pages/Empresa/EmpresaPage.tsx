@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import type { Empresa, Unidade, Setor, Cargo, Funcionario } from "../../types/EstruturaEmpresa";
 import { searchEmpresas, getEmpresa, getUnidades, getSetores, getCargos, getFuncionarios } from "../../services/apiEmpresa";
 import { useAuth } from "../../contexts/AuthContext";
-import { formatarDocumento } from "../../auxiliares/formatters";
+import { formatarDocumento, formatarTelefone } from "../../auxiliares/formatters";
 import { temPermissao } from "../../auxiliares/permissoes";
 
 // Components
@@ -588,15 +588,19 @@ export default function GerenciaEmpresa() {
                                 <tr className="bg-gray-100">
                                   <th className="px-3 py-2">Nome</th>
                                   <th className="px-3 py-2">Email</th>
+                                  <th className="px-3 py-2">Telefone</th>
                                   <th className="px-3 py-2">Ações</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {loadingFuncionario ? (
-                                  Array.from({ length: 3 }).map((_, i) => (
+                                  Array.from({ length: 4 }).map((_, i) => (
                                     <tr key={i} className="border-t border-gray-300 animate-pulse">
                                       <td className="px-3 py-3">
                                         <div className="h-4 bg-gray-200 rounded w-24 mx-auto" />
+                                      </td>
+                                      <td className="px-3 py-3">
+                                        <div className="h-4 bg-gray-200 rounded w-32 mx-auto" />
                                       </td>
                                       <td className="px-3 py-3">
                                         <div className="h-4 bg-gray-200 rounded w-32 mx-auto" />
@@ -611,6 +615,7 @@ export default function GerenciaEmpresa() {
                                     <tr key={f.idUsuario} className="border-t border-gray-300">
                                       <td className="px-3 py-2">{f.nome}</td>
                                       <td className="px-3 py-2">{f.email}</td>
+                                      <td className="px-3 py-2">{formatarTelefone(f.telefone || "") || "-"}</td>
                                       <td className="px-3 py-2 flex items-center justify-center gap-4">
                                         {podeEditar ? (
                                           <ToolTip text="Editar" position="left">
