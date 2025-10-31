@@ -126,13 +126,20 @@ export const buscarCursoCompleto = {
     curso.modulos.forEach((mod) => {
       mod.aulas.forEach((aula) => {
         aula.steps.forEach((s) => {
-          if (s.avaliacao?.perguntas) {
-            s.avaliacao.perguntas.forEach((p: any) => {
-              if (p.alternativas?.length > 1) {
-                p.alternativas = shuffleArray(p.alternativas);
-              }
-            });
+          // ⚠️ Ignora step de avaliação sem avaliação vinculada
+          if (
+            s.tipo?.startsWith("avaliacao") &&
+            (!s.fkAvaliacaoId || !s.avaliacao)
+          ) {
+            return; // pula o step inválido
           }
+
+          steps.push({
+            ...s,
+            tipoStep: "aula",
+            idModulo: mod.idModulo,
+            idAula: aula.idAula,
+          });
         });
       });
     });
