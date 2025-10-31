@@ -350,6 +350,7 @@ interface FooterProps {
   setLiberadoProximo: React.Dispatch<React.SetStateAction<boolean>>;
   stepAtual: Step | null;
   registrarStepBackend: (step: Step) => Promise<void>;
+  loadingStep: boolean;
 }
 
 function FooterNavegacao({
@@ -359,7 +360,8 @@ function FooterNavegacao({
   stepAtual,
   registrarStepBackend,
   liberadoProximo,
-  setLiberadoProximo
+  setLiberadoProximo,
+  loadingStep,
 }: FooterProps) {
 
   const handleProximo = async () => {
@@ -385,14 +387,20 @@ function FooterNavegacao({
 
       {/* Botão Próximo */}
       <button
-        disabled={!liberadoProximo || stepAtualIndex === steps.length - 1}
+        disabled={!liberadoProximo || stepAtualIndex === steps.length - 1 || loadingStep}
         onClick={handleProximo}
         className={`flex items-center text-sm font-medium transition 
-          ${liberadoProximo
+    ${liberadoProximo && !loadingStep
             ? "text-blue-600 hover:text-blue-800 cursor-pointer"
             : "text-gray-300 cursor-not-allowed"}`}
       >
-        Próximo <span className="ml-1">›</span>
+        {loadingStep ? (
+          <span className="animate-spin inline-block w-4 h-4 border-2 border-t-transparent border-blue-500 rounded-full" />
+        ) : (
+          <>
+            Próximo <span className="ml-1">›</span>
+          </>
+        )}
       </button>
     </div>
   );
@@ -412,6 +420,7 @@ export default function PlayCursoPage() {
   const [avaliacoesRespondidasMap, setAvaliacoesRespondidasMap] = useState<Record<number, any>>({});
   const [liberadoProximo, setLiberadoProximo] = useState(false);
   const [cursoConcluido, setCursoConcluido] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(false);
 
   const navigate = useNavigate();
 
@@ -445,8 +454,6 @@ export default function PlayCursoPage() {
           concluidos.push(s.idAulaStep);
         }
       });
-
-      console.log(data.steps);
 
       setStepsConcluidos(concluidos);
       setCursoConcluido(concluidos.length === data.steps?.length);
@@ -493,6 +500,8 @@ export default function PlayCursoPage() {
   };
 
   const registrarStepBackend = async (step: Step, progressoVideo?: number): Promise<void> => {
+    setLoadingStep(true);
+
     try {
       let idReferencia: number | null = null;
 
@@ -542,7 +551,10 @@ export default function PlayCursoPage() {
     } catch (e) {
       console.error("Erro ao registrar step:", e);
       toast.error("Erro ao registrar progresso da etapa.");
+    } finally {
+      setLoadingStep(false);
     }
+
   };
 
   const stepAtual: Step | null = curso?.steps?.[stepAtualIndex] ?? null;
@@ -621,6 +633,7 @@ export default function PlayCursoPage() {
                 setLiberadoProximo={setLiberadoProximo}
                 stepAtual={stepAtual}
                 registrarStepBackend={registrarStepBackend}
+                loadingStep={loadingStep}
               />
             </div>
 
