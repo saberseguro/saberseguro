@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CursoCompleto, Step } from "../../types/EstruturaCurso";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { getCursoCompleto, registrarStepAula, registrarStepCurso } from "../../services/apiCurso";
+import { finalizarCurso, getCursoCompleto, registrarStepAula, registrarStepCurso } from "../../services/apiCurso";
 import { ArrowLeft, Award, CheckCircle, ChevronRight, Circle, ClipboardList, Video } from "lucide-react";
 import ModalVisualizador from "../../components/Modais/ModalVisualizador";
 import toast from "react-hot-toast";
@@ -494,10 +494,28 @@ export default function PlayCursoPage() {
   }, [stepsConcluidos, curso]);
 
   const handleGerarCertificado = async () => {
-    if (idCurso) {
+    if (!idCurso) return;
+
+    // Se já estiver finalizado, apenas navega
+    if (cursoConcluido) {
       navigate(`/cursos/certificados`);
+      return;
+    }
+
+    // Senão, finaliza e depois navega
+    try {
+      const res = await finalizarCurso(Number(idCurso));
+      if (res?.sucesso) {
+        navigate(`/cursos/certificados`);
+      } else {
+        toast.error("Não foi possível finalizar o curso.");
+      }
+    } catch (err) {
+      console.error("Erro ao finalizar curso:", err);
+      toast.error("Erro ao finalizar o curso. Tente novamente.");
     }
   };
+
 
   const registrarStepBackend = async (step: Step, progressoVideo?: number): Promise<void> => {
     setLoadingStep(true);
