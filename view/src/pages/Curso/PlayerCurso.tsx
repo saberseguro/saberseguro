@@ -1,14 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CursoCompleto, Step } from "../../types/EstruturaCurso";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getCursoCompleto, registrarStepAula, registrarStepCurso } from "../../services/apiCurso";
 import { ArrowLeft, Award, CheckCircle, ChevronRight, Circle, ClipboardList, Video } from "lucide-react";
-import ReactPlayer from "react-player";
 import ModalVisualizador from "../../components/Modais/ModalVisualizador";
 import toast from "react-hot-toast";
 import AvaliacaoProva from "../../components/AvaliacaoProva";
 import Spinner from "../../components/Spinner";
 import TabsInfoCurso from "./TabsInfoCurso";
+
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
 
 function isStepConcluido(step: any, usuarioAula: any, avaliacoesRespondidasMap: any) {
   switch (step.tipo) {
@@ -226,23 +232,69 @@ function StepRenderer({
       (v: any) => v.idAulaVideo === step.fkAulaVideoId
     );
 
+    const videoId = getYoutubeId(video?.url ?? "");
+
+    function getYoutubeId(url: string): string | null {
+      const match =
+        url.match(/[?&]v=([^&#]*)/) || url.match(/youtu\.be\/([^&#]*)/);
+      return match ? match[1] : null;
+    }
+
+    const playerRef = useRef<any>(null);
+
+    useEffect(() => {
+      if (!videoId) return;
+
+      // Carrega o script se ainda não estiver carregado
+      if (!window.YT) {
+        const tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.body.appendChild(tag);
+      }
+
+      function createPlayer() {
+        playerRef.current = new window.YT.Player("youtube-player", {
+          videoId,
+          events: {
+            onStateChange: (event: any) => {
+              if (event.data === 0) {
+                setLiberadoProximo(true);
+                registrarStepBackend(step!);
+              }
+            },
+          },
+        });
+      }
+
+      // Se a API já estiver carregada
+      if (window.YT && window.YT.Player) {
+        createPlayer();
+      } else {
+        // Espera a API carregar
+        window.onYouTubeIframeAPIReady = () => {
+          createPlayer();
+        };
+      }
+
+      // Cleanup: destrói o player ao desmontar ou mudar de vídeo
+      return () => {
+        if (playerRef.current && playerRef.current.destroy) {
+          playerRef.current.destroy();
+        }
+      };
+    }, [videoId, step]);
+
     return (
       <div className="bg-black flex justify-center items-center">
         <div className="w-full aspect-video rounded overflow-hidden shadow-md">
-          <ReactPlayer
-            src={video?.url ?? ""}
-            width="100%"
-            height="100%"
-            controls
-            playing={false}
-            style={{ backgroundColor: "black" }}
-            onEnded={() => setLiberadoProximo(true)}
-            config={{
-              youtube: {
-                origin: 'https://app.sabersegurotreinamentos.com',
-              },
+          <div
+            id="youtube-player"
+            style={{
+              width: "100%",
+              height: "100%",
+              backgroundColor: "black",
             }}
-          />
+          ></div>
         </div>
       </div>
     );
