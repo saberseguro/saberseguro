@@ -259,7 +259,7 @@ function StepRenderer({
             onStateChange: (event: any) => {
               if (event.data === 0) {
                 setLiberadoProximo(true);
-                step && registrarStepBackend(step);
+                step && setLiberadoProximo(true);
               }
             },
           },
