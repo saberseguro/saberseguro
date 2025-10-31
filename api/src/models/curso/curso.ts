@@ -74,6 +74,7 @@ export const buscarCursoCompleto = {
       return arr;
     };
 
+    // 🔹 Busca completa do curso com relacionamentos
     const curso = await prisma.curso.findUnique({
       where: { idCurso: id },
       include: {
@@ -103,6 +104,14 @@ export const buscarCursoCompleto = {
                 },
               },
             },
+            avaliacoes: {
+              include: {
+                perguntas: { include: { alternativas: true } },
+                avaliacoesUsuarios: {
+                  where: { fkUsuarioId: usuario.idUsuario },
+                },
+              },
+            },
           },
         },
         avaliacoes: {
@@ -119,22 +128,31 @@ export const buscarCursoCompleto = {
         },
       },
     });
-    
+
     if (!curso) return null;
-    
-    // 🔹 Montar steps: apenas os steps reais do banco + avaliações de curso
+
+    // 🔹 Array de steps consolidado
     let steps: any[] = [];
-    
-    // 🔀 Embaralhar as alternativas de todas as perguntas (aulas e curso)
+
+    // === 1️⃣ Steps das aulas ===
     curso.modulos.forEach((mod) => {
       mod.aulas.forEach((aula) => {
         aula.steps.forEach((s) => {
-          // ⚠️ Ignora step de avaliação sem avaliação vinculada
+          // Ignora avaliações inválidas
           if (
             s.tipo?.startsWith("avaliacao") &&
             (!s.fkAvaliacaoId || !s.avaliacao)
           ) {
-            return; // pula o step inválido
+            return;
+          }
+
+          // Embaralha alternativas de avaliações
+          if (s.avaliacao?.perguntas) {
+            s.avaliacao.perguntas.forEach((p: any) => {
+              if (p.alternativas?.length > 1) {
+                p.alternativas = shuffleArray(p.alternativas);
+              }
+            });
           }
 
           steps.push({
@@ -147,6 +165,7 @@ export const buscarCursoCompleto = {
       });
     });
 
+    // === 2️⃣ Embaralha alternativas das avaliações do curso ===
     curso.avaliacoes.forEach((av) => {
       if (av.perguntas) {
         av.perguntas.forEach((p: any) => {
@@ -157,30 +176,26 @@ export const buscarCursoCompleto = {
       }
     });
 
-
-    curso.modulos.forEach((mod) => {
-      mod.aulas.forEach((aula) => {
-        aula.steps.forEach((s) =>
-          steps.push({
-            ...s,
-            tipoStep: "aula",
-            idModulo: mod.idModulo,
-            idAula: aula.idAula,
-          })
-        );
-      });
-    });
-
-    curso.avaliacoes.forEach((av) =>
-      steps.push({
-        idAulaStep: `av-curso-${curso.idCurso}-${av.idAvaliacao}`,
-        tipo: "avaliacao_curso",
-        obrigatorio: true,
-        fkAvaliacaoId: av.idAvaliacao,
-        avaliacao: av,
-      })
+    // === 3️⃣ Adiciona avaliações de curso (sem duplicar as que já estão nos steps) ===
+    const avaliacaoIdsJaUsadas = new Set(
+      steps
+        .filter((s) => s.fkAvaliacaoId)
+        .map((s) => s.fkAvaliacaoId)
     );
 
+    curso.avaliacoes.forEach((av) => {
+      if (!avaliacaoIdsJaUsadas.has(av.idAvaliacao)) {
+        steps.push({
+          idAulaStep: `av-curso-${curso.idCurso}-${av.idAvaliacao}`,
+          tipo: "avaliacao_curso",
+          obrigatorio: true,
+          fkAvaliacaoId: av.idAvaliacao,
+          avaliacao: av,
+        });
+      }
+    });
+
+    // 🔹 Retorna o curso completo com steps prontos
     return { ...curso, steps };
   },
 };
