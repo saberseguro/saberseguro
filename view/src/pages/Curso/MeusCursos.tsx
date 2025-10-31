@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Play, Clock, ChevronLeft, ChevronRight, TrendingUp, CheckCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Play, Clock, TrendingUp, CheckCircle } from "lucide-react";
 import type { Curso } from "../../types/EstruturaCurso";
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import { getMeusCursos } from "../../services/apiCurso";
@@ -7,6 +7,7 @@ import CursoSidePanel from "./CursoSidePanel";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
+import FiltrosCursos from "../../components/Filtros/FiltrosCursos";
 
 type CursoListItem = Pick<Curso, "idCurso" | "titulo" | "descricao" | "cargaHoraria" | "ativo"> & {
   thumbUrl?: string | null;
@@ -16,110 +17,38 @@ type CursoListItem = Pick<Curso, "idCurso" | "titulo" | "descricao" | "cargaHora
   ultimaAulaId?: number;
 };
 
-// Mensagem caso nao tenha cursos
+// Mensagem caso não tenha cursos
 function EmptyState() {
   return (
-    <div className="rounded-2xl border border-dashed border-gray-300 p-10 text-center">
+    <div className="rounded-2xl p-10 text-center">
       <p className="text-gray-700 font-medium">Nenhum curso disponível no momento.</p>
-      <p className="text-gray-500 text-sm mt-1">Peça ao seu gestor para atribuir cursos ou verifique seus vínculos.</p>
+      <p className="text-gray-500 text-sm mt-1">Peça ao seu gestor para liberar cursos para você.</p>
     </div>
   );
 }
 
-// Skeleton rápido enquanto carrega a primeira seção
+function EmptyStateSearch() {
+  return (
+    <div className="rounded-2xl p-10 text-center">
+      <p className="text-gray-700 font-medium">Nenhum curso encontrado.</p>
+      <p className="text-gray-500 text-sm mt-1">Pesquise novamente usando outro termo.</p>
+    </div>
+  );
+}
+
+// Skeleton enquanto carrega
 function GridSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="h-6 w-48 bg-gray-200 animate-pulse rounded" />
-      <div className="relative">
-        <div className="flex gap-4 overflow-hidden">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="min-w-[220px] w-[220px]">
-              <div className="aspect-video rounded-xl bg-gray-200 animate-pulse" />
-              <div className="mt-3 h-4 w-3/4 bg-gray-200 animate-pulse rounded" />
-              <div className="mt-2 h-3 w-1/2 bg-gray-200 animate-pulse rounded" />
-              <div className="mt-3 h-8 w-full bg-gray-200 animate-pulse rounded-lg" />
-            </div>
-          ))}
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="min-w-[240px] bg-white rounded-xl p-4 animate-pulse">
+          <div className="aspect-video bg-gray-200 rounded-xl mb-3" />
+          <div className="h-4 w-3/4 bg-gray-200 mb-2 rounded" />
+          <div className="h-3 w-1/2 bg-gray-200 mb-4 rounded" />
+          <div className="h-8 w-full bg-gray-200 rounded" />
         </div>
-      </div>
+      ))}
     </div>
-  );
-}
-
-function CarouselRow({ titulo, itens, onOpen }: { titulo: string; itens: CursoListItem[]; onOpen: (id: number) => void }) {
-  const listRef = useRef<HTMLDivElement | null>(null);
-
-  const scrollBy = (dir: "left" | "right") => {
-    const el = listRef.current;
-    if (!el) return;
-    const cardWidth = 220 + 16; // largura aproximada + gap
-    const delta = cardWidth * 3; // anda ~3 cards
-    el.scrollBy({ left: dir === "left" ? -delta : delta, behavior: "smooth" });
-  };
-
-  const onWheel = (e: React.WheelEvent) => {
-    // suporte a trackpad: arrasto vertical vira scroll horizontal
-    const el = listRef.current;
-    if (!el) return;
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      el.scrollBy({ left: e.deltaY, behavior: "smooth" });
-    }
-  };
-
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowLeft") scrollBy("left");
-    if (e.key === "ArrowRight") scrollBy("right");
-  };
-
-  return (
-    <section aria-label={titulo} className="">
-      <div className="mb-3 flex items-end justify-between">
-        <h2 className="text-lg md:text-xl font-semibold text-gray-800">{titulo}</h2>
-      </div>
-
-      <div className="relative" onKeyDown={onKeyDown}>
-        {/* Botão Esquerda */}
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 z-10">
-          <ToolTip text="Anterior" position="right">
-            <button
-              type="button"
-              onClick={() => scrollBy("left")}
-              className="bg-white/80 hover:bg-white shadow-lg border border-gray-200 rounded-full p-2 cursor-pointer"
-              aria-label="Anterior"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-          </ToolTip>
-        </div>
-
-        {/* Lista horizontal */}
-        <div
-          ref={listRef}
-          className="flex gap-4 overflow-x-auto scroll-smooth no-scrollbar pr-6 pl-6"
-          onWheel={onWheel}
-          tabIndex={0}
-        >
-          {itens.map((c) => (
-            <CursoCard key={c.idCurso} curso={c} onOpen={onOpen} />
-          ))}
-        </div>
-
-        {/* Botão Direita */}
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10">
-          <ToolTip text="Próximo" position="left">
-            <button
-              type="button"
-              onClick={() => scrollBy("right")}
-              className="bg-white/80 hover:bg-white shadow-lg border border-gray-200 rounded-full p-2 cursor-pointer"
-              aria-label="Próximo"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </ToolTip>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -133,7 +62,7 @@ function CursoCard({ curso, onOpen }: { curso: CursoListItem; onOpen: (id: numbe
   const progresso = Math.max(0, Math.min(100, Number(curso.progresso ?? 0)));
 
   return (
-    <div className="min-w-[240px] w-[240px] bg-white rounded-xl p-4 flex flex-col">
+    <div className="bg-white rounded-xl p-4 flex flex-col shadow-sm border border-gray-100 hover:shadow-md transition">
       <div className="relative aspect-video overflow-hidden rounded-xl bg-gray-100 ring-1 ring-gray-200">
         {curso.thumbUrl ? (
           <img
@@ -210,6 +139,8 @@ export default function MeusCursos() {
   const [cursos, setCursos] = useState<CursoListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
+  const [filtros, setFiltros] = useState<any>({});
 
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedIdFromQS = searchParams.get("curso");
@@ -225,7 +156,6 @@ export default function MeusCursos() {
   };
 
   const closePanel = () => {
-    // remove ?curso da URL
     setSearchParams((prev) => {
       const p = new URLSearchParams(prev);
       p.delete("curso");
@@ -274,43 +204,42 @@ export default function MeusCursos() {
     load();
   }, []);
 
-  const secoes = [
-    { id: "meus-cursos", titulo: "Meus cursos", itens: cursos },
-  ];
+  const cursosFiltrados = cursos.filter((c) =>
+    c.titulo.toLowerCase().includes(busca.toLowerCase())
+  );
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
-      <header className="mb-4 md:mb-6">
+      {/* Header */}
+      <header className="mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Meus Cursos</h1>
         <p className="text-gray-500 text-sm md:text-base">
-          Cursos disponíveis para você, com base no seu cargo/setor e nas medidas de segurança.
+          Veja os cursos disponíveis para você e acompanhe seu progresso.
         </p>
       </header>
 
+      {/* 🔍 Filtros e Pesquisa */}
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-6">
+        <FiltrosCursos busca={busca} setBusca={setBusca} filtros={filtros} setFiltros={setFiltros} />
+      </div>
+
+      {/* Conteúdo */}
       {loading && <GridSkeleton />}
-
       {!loading && erro && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">
-          Erro ao carregar cursos. Favor entrar em contato com o suporte.
-        </div>
+        <EmptyState />
       )}
+      {!loading && !erro && cursosFiltrados.length === 0 && <EmptyStateSearch />}
 
-      {!loading && !erro && cursos.length === 0 && <EmptyState />}
-
-      {!loading && !erro && cursos.length > 0 && (
-        <div className="space-y-8">
-          {secoes.map((sec) => (
-            <CarouselRow key={sec.id} titulo={sec.titulo} itens={sec.itens} onOpen={openPanel} />
+      {!loading && !erro && cursosFiltrados.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {cursosFiltrados.map((curso) => (
+            <CursoCard key={curso.idCurso} curso={curso} onOpen={openPanel} />
           ))}
         </div>
       )}
 
-      {/* Sheet lateral */}
-      <CursoSidePanel
-        open={panelOpen}
-        idCurso={selectedId}
-        onClose={closePanel}
-      />
+      {/* Painel lateral */}
+      <CursoSidePanel open={panelOpen} idCurso={selectedId} onClose={closePanel} />
     </div>
   );
 }

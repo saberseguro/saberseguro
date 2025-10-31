@@ -552,64 +552,48 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
 
         <!-- Página 2: Conteúdo Programático -->
         <div class="container container-programa" style="page-break-before: always;">
-          <div class="programa-titulo">Conteúdo Programático</div>
+          <div class="programa-titulo">CONTEÚDO PROGRAMÁTICO</div>
 
-          <div class="programa-corpo">
+          <div class="programa-corpo" style="display: flex; gap: 60px;">
+            <div style="flex: 1;">
+              <div class="secao-titulo">Item 5.1</div>
+              <ul style="font-size: 14px; line-height: 1.6; padding-left: 18px;">
+                <li>a) riscos de exposição ao benzeno e vias de absorção;</li>
+                <li>b) conceitos básicos sobre monitoramento ambiental, biológico e de saúde;</li>
+                <li>c) sinais e sintomas de intoxicação ocupacional por benzeno;</li>
+                <li>d) medidas de prevenção;</li>
+                <li>e) procedimentos de emergência;</li>
+                <li>f) caracterização básica das instalações, atividades de risco e pontos de possíveis emissões de benzeno;</li>
+                <li>g) dispositivos legais sobre o benzeno.</li>
+              </ul>
+            </div>
 
-            ${dados.curso?.grade
-      ?.map((m: any, i: number) => {
-        const aulasOrdenadas = [...m.aulas].sort(
-          (a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)
-        );
+            <div style="flex: 1;">
+              <div class="secao-titulo">Item 5.1.1</div>
+              <ul style="font-size: 14px; line-height: 1.6; padding-left: 18px;">
+                <li>a) conferência do produto no caminhão-tanque no ato do descarregamento;</li>
+                <li>b) coleta de amostras no caminhão-tanque com amostrador específico;</li>
+                <li>c) medição volumétrica de tanque subterrâneo com régua;</li>
+                <li>d) estacionamento do caminhão, aterramento e conexão via mangotes aos tanques subterrâneos;</li>
+                <li>e) descarregamento de combustíveis para os tanques subterrâneos;</li>
+                <li>f) desconexão dos mangotes e retirada do conteúdo residual;</li>
+                <li>g) abastecimento de combustível para veículos;</li>
+                <li>h) abastecimento de combustíveis em recipientes certificados;</li>
+                <li>i) análises físico-químicas para o controle de qualidade dos produtos comercializados;</li>
+                <li>j) limpeza de válvulas, bombas e seus compartimentos de contenção de vazamentos;</li>
+                <li>k) esgotamento e limpeza de caixas separadoras;</li>
+                <li>l) limpeza de caixas de passagem e canaletas;</li>
+                <li>m) aferição de bombas de abastecimento;</li>
+                <li>n) manutenção operacional de bombas;</li>
+                <li>o) manutenção e reforma do sistema de abastecimento subterrâneo de combustível (SASC);</li>
+                <li>p) outras operações e atividades passíveis de exposição ao benzeno.</li>
+              </ul>
+            </div>
+          </div>
 
-        return `
-                  <div class="modulo-bloco">
-                    <div class="modulo-titulo">Módulo ${m.titulo}</div>
-
-                    ${aulasOrdenadas
-            .map(
-              (a: any, j: number) => `
-                        <div class="aula-bloco">
-                          <div class="aula-titulo">${a.titulo}</div>
-                          ${a.descricao
-                  ? `<div class="aula-descricao">${a.descricao}</div>`
-                  : ""
-                }
-                          ${a.avaliacao
-                  ? `
-                                <div class="avaliacoes-bloco">
-                                  <div class="avaliacoes-titulo">Avaliações:</div>
-                                  <div class="avaliacao-item">Avaliação da aula</div>
-                                </div>
-                              `
-                  : ""
-                }
-                        </div>
-                      `
-            )
-            .join("")}
-
-                    ${m.avaliacao
-            ? `
-                          <div class="avaliacoes-bloco">
-                            <div class="avaliacoes-titulo">Avaliações:</div>
-                            <div class="avaliacao-item">Avaliação do módulo</div>
-                          </div>
-                        `
-            : ""
-          }
-                  </div>
-                `;
-      })
-      .join("")}
-
-            ${dados.curso?.avaliacoes
-      ? `
-                  <div class="modulo-titulo">Avaliações do Curso:</div>
-                  <div class="avaliacao-item">Avaliação final do curso</div>
-                `
-      : ""
-    }
+          <div class="rodape" style="margin-top: 50px;">
+            Participante: <strong>${dados.usuario?.nome}</strong><br />
+            CPF: <strong>${formatarCpf(dados.usuario?.cpf)}</strong>
           </div>
         </div>
 
@@ -638,3 +622,67 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
 
   return Buffer.from(pdf);
 }
+
+
+// <!-- Página 2: Conteúdo Programático -->
+//         <div class="container container-programa" style="page-break-before: always;">
+//           <div class="programa-titulo">Conteúdo Programático</div>
+
+//           <div class="programa-corpo">
+
+//             ${dados.curso?.grade
+//       ?.map((m: any, i: number) => {
+//         const aulasOrdenadas = [...m.aulas].sort(
+//           (a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)
+//         );
+
+//         return `
+//                   <div class="modulo-bloco">
+//                     <div class="modulo-titulo">Módulo ${m.titulo}</div>
+
+//                     ${aulasOrdenadas
+//             .map(
+//               (a: any, j: number) => `
+//                         <div class="aula-bloco">
+//                           <div class="aula-titulo">${a.titulo}</div>
+//                           ${a.descricao
+//                   ? `<div class="aula-descricao">${a.descricao}</div>`
+//                   : ""
+//                 }
+//                           ${a.avaliacao
+//                   ? `
+//                                 <div class="avaliacoes-bloco">
+//                                   <div class="avaliacoes-titulo">Avaliações:</div>
+//                                   <div class="avaliacao-item">Avaliação da aula</div>
+//                                 </div>
+//                               `
+//                   : ""
+//                 }
+//                         </div>
+//                       `
+//             )
+//             .join("")}
+
+//                     ${m.avaliacao
+//             ? `
+//                           <div class="avaliacoes-bloco">
+//                             <div class="avaliacoes-titulo">Avaliações:</div>
+//                             <div class="avaliacao-item">Avaliação do módulo</div>
+//                           </div>
+//                         `
+//             : ""
+//           }
+//                   </div>
+//                 `;
+//       })
+//       .join("")}
+
+//             ${dados.curso?.avaliacoes
+//       ? `
+//                   <div class="modulo-titulo">Avaliações do Curso:</div>
+//                   <div class="avaliacao-item">Avaliação final do curso</div>
+//                 `
+//       : ""
+//     }
+//           </div>
+//         </div>

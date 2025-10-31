@@ -30,7 +30,7 @@ export default function FiltrosCursos({ busca, setBusca, filtros, setFiltros }: 
     <div className="w-full mb-4">
 
       {/* Select + Search input */}
-      <div className="flex w-full border border-gray-300 rounded-md overflow-hidden">
+      <div className="flex w-full border border-gray-300 rounded-md overflow-hidden bg-white">
         {/* Categoria dropdown */}
         <select
           value={filtros.categoria || ""}
