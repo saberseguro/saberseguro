@@ -259,7 +259,7 @@ function StepRenderer({
             onStateChange: (event: any) => {
               if (event.data === 0) {
                 setLiberadoProximo(true);
-                registrarStepBackend(step!);
+                step && registrarStepBackend(step);
               }
             },
           },
@@ -446,6 +446,8 @@ export default function PlayCursoPage() {
         }
       });
 
+      console.log(data.steps);
+
       setStepsConcluidos(concluidos);
       setCursoConcluido(concluidos.length === data.steps?.length);
     };
@@ -512,6 +514,7 @@ export default function PlayCursoPage() {
 
       if (!idReferencia) {
         console.warn(`⚠️ Step sem referência válida: ${step.tipo}`, step);
+        toast.error("Esse passo está com dados incompletos e não pode ser registrado.");
         return;
       }
 

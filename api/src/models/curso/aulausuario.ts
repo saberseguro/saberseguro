@@ -205,6 +205,13 @@ export const registrarUsuarioStep = {
       throw new Error("Dados incompletos.");
     }
 
+    if (
+      (tipo === "avaliacao" || tipo === "avaliacao_modulo" || tipo === "avaliacao_curso") &&
+      !idReferencia
+    ) {
+      throw new Error("Step de avaliação sem fkAvaliacaoId");
+    }
+
     if (tipo === "avaliacao") {
       const avaliacao = await prisma.avaliacao.findUnique({
         where: { idAvaliacao: idReferencia },
