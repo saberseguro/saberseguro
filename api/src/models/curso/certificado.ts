@@ -557,7 +557,7 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
           <div class="programa-corpo" style="display: flex; gap: 60px;">
             <div style="flex: 1;">
               <div class="secao-titulo">Item 5.1</div>
-              <ul style="font-size: 14px; line-height: 1.6; padding-left: 18px;">
+              <ul style="font-size: 12px; line-height: 1.6; padding-left: 18px;">
                 <li>a) riscos de exposição ao benzeno e vias de absorção;</li>
                 <li>b) conceitos básicos sobre monitoramento ambiental, biológico e de saúde;</li>
                 <li>c) sinais e sintomas de intoxicação ocupacional por benzeno;</li>
@@ -570,7 +570,7 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
 
             <div style="flex: 1;">
               <div class="secao-titulo">Item 5.1.1</div>
-              <ul style="font-size: 14px; line-height: 1.6; padding-left: 18px;">
+              <ul style="font-size: 12px; line-height: 1.6; padding-left: 18px;">
                 <li>a) conferência do produto no caminhão-tanque no ato do descarregamento;</li>
                 <li>b) coleta de amostras no caminhão-tanque com amostrador específico;</li>
                 <li>c) medição volumétrica de tanque subterrâneo com régua;</li>
@@ -589,11 +589,6 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
                 <li>p) outras operações e atividades passíveis de exposição ao benzeno.</li>
               </ul>
             </div>
-          </div>
-
-          <div class="rodape" style="margin-top: 50px;">
-            Participante: <strong>${dados.usuario?.nome}</strong><br />
-            CPF: <strong>${formatarCpf(dados.usuario?.cpf)}</strong>
           </div>
         </div>
 
