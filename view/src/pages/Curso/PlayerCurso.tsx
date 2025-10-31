@@ -237,6 +237,11 @@ function StepRenderer({
             playing={false}
             style={{ backgroundColor: "black" }}
             onEnded={() => setLiberadoProximo(true)}
+            config={{
+              youtube: {
+                origin: 'https://app.sabersegurotreinamentos.com',
+              },
+            }}
           />
         </div>
       </div>

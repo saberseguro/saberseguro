@@ -1042,7 +1042,7 @@ export const syncCurso = {
       });
 
       return cursoFull as any;
-    }, { timeout: 60000 });
+    }, { timeout: 120000 });
   },
 };
 
