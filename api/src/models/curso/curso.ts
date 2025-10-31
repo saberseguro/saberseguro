@@ -119,9 +119,12 @@ export const buscarCursoCompleto = {
         },
       },
     });
-
+    
     if (!curso) return null;
-
+    
+    // 🔹 Montar steps: apenas os steps reais do banco + avaliações de curso
+    let steps: any[] = [];
+    
     // 🔀 Embaralhar as alternativas de todas as perguntas (aulas e curso)
     curso.modulos.forEach((mod) => {
       mod.aulas.forEach((aula) => {
@@ -154,8 +157,6 @@ export const buscarCursoCompleto = {
       }
     });
 
-    // 🔹 Montar steps: apenas os steps reais do banco + avaliações de curso
-    const steps: any[] = [];
 
     curso.modulos.forEach((mod) => {
       mod.aulas.forEach((aula) => {
