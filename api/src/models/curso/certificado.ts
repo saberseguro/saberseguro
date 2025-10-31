@@ -264,6 +264,7 @@ export const gerarCertificado = {
     });
 
     if (existente) {
+      console.log("Certificado existente", existente);
       return existente;
     }
 

@@ -561,6 +561,8 @@ export const finalizarCurso = {
       },
     });
 
+    console.log(curso);
+
     if (!curso) throw new Error("Curso não encontrado para gerar certificado.");
 
     // 3️⃣ Gera (ou reaproveita) o certificado
@@ -573,6 +575,8 @@ export const finalizarCurso = {
       },
       user
     );
+    
+    console.log(certificado);
 
     // 4️⃣ Loga evento
     await registrarEvento({
