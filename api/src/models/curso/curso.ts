@@ -292,11 +292,10 @@ export const buscarCursos = {
 
 export const buscarMeusCursos = {
   async execute(usuario: any) {
-
     const isAdmin = usuario.role?.includes("admin");
 
     if (!usuario.idUsuario || typeof usuario.idUsuario !== "number" || isNaN(usuario.idUsuario) || isAdmin) {
-      throw new Error("ID do usuario inválido ou usuario administrador.");
+      throw new Error("ID do usuário inválido ou usuário administrador.");
     }
 
     const { idUsuario, fkCargoId } = usuario;
@@ -323,7 +322,7 @@ export const buscarMeusCursos = {
     const fkUnidadeId = cargo?.setor?.unidade?.idUnidade ?? 0;
     const fkEmpresaId = cargo?.setor?.unidade?.empresa?.idEmpresa ?? 0;
 
-    // 🔹 2. Cursos via cursoacesso (direto por estrutura)
+    // 🔹 2. Buscar acessos de curso via estrutura (usuário, cargo, setor, unidade, empresa)
     const acessosDiretos = await prisma.cursoacesso.findMany({
       where: {
         OR: [
@@ -334,12 +333,16 @@ export const buscarMeusCursos = {
           { fkEmpresaId },
         ],
       },
-      select: { fkCursoId: true, percentual: true, concluido: true },
+      select: {
+        fkCursoId: true,
+        percentual: true,
+        concluido: true,
+      },
     });
 
-    const cursoIdsDiretos = acessosDiretos.map((a) => a.fkCursoId);
+    const cursoIdsDiretos = acessosDiretos.map(a => a.fkCursoId);
 
-    // 🔹 3. Medidas vinculadas à estrutura
+    // 🔹 3. Buscar medidas vinculadas a essa estrutura
     const medidas = await prisma.medidavinculo.findMany({
       where: {
         OR: [
@@ -353,23 +356,23 @@ export const buscarMeusCursos = {
       select: { fkMedidaId: true },
     });
 
-    const medidaIds = medidas.map((m) => m.fkMedidaId);
+    const medidaIds = medidas.map(m => m.fkMedidaId);
 
-    // 🔹 4. Cursos vinculados a essas medidas
+    // 🔹 4. Buscar cursos vinculados a essas medidas
     const cursosMedidas = await prisma.medidacurso.findMany({
       where: { fkMedidaId: { in: medidaIds } },
       select: { fkCursoId: true },
     });
 
-    const cursoIdsMedidas = cursosMedidas.map((c) => c.fkCursoId);
+    const cursoIdsMedidas = cursosMedidas.map(c => c.fkCursoId);
 
-    // 🔹 5. Unificar e remover duplicados
+    // 🔹 5. Unificar IDs de cursos (sem duplicados)
     const todosCursoIds = Array.from(new Set([...cursoIdsDiretos, ...cursoIdsMedidas]));
 
     if (todosCursoIds.length === 0) return [];
 
-    // 🔹 6. Buscar cursos com dados mínimos para o carrossel
-    const cursos = await prisma.curso.findMany({
+    // 🔹 6. Buscar dados mínimos dos cursos
+    const cursosBase = await prisma.curso.findMany({
       where: {
         idCurso: { in: todosCursoIds },
         ativo: 1,
@@ -379,19 +382,25 @@ export const buscarMeusCursos = {
         titulo: true,
         descricao: true,
         cargaHoraria: true,
-        acessos: {
-          where: { fkUsuarioId: idUsuario },
-          select: {
-            percentual: true,
-            concluido: true,
-          },
-        },
+        ativo: true,
+        // Adicione mais campos se precisar
       },
       orderBy: { titulo: 'asc' },
     });
 
-    return cursos;
-  },
+    // 🔹 7. Mesclar progresso com base nos acessos diretos (cursoacesso)
+    const cursosComProgresso = cursosBase.map(curso => {
+      const acesso = acessosDiretos.find(a => a.fkCursoId === curso.idCurso);
+      return {
+        ...curso,
+        acessos: acesso
+          ? [{ percentual: acesso.percentual ?? 0, concluido: acesso.concluido ?? false }]
+          : [],
+      };
+    });
+
+    return cursosComProgresso;
+  }
 };
 
 export const criarCurso = {
@@ -575,7 +584,7 @@ export const finalizarCurso = {
       },
       user
     );
-    
+
     console.log(certificado);
 
     // 4️⃣ Loga evento

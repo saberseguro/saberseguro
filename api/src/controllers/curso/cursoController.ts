@@ -205,18 +205,17 @@ export const excluirCursoAcessoController = async (req: Request, res: Response) 
 
 export const finalizarCursoController = async (req: Request, res: Response) => {
   try {
-    const { idCurso } = req.body;
+    const idCurso = Number(req.params.id);
     const usuario = req.user as any;
 
     const resultado = await finalizarCurso.execute(idCurso, usuario);
 
-    return res.json(resultado);
+    return res.json({ sucesso: true, ...resultado });
   } catch (err: any) {
     console.error("Erro ao finalizar curso:", err);
     return res.status(500).json({ error: err.message });
   }
 };
-
 
 // Sincronização
 export const syncCursoController = async (req: Request, res: Response) => {

@@ -201,9 +201,8 @@ export async function fetchResultadoAvaliacao(idAvaliacao: number): Promise<Resu
 }
 
 export async function finalizarCurso(idCurso: number): Promise<{ sucesso: boolean }> {
-  return apiFetch("/curso/:id/finalizar", {
+  return apiFetch(`/curso/${idCurso}/finalizar`, {
     method: "POST",
-    body: JSON.stringify({ idCurso }),
   });
 }
 

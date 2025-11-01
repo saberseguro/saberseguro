@@ -496,13 +496,11 @@ export default function PlayCursoPage() {
   const handleGerarCertificado = async () => {
     if (!idCurso) return;
 
-    // Se já estiver finalizado, apenas navega
     if (cursoConcluido) {
       navigate(`/cursos/certificados`);
       return;
     }
 
-    // Senão, finaliza e depois navega
     try {
       const res = await finalizarCurso(Number(idCurso));
       if (res?.sucesso) {
@@ -515,7 +513,6 @@ export default function PlayCursoPage() {
       toast.error("Erro ao finalizar o curso. Tente novamente.");
     }
   };
-
 
   const registrarStepBackend = async (step: Step, progressoVideo?: number): Promise<void> => {
     setLoadingStep(true);
