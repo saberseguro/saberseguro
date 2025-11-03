@@ -306,6 +306,10 @@ function StepRenderer({
       (m: any) => m.idMaterialComplementar === step.fkMaterialId
     );
 
+    if (mat) {
+      setLiberadoProximo(true);
+    }
+
     return (
       <div className="flex flex-col items-center justify-center p-6">
         <button
@@ -496,10 +500,7 @@ export default function PlayCursoPage() {
   const handleGerarCertificado = async () => {
     if (!idCurso) return;
 
-    if (cursoConcluido) {
-      navigate(`/cursos/certificados`);
-      return;
-    }
+    console.log("Controller finalizar curso");
 
     try {
       const res = await finalizarCurso(Number(idCurso));

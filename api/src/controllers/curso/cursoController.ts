@@ -208,6 +208,8 @@ export const finalizarCursoController = async (req: Request, res: Response) => {
     const idCurso = Number(req.params.id);
     const usuario = req.user as any;
 
+    console.log("Controller finalizar curso")
+
     const resultado = await finalizarCurso.execute(idCurso, usuario);
 
     return res.json({ sucesso: true, ...resultado });
