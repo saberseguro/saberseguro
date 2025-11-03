@@ -500,8 +500,6 @@ export default function PlayCursoPage() {
   const handleGerarCertificado = async () => {
     if (!idCurso) return;
 
-    console.log("Controller finalizar curso");
-
     try {
       const res = await finalizarCurso(Number(idCurso));
       if (res?.sucesso) {

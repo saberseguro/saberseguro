@@ -531,8 +531,6 @@ export const finalizarCurso = {
   async execute(idCurso: number, user: any) {
     const idUsuario = user.idUsuario;
 
-    console.log("Model Finalizar Curso");
-
     // 1️⃣ Marca como concluído na tabela cursoacesso
     const acesso = await prisma.cursoacesso.upsert({
       where: {
@@ -565,8 +563,6 @@ export const finalizarCurso = {
       },
     });
 
-    console.log(curso);
-
     if (!curso) throw new Error("Curso não encontrado para gerar certificado.");
 
     // 3️⃣ Gera (ou reaproveita) o certificado
@@ -579,8 +575,6 @@ export const finalizarCurso = {
       },
       user
     );
-
-    console.log(certificado);
 
     // 4️⃣ Loga evento
     await registrarEvento({

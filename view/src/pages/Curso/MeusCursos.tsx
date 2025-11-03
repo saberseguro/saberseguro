@@ -193,8 +193,6 @@ export default function MeusCursos() {
           return a.concluido ? 1 : -1;
         });
 
-        console.log(lista);
-
         setCursos(cursosAdaptados);
       } catch (e: any) {
         setErro(e?.message ?? "Falha ao carregar seus cursos.");

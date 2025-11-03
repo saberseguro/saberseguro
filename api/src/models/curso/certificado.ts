@@ -16,6 +16,15 @@ export interface DadosCertificado {
   assinatura?: string;
 }
 
+export function formatarMinutosEmHoras(min?: number): string {
+  const minutes = Number.isFinite(min) && (min as number) >= 0 ? (min as number) : 0;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h && m) return `${h}h ${m}min`;
+  if (h) return `${h}h`;
+  return `${m}min`;
+}
+
 export const listarCertificados = {
   async execute(usuario: any) {
     const isGestor =
@@ -499,7 +508,7 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
             Funcionário(a) da empresa <strong>${dados.usuario?.empresa}</strong>,
             portador do CPF <strong>${formatarCpf(dados.usuario?.cpf)}</strong>,
             concluiu com êxito o curso <strong>${dados.curso?.titulo}</strong>,
-            com carga horária de <strong>${dados.curso?.cargaHoraria}</strong>,
+            com carga horária de <strong>${formatarMinutosEmHoras(dados.curso?.cargaHoraria)}</strong>,
             finalizado em <strong>${dados.certificado?.dataGeracao}</strong>.
           </div>
 
@@ -511,37 +520,33 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
           <div class="assinaturas">
             <!-- Assinatura do Instrutor -->
             <div class="assinatura">
-              ${
-                assinaturaInstrutorBase64
-                  ? `<img src="${assinaturaInstrutorBase64}" alt="Assinatura do instrutor" />`
-                  : `<div class="linha"></div>`
-              }
+              ${assinaturaInstrutorBase64
+      ? `<img src="${assinaturaInstrutorBase64}" alt="Assinatura do instrutor" />`
+      : `<div class="linha"></div>`
+    }
               <div class="linha"></div>
-              ${
-                dados.instrutor
-                  ? `
+              ${dados.instrutor
+      ? `
                     <div>Instrutor Responsável: <strong>${dados.instrutor.nome}</strong></div>
                     <div>${dados.instrutor.funcao}: ${dados.instrutor.registro}</div>
                   `
-                  : ""
-              }
+      : ""
+    }
             </div>
 
             <!-- Assinatura do Funcionario -->
             <div class="assinatura">
-              ${
-                assinaturaUsuarioBase64
-                  ? `<img src="${assinaturaUsuarioBase64}" alt="Assinatura do Funcionário" />`
-                  : `<div class="linha"></div>`
-              }
+              ${assinaturaUsuarioBase64
+      ? `<img src="${assinaturaUsuarioBase64}" alt="Assinatura do Funcionário" />`
+      : `<div class="linha"></div>`
+    }
               <div class="linha"></div>
-              ${
-                dados.empresa
-                  ? `
+              ${dados.empresa
+      ? `
                     <div>Funcionário: <strong>${dados.usuario.nome}</strong></div>
                   `
-                  : ""
-              }
+      : ""
+    }
             </div>
           </div>
 
