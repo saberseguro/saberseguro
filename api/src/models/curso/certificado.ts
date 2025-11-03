@@ -208,7 +208,7 @@ export const previewCertificado = {
       curso: {
         idCurso: curso.idCurso,
         titulo: curso.titulo,
-        cargaHoraria: `${curso.cargaHoraria}h`,
+        cargaHoraria: curso.cargaHoraria,
         avaliacoes: !!curso.avaliacoes?.length,
         grade: curso.modulos.map((m) => ({
           idModulo: m.idModulo,
