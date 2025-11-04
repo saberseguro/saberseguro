@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [senha, setSenha] = useState("");
   const [telefone, setTelefone] = useState("");
   const [modalAberto, setModalAberto] = useState(false);
-  const [modoTelefone, setModoTelefone] = useState(false);
+  const [modoTelefone, _setModoTelefone] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,7 +162,7 @@ export default function LoginPage() {
 
           {/* Alternar modo */}
           <div className="flex justify-center items-center gap-2">
-            <div className="text-center">
+            {/* <div className="text-center">
               <button
                 type="button"
                 className="text-sm text-gray-600 hover:text-blue-600 hover:underline cursor-pointer"
@@ -172,7 +172,7 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="border border-r border-gray-400 h-5"></div>
+            <div className="border border-r border-gray-400 h-5"></div> */}
 
             {/* Verificar horários */}
             <div className="">

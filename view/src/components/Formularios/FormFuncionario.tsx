@@ -292,7 +292,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
               {!onEdit && (
                 <Input label="Senha" type="password" name="senha" value={form.senha} onChange={handleChange} disable={!!onEdit} />
               )}
-              <Input label="Telefone" name="telefone" value={formatarTelefone(form.telefone || "")} onChange={handleChange} />
+              <Input label="Telefone" name="telefone" value={formatarTelefone(form.telefone || "")} onChange={handleChange} required={false} />
             </div>
             <SelectMultiInput<number>
               label="Funções"
