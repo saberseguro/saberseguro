@@ -21,30 +21,48 @@ type UsuarioRoleComPermissoes = Prisma.usuarioroleGetPayload<{
 
 export async function loginUser(idToken: string) {
   const decoded = await admin.auth().verifyIdToken(idToken);
-  const { uid, email } = decoded;
+  const { uid, email, phone_number } = decoded;
 
-  if (!email) throw new Error("Email não encontrado no token.");
+  let usuario;
 
-  const usuario = await prisma.usuario.findUnique({
-    where: { firebaseId: uid },
-    include: {
-      usuariohorario: true,
-    },
-  });
+  // 🔹 1. Identificar se é login por e-mail ou telefone
+  if (email) {
+    usuario = await prisma.usuario.findUnique({
+      where: { firebaseId: uid },
+      include: { usuariohorario: true },
+    });
+  } else if (phone_number) {
+    // Limpa número (+55 etc)
+    const numeroLimpo = phone_number.replace(/\D/g, "");
+
+    // 🔹 Remove o DDI +55, se existir
+    const numeroSemDDI = numeroLimpo.startsWith("55")
+      ? numeroLimpo.slice(2)
+      : numeroLimpo;
+
+    // 🔹 Busca no banco (por número exato ou últimos 9 dígitos)
+    usuario = await prisma.usuario.findFirst({
+      where: {
+        OR: [
+          { telefone: numeroSemDDI },
+          { telefone: { endsWith: numeroSemDDI.slice(-9) } },
+        ],
+      },
+      include: { usuariohorario: true },
+    });
+  }
 
   if (!usuario) throw new Error("Usuário não encontrado.");
   if (usuario.ativo === 0) throw new Error("Usuário inativo.");
 
-  // Buscar roles e permissões
+  // 🔹 2. Buscar roles e permissões
   const rolesDoUsuario: UsuarioRoleComPermissoes[] = await prisma.usuariorole.findMany({
     where: { fkUsuarioId: usuario.idUsuario },
     include: {
       role: {
         include: {
           rolepermissao: {
-            include: {
-              permissao: true,
-            },
+            include: { permissao: true },
           },
         },
       },
@@ -64,6 +82,7 @@ export async function loginUser(idToken: string) {
 
   let tempoRestanteSegundos = 3600;
 
+  // 🔹 3. Respeitar horários de acesso
   if (!isAdmin) {
     const agora = new Date();
     const diaSemana = getDay(agora);
@@ -95,10 +114,12 @@ export async function loginUser(idToken: string) {
     }
   }
 
+  // 🔹 4. Gerar seu token JWT interno
   const token = generateToken(
     {
       idUsuario: usuario.idUsuario,
       email: usuario.email,
+      telefone: usuario.telefone ?? "",
       nome: usuario.nome ?? "",
       cpf: usuario.cpf ?? "",
       roles: nomesRoles,
@@ -114,7 +135,7 @@ export async function loginUser(idToken: string) {
     await registrarEvento({
       idUsuario: usuario.idUsuario,
       tipo: "login",
-      descricao: `Token: ${token}`,
+      descricao: `Login via ${email ? "e-mail" : "telefone"} (${phone_number})`,
     });
   } catch (e) {
     throw new Error("Erro ao registrar evento de login: " + e);

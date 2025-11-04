@@ -1,6 +1,16 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { browserLocalPersistence, initializeAuth } from 'firebase/auth';
 import { getStorage } from "firebase/storage";
+
+declare global {
+  interface Window {
+    FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string;
+  }
+}
+
+if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+  window.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,5 +22,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+export const auth = initializeAuth(app, {
+  persistence: browserLocalPersistence,
+});
 export const storage = getStorage(app);

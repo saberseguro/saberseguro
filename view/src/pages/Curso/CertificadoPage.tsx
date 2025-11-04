@@ -6,6 +6,7 @@ import { getCertificados } from "../../services/apiCurso";
 import toast from "react-hot-toast";
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import TabelaBase from "../../components/Tabelas/TabelaBase";
+import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
 
 export default function CertificadoPage() {
   const navigate = useNavigate();
@@ -49,6 +50,7 @@ export default function CertificadoPage() {
     {
       header: "Carga Horária",
       accessor: "cargaHoraria" as keyof Certificado,
+      render: (_val: any, row: Certificado) => formatarMinutosEmHoras(row.cargaHoraria),
       sortable: true,
     },
     {
