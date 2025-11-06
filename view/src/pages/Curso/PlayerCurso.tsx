@@ -368,8 +368,6 @@ function FooterNavegacao({
   loadingStep,
 }: FooterProps) {
 
-  console.log(stepAtual);
-
   const handleProximo = async () => {
     if (!stepAtual) return;
     await registrarStepBackend(stepAtual);
@@ -574,6 +572,15 @@ export default function PlayCursoPage() {
   };
 
   const stepAtual: Step | null = curso?.steps?.[stepAtualIndex] ?? null;
+
+  useEffect(() => {
+    if (!stepAtual) return;
+    if (stepsConcluidos.includes(stepAtual.idAulaStep)) {
+      setLiberadoProximo(true);
+    } else {
+      setLiberadoProximo(false);
+    }
+  }, [stepAtual, stepsConcluidos]);
 
   if (!curso) return <div className="p-6 flex flex-col justify-center items-center gap-2 h-64"><Spinner size={38} className="border-sky-700 border-4" /> Carregando curso aguarde...</div>;
 
