@@ -368,6 +368,8 @@ function FooterNavegacao({
   loadingStep,
 }: FooterProps) {
 
+  console.log(stepAtual);
+
   const handleProximo = async () => {
     if (!stepAtual) return;
     await registrarStepBackend(stepAtual);
