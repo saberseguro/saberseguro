@@ -80,7 +80,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
   return (
     <aside className={`min-h-screen transition-all duration-300 ${isOpen ? "w-64" : "w-20"}`}>
-      <nav className="h-full flex flex-col bg-white border-r border-gray-300 shadow-sm">
+      <nav className="h-screen flex flex-col bg-white border-r border-gray-300 shadow-sm">
         <div className={`flex items-center h-20 px-4 border-b border-gray-300 ${isOpen ? "justify-between" : "justify-center"}`}>
           {isOpen &&
             (<img src={logo} className="h-12 mx-auto cursor-pointer" onClick={() => navigate("/")} />)

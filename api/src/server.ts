@@ -21,8 +21,9 @@ import aulaRoutes from './routes/curso/aula.routes';
 import moduloRoutes from './routes/curso/modulo.routes';
 import categoriaRoutes from './routes/curso/categoria.routes';
 import aulaUsuarioRoutes from './routes/curso/aulausuario.routes';
-import aulaVideoRoutes from './routes/curso/aulavideo.routes';
-import materialComplementarRoutes from './routes/curso/materialcomplementar.routes';
+import aulaVideoRoutes from './routes/curso/aula/aulaVideoRoutes';
+import materialComplementarRoutes from './routes/curso/aula/aulaMaterialRoutes';
+import aulaStepsRoutes from './routes/curso/aula/aulaStepsRoutes';
 
 // Responsável Técnico
 import responsavelTecnicoRoutes from './routes/curso/responsavelTecnico.routes';
@@ -63,6 +64,7 @@ app.use("/api/curso/modulo", moduloRoutes);
 app.use("/api/curso/aula", aulaRoutes);
 app.use("/api/curso/aula/aulavideo", aulaVideoRoutes);
 app.use("/api/curso/aula/materialcomplementar", materialComplementarRoutes);
+app.use("/api/curso/aula/steps", aulaStepsRoutes);
 app.use("/api/curso/aulausuario", aulaUsuarioRoutes);
 
 // Responsável Técnico

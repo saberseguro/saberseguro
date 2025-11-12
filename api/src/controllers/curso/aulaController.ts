@@ -15,12 +15,7 @@ export const buscarAulaController = async (req: Request, res: Response) => {
 export const criarAulaController = async (req: Request, res: Response) => {
   try {
     const resultado = await criarAula.execute(req.body, req.user as any);
-    return res.status(201).json({
-      message: 'Aula criada com sucesso.',
-      aula: resultado.aula,
-      videos: resultado.videos,
-      materiais: resultado.materiais
-    });
+    return res.status(201).json(resultado);
   } catch (err: any) {
     if (err.message?.includes("Nenhum módulo encontrado")) {
       return res.status(404).json({ error: err.message });

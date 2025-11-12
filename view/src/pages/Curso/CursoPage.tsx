@@ -9,10 +9,12 @@ import ModalCurso from "../../components/Modais/ModalCurso";
 import { makeCurso } from "../../types/FactoriesCurso";
 import { useAuth } from "../../contexts/AuthContext";
 import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
+import { useNavigate } from "react-router-dom";
 
 export default function CursosPage() {
   const { user } = useAuth();
   const [cursos, setCursos] = useState<Curso[]>([]);
+  const navigate = useNavigate();
   const [busca, setBusca] = useState("");
   const [filtros, setFiltros] = useState<{ categoria: string | null; ativo: string | null }>({
     categoria: null,
@@ -60,8 +62,7 @@ export default function CursosPage() {
   };
 
   const handleEditCurso = (curso: Curso) => {
-    setCursoSelecionado(curso);
-    setIsOpenModalCurso(true);
+    navigate(`/cursos/${curso.idCurso}?modo=ver`);
   };
 
   const handleNovoCurso = () => {

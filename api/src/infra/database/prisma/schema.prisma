@@ -19,9 +19,9 @@ model usuario {
   fkCargoId              Int?
   firebaseId             String               @unique
   cpf                    String?              @unique(map: "cpf_UNIQUE") @db.VarChar(12)
-  telefone               String?
   assinatura             String?
   trocarsenha            Boolean              @default(true)
+  telefone               String?
   aulas                  aulausuario[]
   progressoVideos        aulavideoprogresso[]
   avaliacoes             avaliacaousuario[]

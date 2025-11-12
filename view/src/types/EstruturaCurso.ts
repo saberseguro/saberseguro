@@ -62,6 +62,7 @@ export interface Modulo {
   ativo?: number;
   progresso?: Progresso;
   descricao?: string;
+  fkCursoId?: number;
 
   aulas: Aula[];
   avaliacoes?: Avaliacao[];
@@ -77,6 +78,7 @@ export interface Aula {
   ativo?: number;
   criado_em?: string;
   editado_em?: string;
+  fkModuloId?: number;
 
   videos?: AulaVideo[];
   materiais?: MaterialComplementar[];

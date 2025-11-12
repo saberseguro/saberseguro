@@ -15,11 +15,23 @@ export default function Layout() {
     location.pathname.startsWith("/cursos/playcurso");
 
   return (
-    <div className="flex">
+    <div className="flex h-screen overflow-hidden">
+      {/* Sidebar fixa */}
       {!esconderSidebar && (
         <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
       )}
-      <main className={`transition-all duration-300 min-h-screen bg-gray-100 w-full ${!esconderSidebar && "p-4"}`}>
+
+      {/* Conteúdo com scroll */}
+      <main
+        className={`
+          flex-1
+          overflow-y-auto
+          bg-gray-100
+          transition-all
+          duration-300
+          ${!esconderSidebar && "p-4"}
+        `}
+      >
         <Outlet />
       </main>
     </div>

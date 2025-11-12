@@ -19,6 +19,7 @@ import {
   iniciarAvaliacao,
 } from "../services/apiCurso";
 import type { Step } from "../types/EstruturaCurso";
+import Spinner from "./Spinner";
 
 interface AvaliacaoProvaProps {
   step: Step;
@@ -118,6 +119,7 @@ export default function AvaliacaoProva({
 
   const handleFinalizar = async () => {
     if (!inicioAvaliacao || !step.fkAvaliacaoId) return;
+    setLoading(true);
 
     const confirm = await Swal.fire({
       title: "Enviar avaliação?",
@@ -131,7 +133,10 @@ export default function AvaliacaoProva({
       reverseButtons: true,
     });
 
-    if (!confirm.isConfirmed) return;
+    if (!confirm.isConfirmed) {
+      setLoading(false);
+      return;
+    };
 
     const fim = new Date();
     const duracaoSegundos = Math.floor((fim.getTime() - inicioAvaliacao.getTime()) / 1000);
@@ -164,6 +169,8 @@ export default function AvaliacaoProva({
     } catch (e) {
       console.error("Erro ao finalizar avaliação:", e);
       toast.error("Erro ao enviar avaliação.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -205,8 +212,12 @@ export default function AvaliacaoProva({
               disabled={loading}
               className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm shadow-sm cursor-pointer"
             >
-              <Play className="inline-block w-4 h-4 mr-2" />
-              Iniciar Avaliação
+              {loading ? <Spinner /> : (
+                <>
+                  <Play className="inline-block w-4 h-4 mr-2" />
+                  Iniciar Avaliação
+                </>
+              )}
             </button>
           ) : (
             <div className="space-y-3 text-center">
@@ -222,6 +233,7 @@ export default function AvaliacaoProva({
 
               <div className="flex flex-wrap justify-center gap-2">
                 <button
+                  disabled={loading}
                   onClick={() => setMostrarTentativas(!mostrarTentativas)}
                   className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm cursor-pointer flex items-center justify-center"
                 >
@@ -231,19 +243,29 @@ export default function AvaliacaoProva({
 
                 <button
                   onClick={iniciarOuRefazer}
+                  disabled={loading}
                   className="px-6 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm cursor-pointer flex items-center justify-center"
                 >
-                  <RefreshCcw className="w-4 h-4 mr-2" />
-                  <p>Refazer Avaliação</p>
+                  {loading ? <Spinner /> : (
+                    <>
+                      <RefreshCcw className="w-4 h-4 mr-2" />
+                      <p>Refazer Avaliação</p>
+                    </>
+                  )}
                 </button>
 
                 {isCurso && aprovado && (
                   <button
                     onClick={handleGerarCertificado}
+                    disabled={loading}
                     className="px-6 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 text-sm cursor-pointer shadow-sm flex items-center justify-center"
                   >
-                    <Award className="w-4 h-4 mr-2" />
-                    <p>Gerar Certificado</p>
+                    {loading ? <Spinner /> : (
+                      <>
+                        <Award className="w-4 h-4 mr-2" />
+                        <p>Gerar Certificado</p>
+                      </>
+                    )}
                   </button>
                 )}
               </div>
@@ -306,9 +328,10 @@ export default function AvaliacaoProva({
           <div className="flex justify-end">
             <button
               onClick={handleFinalizar}
+              disabled={loading}
               className="px-6 py-2 bg-green-600 text-white font-medium rounded hover:bg-green-700 text-sm shadow-sm cursor-pointer"
             >
-              Enviar Respostas
+              {loading ? <Spinner /> : ("Enviar Respostas")}
             </button>
           </div>
         </div>

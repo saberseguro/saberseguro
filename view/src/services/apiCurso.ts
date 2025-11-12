@@ -21,6 +21,31 @@ interface GetCursosResponse {
   totalPaginas: number;
 }
 
+export async function getCursoPorId(idCurso: number): Promise<Curso> {
+  return await apiFetch(`/curso/${idCurso}`);
+}
+
+export async function salvarCurso(curso: Partial<Curso>): Promise<Curso> {
+  return await apiFetch(`/curso`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(curso),
+  });
+}
+
+export async function editarCurso(idCurso: number, curso: Partial<Curso>): Promise<Curso> {
+  console.log(curso);
+  return await apiFetch(`/curso/${idCurso}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(curso),
+  });
+}
+
 export async function getCursos({ page = 1, busca = "", filtros = {}, lean = false }: GetCursosParams) {
   const params = new URLSearchParams({
     page: String(page),
