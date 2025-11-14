@@ -1,3 +1,4 @@
+import { avaliacao_tipoAplicacao, pergunta_tipo } from '@prisma/client';
 import { prisma } from '../../config/prisma-client';
 import { registrarEvento } from '../../shared/utils/registrarEvento';
 
@@ -34,23 +35,35 @@ export const buscarAvaliacoes = {
 
 export const criarAvaliacao = {
   async execute(data: any, usuario: any) {
-    const {
-      titulo,
-      tempo_limite,
-      tipoAplicacao,
-      fkCursoId = null,
-      fkModuloId = null,
-      fkAulaId = null
-    } = data;
+
+    const isCurso = data.aplicacao === "CURSO";
+    const isAula = data.aplicacao === "AULA";
+
+    if (isCurso && !data.fkCursoId) {
+      throw new Error("fkCursoId é obrigatório ao criar avaliação de curso.");
+    }
+
+    if (isAula && (!data.fkAulaId)) {
+      throw new Error("fkAulaId e fkModuloId são obrigatórios ao criar avaliação de aula.");
+    }
+
+    // evitar conflitos
+    if (isCurso) {
+      data.fkAulaId = null;
+    }
+
+    if (isAula) {
+      data.fkCursoId = null;
+    }
 
     const avaliacao = await prisma.avaliacao.create({
       data: {
-        titulo,
-        tempo_limite,
-        tipoAplicacao,
-        fkCursoId,
-        fkModuloId,
-        fkAulaId,
+        titulo: data.titulo,
+        tempo_limite: data.tempo_limite,
+        tipoAplicacao: data.tipoAplicacao as avaliacao_tipoAplicacao,
+        fkCursoId: data.fkCursoId,
+        fkModuloId: data.fkModuloId,
+        fkAulaId: data.fkAulaId,
       }
     });
 
@@ -72,15 +85,35 @@ export const editarAvaliacao = {
     const antes = await prisma.avaliacao.findUnique({ where: { idAvaliacao: id } });
     if (!antes) throw new Error('Avaliação não encontrada.');
 
+    const isCurso = data.aplicacao === "CURSO";
+    const isAula = data.aplicacao === "AULA";
+
+    if (isCurso && !data.fkCursoId) {
+      throw new Error("fkCursoId é obrigatório ao editar avaliação de curso.");
+    }
+
+    if (isAula && (!data.fkAulaId)) {
+      throw new Error("fkAulaId e fkModuloId são obrigatórios ao editar avaliação de aula.");
+    }
+
+    // impedir conflito → limpa campos não usados
+    if (isCurso) {
+      data.fkAulaId = null;
+    }
+
+    if (isAula) {
+      data.fkCursoId = null;
+    }
+
     const avaliacao = await prisma.avaliacao.update({
       where: { idAvaliacao: id },
       data: {
         titulo: data.titulo,
         tempo_limite: data.tempo_limite,
-        tipoAplicacao: data.tipoAplicacao,
-        fkCursoId: data.fkCursoId ?? null,
-        fkModuloId: data.fkModuloId ?? null,
-        fkAulaId: data.fkAulaId ?? null
+        tipoAplicacao: data.tipoAplicacao as avaliacao_tipoAplicacao,
+        fkCursoId: data.fkCursoId,
+        fkModuloId: data.fkModuloId,
+        fkAulaId: data.fkAulaId,
       }
     });
 
@@ -116,8 +149,6 @@ export const excluirAvaliacao = {
   }
 };
 
-
-
 // Pergunta
 export const buscarPergunta = {
   async execute(id: number) {
@@ -134,14 +165,25 @@ export const criarPergunta = {
       where: { idAvaliacao }
     });
 
+    console.log(avaliacao);
+
     if (!avaliacao) throw new Error('Avaliação não encontrada.');
 
     const pergunta = await prisma.pergunta.create({
       data: {
         enunciado: data.enunciado,
-        tipo: data.tipo,
+        tipo: data.tipo as pergunta_tipo,
         fkAvaliacaoId: idAvaliacao,
-      }
+
+        alternativas: {
+          create: data.alternativas?.map((alt: any) => ({
+            texto: alt.texto,
+            correta: alt.correta,
+            ativo: 1
+          })) ?? []
+        }
+      },
+      include: { alternativas: true }
     });
 
     await registrarEvento({
@@ -149,7 +191,7 @@ export const criarPergunta = {
       tipo: 'criar',
       entidade: 'pergunta',
       entidadeId: pergunta.idPergunta,
-      descricao: `Pergunta criada na avaliação ${avaliacao.titulo}`,
+      descricao: `Pergunta criada com alternativas.`,
       dadosDepois: pergunta,
     });
 
@@ -159,15 +201,32 @@ export const criarPergunta = {
 
 export const editarPergunta = {
   async execute(id: number, data: any, usuario: any) {
-    const antes = await prisma.pergunta.findUnique({ where: { idPergunta: id } });
+    const antes = await prisma.pergunta.findUnique({
+      where: { idPergunta: id },
+      include: { alternativas: true }
+    });
     if (!antes) throw new Error('Pergunta não encontrada.');
 
+    // Remove alternativas antigas
+    await prisma.alternativa.deleteMany({
+      where: { fkPerguntaId: id }
+    });
+
+    // Atualiza pergunta + recria alternativas
     const pergunta = await prisma.pergunta.update({
       where: { idPergunta: id },
       data: {
         enunciado: data.enunciado,
-        tipo: data.tipo
-      }
+        tipo: data.tipo as pergunta_tipo,
+        alternativas: {
+          create: data.alternativas?.map((alt: any) => ({
+            texto: alt.texto,
+            correta: alt.correta,
+            ativo: 1
+          })) ?? []
+        }
+      },
+      include: { alternativas: true }
     });
 
     await registrarEvento({
@@ -175,7 +234,7 @@ export const editarPergunta = {
       tipo: 'editar',
       entidade: 'pergunta',
       entidadeId: id,
-      descricao: `Pergunta editada.`,
+      descricao: `Pergunta editada com alternativas atualizadas.`,
       dadosAntes: antes,
       dadosDepois: pergunta
     });
@@ -201,8 +260,6 @@ export const excluirPergunta = {
     });
   }
 };
-
-
 
 // Alternativa
 export const buscarAlternativa = {
@@ -334,11 +391,11 @@ export const resultadoAvaliacao = {
           alternativas: isDissertativa
             ? []
             : pergunta.alternativas.map((alt) => ({
-                idAlternativa: alt.idAlternativa,
-                texto: alt.texto,
-                correta: alt.correta === 1,
-                selecionada: alt.idAlternativa === respostaDoUsuario?.fkAlternativaId,
-              })),
+              idAlternativa: alt.idAlternativa,
+              texto: alt.texto,
+              correta: alt.correta === 1,
+              selecionada: alt.idAlternativa === respostaDoUsuario?.fkAlternativaId,
+            })),
         };
       }),
     }));

@@ -149,7 +149,23 @@ export default function CursoViewPage({ idCurso }: { idCurso: number }) {
           )}
 
           {aba === "avaliacoes" && (
-            <div>
+            <div className="space-y-3">
+
+              <div className="flex justify-between items-center">
+                <h5 className="font-semibold text-gray-700">
+                  Avaliações ({curso.avaliacoes?.length ?? 0})
+                </h5>
+
+                <button
+                  onClick={() =>
+                    navigate(`/cursos/${idCurso}/avaliacao/novo?tipo=CURSO`)
+                  }
+                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  + Adicionar Avaliação
+                </button>
+              </div>
+
               {curso.avaliacoes?.length ? (
                 <SortableAvaliacoes
                   items={curso.avaliacoes}
@@ -158,11 +174,13 @@ export default function CursoViewPage({ idCurso }: { idCurso: number }) {
                   }
                 />
               ) : (
-                <p className="text-sm text-gray-500">Nenhuma avaliação encontrada.</p>
+                <p className="text-sm text-gray-500 italic">
+                  Nenhuma avaliação encontrada.
+                </p>
               )}
+
             </div>
           )}
-
 
           {aba === "medidas" && (
             <p className="text-sm text-gray-500">Nenhuma medida encontrada.</p>

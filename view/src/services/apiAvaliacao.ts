@@ -8,13 +8,19 @@ export async function getAvaliacaoPorId(idAvaliacao: number): Promise<Avaliacao>
 export async function salvarAvaliacao(avaliacao: Partial<Avaliacao>): Promise<Avaliacao> {
   return await apiFetch(`/avaliacao`, {
     method: "POST",
-    body: avaliacao as any,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(avaliacao),
   });
 }
 
 export async function editarAvaliacao(idAvaliacao: number, avaliacao: Partial<Avaliacao>): Promise<Avaliacao> {
   return await apiFetch(`/avaliacao/${idAvaliacao}`, {
     method: "PUT",
-    body: avaliacao as any,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(avaliacao),
   });
 }

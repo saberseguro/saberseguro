@@ -28,6 +28,7 @@ import { FluxoEditor } from "../../components/Formularios/FormAulaDetalhes";
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import type { Aula, AulaVideo, MaterialComplementar, AulaStep } from "../../types/EstruturaCurso";
 import { MateriaisEditor } from "../../components/Formularios/MateriaisEditor";
+import SortableAvaliacoes from "../../components/SortableAvaliacoes";
 
 function VideoItem({
   video,
@@ -58,15 +59,15 @@ function VideoItem({
   return (
     <div
       className={`flex gap-2 items-center rounded border p-2 ${isEditing
-          ? "bg-white border-blue-400"
-          : "bg-gray-50 hover:bg-gray-100 border-gray-200"
+        ? "bg-white border-blue-400"
+        : "bg-gray-50 hover:bg-gray-100 border-gray-200"
         }`}
     >
       <input
         disabled={!isEditing}
         className={`flex-1 border rounded px-3 py-2 text-sm ${isEditing
-            ? "border-gray-300"
-            : "border-transparent bg-transparent text-gray-700 cursor-default"
+          ? "border-gray-300"
+          : "border-transparent bg-transparent text-gray-700 cursor-default"
           }`}
         placeholder="URL do vídeo"
         value={editUrl}
@@ -113,7 +114,6 @@ function VideoItem({
   );
 }
 
-
 export default function AulaViewPage() {
   const { id, idModulo, idAula } = useParams();
   const navigate = useNavigate();
@@ -123,7 +123,6 @@ export default function AulaViewPage() {
 
   const [videos, setVideos] = useState<AulaVideo[]>([]);
   const [isEditingVideo, setIsEditingVideo] = useState(false);
-  const [_updateVideo, setUpdateVideo] = useState<Partial<AulaVideo> | null>(null);
   const [newVideoUrl, setNewVideoUrl] = useState("");
   const [materiais, setMateriais] = useState<MaterialComplementar[]>([]);
   // const [isEditingMaterial, setIsEditingMaterial] = useState(false);
@@ -195,7 +194,7 @@ export default function AulaViewPage() {
             <ArrowLeft size={20} className="text-gray-700" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">{aula.titulo}</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{aula.titulo} #{idAula}</h1>
             <p className="text-gray-500 text-sm">{aula.descricao}</p>
           </div>
         </div>
@@ -319,7 +318,6 @@ export default function AulaViewPage() {
           </div>
         )}
 
-
         {aba === "materiais" && (
           <MateriaisEditor
             materiais={materiais}
@@ -343,9 +341,38 @@ export default function AulaViewPage() {
         )}
 
         {aba === "avaliacoes" && (
-          <p className="text-sm text-gray-500 italic">
-            As avaliações da aula são gerenciadas separadamente.
-          </p>
+          <div className="space-y-3">
+
+            <div className="flex justify-between items-center">
+              <h5 className="font-semibold text-gray-700">
+                Avaliações ({aula.avaliacoes?.length ?? 0})
+              </h5>
+
+              <button
+                onClick={() =>
+                  navigate(
+                    `/cursos/${id}/modulo/${idModulo}/aula/${idAula}/avaliacao/novo?tipo=AULA`
+                  )
+                }
+                className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer"
+              >
+                + Adicionar Avaliação
+              </button>
+            </div>
+
+            {aula.avaliacoes?.length ? (
+              <SortableAvaliacoes
+                items={aula.avaliacoes}
+                onReorder={(novas) =>
+                  setAula((prev) => (prev ? { ...prev, avaliacoes: novas } : prev))
+                }
+              />
+            ) : (
+              <p className="text-sm text-gray-500 italic">
+                Nenhuma avaliação encontrada.
+              </p>
+            )}
+          </div>
         )}
       </div>
     </div>

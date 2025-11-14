@@ -144,6 +144,7 @@ export interface Avaliacao {
   titulo: string;
   descricao?: string;
   tempo_limite?: number;
+  aplicacao?: string;
   tipoAplicacao?: string;
   ordem: number;
   ativo: number;

@@ -7,6 +7,8 @@ import AulaViewPage from "./AulaViewPage";
 import AulaFormPage from "./AulaFormPage";
 import AvaliacaoFormPage from "./AvaliacaoFormPage";
 import AvaliacaoViewPage from "./AvaliacaoViewPage";
+import PerguntaFormPage from "./PerguntaFormPage";
+import PerguntaViewPage from "./PerguntaViewPage";
 
 export default function CursoRouter() {
   const { id } = useParams();
@@ -36,10 +38,37 @@ export default function CursoRouter() {
       <Route path="modulo/:idModulo/aula/:idAula" element={<AulaViewPage />} />
       <Route path="modulo/:idModulo/aula/:idAula/editar" element={<AulaFormPage />} />
 
-      {/* Avaliação */}
-      <Route path="avaliacao/:idAvaliacao" element={<AvaliacaoViewPage />} />
-      <Route path="avaliacao/:idAvaliacao/editar" element={<AvaliacaoFormPage />} />
-      <Route path="avaliacao/novo" element={<AvaliacaoFormPage modo='criar' />} />
+      {/* Avaliação Curso */}
+      <Route path="avaliacao/novo" element={<AvaliacaoFormPage modo="criar" tipo="CURSO" />} />
+      <Route path="avaliacao/:idAvaliacao" element={<AvaliacaoViewPage tipo="CURSO" />} />
+      <Route path="avaliacao/:idAvaliacao/editar" element={<AvaliacaoFormPage tipo="CURSO" />} />
+
+      {/* Avaliação Aula */}
+      <Route path="modulo/:idModulo/aula/:idAula/avaliacao/novo"
+        element={<AvaliacaoFormPage modo="criar" tipo="AULA" />} />
+
+      <Route path="modulo/:idModulo/aula/:idAula/avaliacao/:idAvaliacao"
+        element={<AvaliacaoViewPage tipo="AULA" />} />
+
+      <Route path="modulo/:idModulo/aula/:idAula/avaliacao/:idAvaliacao/editar"
+        element={<AvaliacaoFormPage tipo="AULA" />} />
+
+      {/* Perguntas */}
+      <Route
+        path="avaliacao/:idAvaliacao/pergunta/novo"
+        element={<PerguntaFormPage modo="criar" />}
+      />
+
+      <Route
+        path="avaliacao/:idAvaliacao/pergunta/:idPergunta"
+        element={<PerguntaViewPage />}
+      />
+
+      <Route
+        path="avaliacao/:idAvaliacao/pergunta/:idPergunta/editar"
+        element={<PerguntaFormPage modo="editar" />}
+      />
+
     </Routes>
   );
 }
