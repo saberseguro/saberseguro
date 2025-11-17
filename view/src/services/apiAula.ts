@@ -100,12 +100,10 @@ export async function excluirMaterial(idMaterial: number): Promise<{ message: st
 }
 
 // Steps
-/** Lista os steps (fluxo) de uma aula */
 export async function getStepsDaAula(idAula: number): Promise<AulaStep[]> {
   return await apiFetch(`/curso/aula/steps/${idAula}`);
 }
 
-/** Cria um novo step */
 export async function criarStep(idAula: number, data: Omit<AulaStep, "idAulaStep" | "ordem" | "fkAulaId">): Promise<AulaStep> {
   return await apiFetch(`/curso/aula/steps/${idAula}`, {
     method: "POST",
@@ -114,7 +112,6 @@ export async function criarStep(idAula: number, data: Omit<AulaStep, "idAulaStep
   });
 }
 
-/** Edita um step existente */
 export async function editarStep(idAulaStep: number, data: Partial<AulaStep>): Promise<AulaStep> {
   return await apiFetch(`/curso/aula/steps/${idAulaStep}`, {
     method: "PUT",
@@ -123,14 +120,12 @@ export async function editarStep(idAulaStep: number, data: Partial<AulaStep>): P
   });
 }
 
-/** Exclui um step */
 export async function excluirStep(idAulaStep: number): Promise<{ message: string }> {
   return await apiFetch(`/curso/aula/steps/${idAulaStep}`, {
     method: "DELETE",
   });
 }
 
-/** Reordena os steps da aula */
 export async function reordenarSteps(
   idAula: number,
   itens: Array<{ idAulaStep: number; ordem: number }>

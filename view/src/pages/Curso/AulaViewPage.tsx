@@ -24,11 +24,11 @@ import {
   getMateriaisDaAula,
   getStepsDaAula,
 } from "../../services/apiAula";
-import { FluxoEditor } from "../../components/Formularios/FormAulaDetalhes";
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import type { Aula, AulaVideo, MaterialComplementar, AulaStep } from "../../types/EstruturaCurso";
 import { MateriaisEditor } from "../../components/Formularios/MateriaisEditor";
 import SortableAvaliacoes from "../../components/SortableAvaliacoes";
+import { FluxoEditor } from "./FluxoEditor";
 
 function VideoItem({
   video,
@@ -327,19 +327,6 @@ export default function AulaViewPage() {
           />
         )}
 
-        {aba === "fluxo" && (
-          <FluxoEditor
-            steps={steps}
-            setSteps={async (updated) => {
-              setSteps(updated);
-            }}
-            videos={videos}
-            materiais={materiais}
-            avaliacoes={[]}
-            color={"bg-purple-500 hover:bg-purple-600"}
-          />
-        )}
-
         {aba === "avaliacoes" && (
           <div className="space-y-3">
 
@@ -373,6 +360,20 @@ export default function AulaViewPage() {
               </p>
             )}
           </div>
+        )}
+
+        {aba === "fluxo" && (
+          <FluxoEditor
+            idAula={Number(idAula)}
+            steps={steps}
+            setSteps={async (updated) => {
+              setSteps(updated);
+            }}
+            videos={videos}
+            materiais={materiais}
+            avaliacoes={aula.avaliacoes ?? []}
+            color={"bg-purple-500 hover:bg-purple-600"}
+          />
         )}
       </div>
     </div>

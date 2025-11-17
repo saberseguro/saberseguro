@@ -492,6 +492,7 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
 
         {tab === "fluxo" && (
           <FluxoEditor
+            idAula={Number(aula.idAula)}
             steps={aula.steps ?? []}
             videos={videos}
             materiais={materiais}
@@ -506,6 +507,7 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
 }
 
 interface FluxoEditorProps {
+  idAula: number;
   steps: AulaStep[];
   setSteps: (steps: AulaStep[]) => void;
   videos: AulaVideo[];

@@ -68,7 +68,6 @@ export default function AvaliacaoViewPage({ tipo }: Props) {
               </span>
 
             </div>
-
           </div>
 
         </div>
