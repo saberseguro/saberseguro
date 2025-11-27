@@ -9,10 +9,11 @@ import { ArrowLeft } from "lucide-react";
 
 interface Props {
   idCurso?: number;
+  fkEmpresaId?: number | null;
   modo: "criar" | "editar";
 }
 
-export default function CursoFormPage({ idCurso, modo }: Props) {
+export default function CursoFormPage({ idCurso, modo, fkEmpresaId }: Props) {
   const navigate = useNavigate();
   const [curso, setCurso] = useState<Curso | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +34,7 @@ export default function CursoFormPage({ idCurso, modo }: Props) {
         criado_em: new Date().toISOString(),
         editado_em: new Date().toISOString(),
         fkResponsavelTecnicoId: 0,
-        fkEmpresaId: 0,
+        fkEmpresaId: fkEmpresaId ?? null,
         modulos: [],
         avaliacoes: [],
       });

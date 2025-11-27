@@ -353,6 +353,9 @@ export default function AulaViewPage() {
                 onReorder={(novas) =>
                   setAula((prev) => (prev ? { ...prev, avaliacoes: novas } : prev))
                 }
+                tipo="aula"
+                idAula={Number(idAula)}
+                idModulo={Number(idModulo)}
               />
             ) : (
               <p className="text-sm text-gray-500 italic">

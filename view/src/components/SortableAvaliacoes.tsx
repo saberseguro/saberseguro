@@ -19,10 +19,12 @@ import type { Avaliacao } from "../types/EstruturaCurso";
 interface Props {
   items: Avaliacao[];
   onReorder: (novas: Avaliacao[]) => void;
-  tipo?: "curso" | "modulo" | "aula"; // usado pra montar a rota correta
+  tipo?: "curso" | "modulo" | "aula";
+  idModulo?: number;
+  idAula?: number;
 }
 
-export default function SortableAvaliacoes({ items, onReorder }: Props) {
+export default function SortableAvaliacoes({ items, onReorder, tipo, idModulo, idAula }: Props) {
   const sensors = useSensors(useSensor(PointerSensor));
 
   const handleDragEnd = (event: any) => {
@@ -51,6 +53,9 @@ export default function SortableAvaliacoes({ items, onReorder }: Props) {
             <SortableAvaliacao
               key={avaliacao.idAvaliacao}
               avaliacao={avaliacao}
+              tipo={tipo}
+              idModulo={idModulo}
+              idAula={idAula}
             />
           ))}
         </ul>
@@ -61,8 +66,14 @@ export default function SortableAvaliacoes({ items, onReorder }: Props) {
 
 function SortableAvaliacao({
   avaliacao,
+  tipo,
+  idModulo,
+  idAula,
 }: {
   avaliacao: Avaliacao;
+  tipo?: "curso" | "modulo" | "aula";
+  idModulo?: number;
+  idAula?: number;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: avaliacao.idAvaliacao!,
@@ -76,7 +87,11 @@ function SortableAvaliacao({
   const navigate = useNavigate();
 
   const handleNavigate = () => {
-    navigate(`/cursos/${id}/avaliacao/${avaliacao.idAvaliacao}`);
+    if (tipo === "aula") {
+      navigate(`/cursos/${id}/modulo/${idModulo}/aula/${idAula}/avaliacao/${avaliacao.idAvaliacao}`);
+    } else {
+      navigate(`/cursos/${id}/avaliacao/${avaliacao.idAvaliacao}`);
+    }
   };
 
   return (

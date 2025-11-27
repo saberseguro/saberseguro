@@ -396,7 +396,9 @@ export const buscarMeusCursos = {
 
 export const criarCurso = {
   async execute(data: any, usuario: any) {
-    const categoriasIds: number[] = data.categorias || [];
+    const categoriasIds = (data.categorias || []).map((c: any) =>
+      typeof c === "number" ? c : c.idCategoria
+    );
 
     const categoriasValidas = await prisma.categoria.findMany({
       where: { idCategoria: { in: categoriasIds } }
@@ -415,8 +417,8 @@ export const criarCurso = {
         fkResponsavelTecnicoId: data.fkResponsavelTecnicoId,
         categorias: {
           createMany: {
-            data: categoriasValidas.map((cat) => ({
-              fkCategoriaId: cat.idCategoria
+            data: categoriasIds.map((id: number) => ({
+              fkCategoriaId: id
             }))
           }
         }

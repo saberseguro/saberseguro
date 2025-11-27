@@ -25,3 +25,13 @@ export async function editarModulo(idModulo: number, modulo: Partial<Modulo>): P
     body: JSON.stringify(modulo),
   });
 }
+
+export async function reordenarModulos(modulos: any[]) {
+  return apiFetch(`/curso/modulo/reordenar`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({modulos: modulos}),
+  });
+}

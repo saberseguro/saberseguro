@@ -85,6 +85,34 @@ export const editarAula = {
   }
 };
 
+export const reordenarAulas = {
+  async execute( aulas: any[], usuario: any) {
+    const idsValidos = new Set(aulas.map(a => a.idAula));
+
+    // Atualiza a ordem com transação
+    const atualizadas = await prisma.$transaction(
+      aulas.map((a: any) =>
+        prisma.aula.update({
+          where: { idAula: a.idAula },
+          data: { ordem: a.ordem },
+        })
+      )
+    );
+
+    await registrarEvento({
+      idUsuario: usuario.idUsuario,
+      tipo: "editar",
+      entidade: "aula",
+      entidadeId: aulas[0].fkModuloId,
+      descricao: `Ordem das aulas do módulo ${aulas[0].fkModuloId} atualizada.`,
+      dadosAntes: null,
+      dadosDepois: atualizadas,
+    });
+
+    return atualizadas;
+  },
+};
+
 export const excluirAula = {
   async execute(id: number, usuario: any) {
     const antes = await prisma.aula.findUnique({ where: { idAula: id } });

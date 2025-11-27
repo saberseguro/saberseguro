@@ -14,17 +14,48 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Eye, GripVertical } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { reordenarModulos } from "../services/apiModulo";
+import toast from "react-hot-toast";
+import type { Modulo } from "../types/EstruturaCurso";
+import { useState } from "react";
 
-export default function SortableContextWrapper({ items, onReorder }: any) {
+interface Props {
+  items: Modulo[];
+  onReorder: (novos: Modulo[]) => void;
+}
+
+export default function SortableContextWrapper({ items, onReorder }: Props) {
   const sensors = useSensors(useSensor(PointerSensor));
+  const [saving, setSaving] = useState(false);
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = async (event: any) => {
     const { active, over } = event;
-    if (active.id !== over.id) {
-      const oldIndex = items.findIndex((i: any) => i.idModulo === active.id);
-      const newIndex = items.findIndex((i: any) => i.idModulo === over.id);
-      const newOrder = arrayMove(items, oldIndex, newIndex);
-      onReorder(newOrder);
+
+    // se estiver salvando ou sem mudança real, cancela
+    if (!over || active.id === over.id || saving) return;
+
+    const oldIndex = items.findIndex((i: any) => i.idModulo === active.id);
+    const newIndex = items.findIndex((i: any) => i.idModulo === over.id);
+
+    const newOrder = arrayMove(items, oldIndex, newIndex).map((m: any, index: number) => ({
+      ...m,
+      ordem: index + 1,
+    }));
+
+    onReorder(newOrder);
+
+    setSaving(true);
+    try {
+      await toast.promise(
+        reordenarModulos(newOrder),
+        {
+          loading: "Salvando nova ordem...",
+          success: "Ordem atualizada com sucesso!",
+          error: "Erro ao salvar ordem",
+        }
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -36,7 +67,7 @@ export default function SortableContextWrapper({ items, onReorder }: any) {
       >
         <ul className="space-y-2">
           {items.map((modulo: any) => (
-            <SortableItem key={modulo.idModulo} modulo={modulo} />
+            <SortableItem key={modulo.idModulo} modulo={modulo} saving={saving} />
           ))}
         </ul>
       </SortableContext>
@@ -44,7 +75,7 @@ export default function SortableContextWrapper({ items, onReorder }: any) {
   );
 }
 
-function SortableItem({ modulo }: any) {
+function SortableItem({ modulo, saving }: any) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: modulo.idModulo,
   });
@@ -64,8 +95,8 @@ function SortableItem({ modulo }: any) {
     >
       <div className="flex items-center gap-3">
         <button
-          {...listeners}
-          {...attributes}
+          {...(!saving ? listeners : {})}
+          {...(!saving ? attributes : {})}
           className="cursor-grab text-gray-400 hover:text-gray-600"
           title="Arrastar"
         >

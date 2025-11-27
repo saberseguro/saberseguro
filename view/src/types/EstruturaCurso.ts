@@ -20,7 +20,7 @@ export interface Curso {
   criado_em: string;
   editado_em: string;
   fkResponsavelTecnicoId: number;
-  fkEmpresaId?: number;
+  fkEmpresaId?: number | null;
 
   steps?: Step[];
   responsaveltecnico?: ResponsavelTecnico;

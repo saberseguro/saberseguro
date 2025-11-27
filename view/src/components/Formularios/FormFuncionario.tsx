@@ -342,8 +342,8 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
                                   copy[i].horarioInicio = "";
                                   copy[i].horarioFim = "";
                                 } else {
-                                  copy[i].horarioInicio = "08:00";
-                                  copy[i].horarioFim = "18:00";
+                                  copy[i].horarioInicio = "00:01";
+                                  copy[i].horarioFim = "23:59";
                                 }
                                 return copy;
                               });

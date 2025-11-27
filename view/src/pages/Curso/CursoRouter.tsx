@@ -16,8 +16,11 @@ export default function CursoRouter() {
   const modo = params.get("modo");
 
   if (id === "novo") {
-    return <CursoFormPage modo="criar" />;
+    const fkEmpresaId = params.get("fkEmpresaId") || null;
+
+    return <CursoFormPage modo="criar" fkEmpresaId={fkEmpresaId ? Number(fkEmpresaId) : null} />;
   }
+
 
   if (modo === "editar") {
     return <CursoFormPage modo="editar" idCurso={Number(id)} />;

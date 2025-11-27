@@ -13,7 +13,7 @@ export default function CursoViewPage({ idCurso }: { idCurso: number }) {
   const navigate = useNavigate();
   const [curso, setCurso] = useState<Curso | null>(null);
   const [loading, setLoading] = useState(true);
-  const [aba, setAba] = useState<"detalhes" | "modulos" | "avaliacoes" | "medidas">("detalhes");
+  const [aba, setAba] = useState<"detalhes" | "modulos" | "avaliacoes">("detalhes");
 
   useEffect(() => {
     getCursoPorId(idCurso)
@@ -70,7 +70,6 @@ export default function CursoViewPage({ idCurso }: { idCurso: number }) {
               { key: "detalhes", label: "Detalhes" },
               { key: "modulos", label: `Módulos (${curso.modulos?.length ?? 0})` },
               { key: "avaliacoes", label: `Avaliações (${curso.avaliacoes?.length ?? 0})` },
-              { key: "medidas", label: "Medidas" },
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -120,21 +119,21 @@ export default function CursoViewPage({ idCurso }: { idCurso: number }) {
 
           {aba === "modulos" && (
             <div>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="text-lg font-semibold text-gray-700">
+                  Módulos do Curso ({curso.modulos?.length || 0})
+                </h2>
+                <button
+                  onClick={() =>
+                    navigate(`/cursos/${idCurso}/modulo/novo?ordem=${curso.modulos?.length + 1}`)
+                  }
+                  className="flex items-center gap-2 bg-blue-600 text-sm text-white px-4 py-2 rounded-md hover:opacity-90 cursor-pointer"
+                >
+                  <Plus size={16} /> Adicionar Módulo
+                </button>
+              </div>
               {curso.modulos?.length ? (
                 <>
-                  <div className="flex items-center justify-between gap-3 mb-4">
-                    <h2 className="text-lg font-semibold text-gray-700">
-                      Módulos do Curso ({curso.modulos?.length || 0})
-                    </h2>
-                    <button
-                      onClick={() =>
-                        navigate(`/cursos/${idCurso}/modulo/novo?ordem=${curso.modulos?.length + 1}`)
-                      }
-                      className="flex items-center gap-2 bg-blue-600 text-sm text-white px-4 py-2 rounded-md hover:opacity-90 cursor-pointer"
-                    >
-                      <Plus size={16} /> Adicionar Módulo
-                    </button>
-                  </div>
                   <SortableContextWrapper
                     items={curso.modulos}
                     onReorder={(novos: Modulo[]) =>
@@ -172,6 +171,7 @@ export default function CursoViewPage({ idCurso }: { idCurso: number }) {
                   onReorder={(novas) =>
                     setCurso((prev) => (prev ? { ...prev, avaliacoes: novas } : prev))
                   }
+                  tipo="curso"
                 />
               ) : (
                 <p className="text-sm text-gray-500 italic">
@@ -180,10 +180,6 @@ export default function CursoViewPage({ idCurso }: { idCurso: number }) {
               )}
 
             </div>
-          )}
-
-          {aba === "medidas" && (
-            <p className="text-sm text-gray-500">Nenhuma medida encontrada.</p>
           )}
         </div>
       </div>

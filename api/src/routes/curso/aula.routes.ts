@@ -5,12 +5,14 @@ import {
   criarAulaController,
   editarAulaController,
   excluirAulaController,
+  reordenarAulasController,
 } from '../../controllers/curso/aulaController';
 
 const router = Router();
 
 router.get('/:id', authorize(['ver_cursos']), buscarAulaController);
 router.post('/', authorize(['criar_cursos']), criarAulaController);
+router.post("/reordenar", authorize(["editar_cursos"]), reordenarAulasController);
 router.put('/:id', authorize(['editar_cursos']), editarAulaController);
 router.delete('/:id', authorize(['excluir_cursos']), excluirAulaController);
 

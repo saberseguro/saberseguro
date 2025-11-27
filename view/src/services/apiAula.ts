@@ -136,3 +136,13 @@ export async function reordenarSteps(
     body: JSON.stringify({ itens }),
   });
 }
+
+export async function reordenarAulas(aulas: any[]) {
+  return apiFetch(`/curso/aula/reordenar`, { 
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ aulas: aulas }),
+   });
+}

@@ -14,6 +14,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Eye, Clock } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { reordenarAulas } from "../services/apiAula";
 
 export default function SortableAulas({
   items,
@@ -23,27 +26,44 @@ export default function SortableAulas({
   onReorder: (novas: any[]) => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor));
+  const { idModulo } = useParams();
+  const [saving, setSaving] = useState(false);
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = async (event: any) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id || saving) return;
 
     const oldIndex = items.findIndex((a) => a.idAula === active.id);
     const newIndex = items.findIndex((a) => a.idAula === over.id);
 
-    const novas = arrayMove(items, oldIndex, newIndex);
+    const novas = arrayMove(items, oldIndex, newIndex).map((a, index) => ({
+      ...a,
+      ordem: index + 1,
+    }));
+
     onReorder(novas);
+
+    setSaving(true);
+    try {
+      await toast.promise(
+        reordenarAulas(novas),
+        {
+          loading: "Salvando nova ordem das aulas...",
+          success: "Ordem das aulas atualizada!",
+          error: "Erro ao salvar ordem",
+        }
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext
-        items={items.map((i) => i.idAula)}
-        strategy={verticalListSortingStrategy}
-      >
+      <SortableContext items={items.map((i) => i.idAula)} strategy={verticalListSortingStrategy}>
         <ul className="space-y-3">
           {items.map((aula) => (
-            <SortableAula key={aula.idAula} aula={aula} />
+            <SortableAula key={aula.idAula} aula={aula} saving={saving} />
           ))}
         </ul>
       </SortableContext>
@@ -51,7 +71,7 @@ export default function SortableAulas({
   );
 }
 
-function SortableAula({ aula }: { aula: any }) {
+function SortableAula({ aula, saving }: { aula: any; saving: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
     id: aula.idAula,
   });
@@ -71,9 +91,12 @@ function SortableAula({ aula }: { aula: any }) {
     >
       <div className="flex items-center gap-3">
         <button
-          {...listeners}
-          {...attributes}
-          className="cursor-grab text-gray-400 hover:text-gray-600"
+          {...(!saving ? listeners : {})}
+          {...(!saving ? attributes : {})}
+          disabled={saving}
+          className={`${
+            saving ? "cursor-not-allowed opacity-50" : "cursor-grab"
+          } text-gray-400 hover:text-gray-600`}
           title="Arrastar"
         >
           <GripVertical size={16} />
