@@ -5,21 +5,19 @@ import { getCursos } from "../../services/apiCurso";
 // Componentes
 import TabelaBase from "../../components/Tabelas/TabelaBase";
 import FiltrosCursos from "../../components/Filtros/FiltrosCursos";
-import ModalCurso from "../../components/Modais/ModalCurso";
-import { makeCurso } from "../../types/FactoriesCurso";
 import { useAuth } from "../../contexts/AuthContext";
 import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
+import { useNavigate } from "react-router-dom";
 
 export default function CursosPage() {
   const { user } = useAuth();
   const [cursos, setCursos] = useState<Curso[]>([]);
+  const navigate = useNavigate();
   const [busca, setBusca] = useState("");
   const [filtros, setFiltros] = useState<{ categoria: string | null; ativo: string | null }>({
     categoria: null,
     ativo: null,
   });
-  const [isOpenModalCurso, setIsOpenModalCurso] = useState(false);
-  const [cursoSelecionado, setCursoSelecionado] = useState<Curso | null>(null);
 
   const columns = [
     {
@@ -60,23 +58,17 @@ export default function CursosPage() {
   };
 
   const handleEditCurso = (curso: Curso) => {
-    setCursoSelecionado(curso);
-    setIsOpenModalCurso(true);
+    navigate(`/cursos/${curso.idCurso}?modo=ver`);
   };
 
   const handleNovoCurso = () => {
-    let novoCurso: Curso;
-
     const isAdmin = user?.role?.includes("admin");
 
     if (isAdmin) {
-      novoCurso = makeCurso();
+      navigate("/cursos/novo");
     } else {
-      novoCurso = makeCurso({ fkEmpresaId: user?.fkEmpresaId });
+      navigate(`/cursos/novo?fkEmpresaId=${user?.fkEmpresaId}`);
     }
-
-    setCursoSelecionado(novoCurso);
-    setIsOpenModalCurso(true);
   };
 
   return (
@@ -98,13 +90,6 @@ export default function CursosPage() {
         data={cursos}
         itemsPerPage={10}
         onEdit={handleEditCurso}
-      />
-
-      <ModalCurso
-        isOpen={isOpenModalCurso}
-        onClose={() => setIsOpenModalCurso(false)}
-        cursoSelecionado={cursoSelecionado}
-        onSaved={() => buscarCursos()}
       />
 
     </div>

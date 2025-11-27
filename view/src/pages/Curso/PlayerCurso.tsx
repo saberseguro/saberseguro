@@ -350,6 +350,7 @@ interface FooterProps {
   stepAtualIndex: number;
   setStepAtualIndex: React.Dispatch<React.SetStateAction<number>>;
   steps: Step[];
+  stepsConcluidos: (string | number)[];
   liberadoProximo: boolean;
   setLiberadoProximo: React.Dispatch<React.SetStateAction<boolean>>;
   stepAtual: Step | null;
@@ -366,14 +367,23 @@ function FooterNavegacao({
   liberadoProximo,
   setLiberadoProximo,
   loadingStep,
+  stepsConcluidos,
 }: FooterProps) {
 
   const handleProximo = async () => {
     if (!stepAtual) return;
+
+    if (stepsConcluidos.includes(stepAtual.idAulaStep)) {
+      setStepAtualIndex((i) => i + 1);
+      setLiberadoProximo(false);
+      return;
+    }
+
     await registrarStepBackend(stepAtual);
     setStepAtualIndex((i) => i + 1);
     setLiberadoProximo(false);
   };
+
 
   return (
     <div className="flex items-center gap-6">
@@ -657,6 +667,7 @@ export default function PlayCursoPage() {
                 stepAtual={stepAtual}
                 registrarStepBackend={registrarStepBackend}
                 loadingStep={loadingStep}
+                stepsConcluidos={stepsConcluidos}
               />
             </div>
 

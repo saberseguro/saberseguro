@@ -23,7 +23,7 @@ interface Props {
 let tempId = -1;
 const nextTempId = () => tempId--;
 
-function MateriaisEditor({
+export function MateriaisEditor({
   materiais,
   onUpdate,
   onAdd,
@@ -492,6 +492,7 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
 
         {tab === "fluxo" && (
           <FluxoEditor
+            idAula={Number(aula.idAula)}
             steps={aula.steps ?? []}
             videos={videos}
             materiais={materiais}
@@ -506,14 +507,16 @@ export default function FormAulaDetalhes({ aula, onChange, setUploadsPendentes }
 }
 
 interface FluxoEditorProps {
+  idAula: number;
   steps: AulaStep[];
   setSteps: (steps: AulaStep[]) => void;
   videos: AulaVideo[];
   materiais: MaterialComplementar[];
   avaliacoes: Avaliacao[];
+  color?: string;
 }
 
-function FluxoEditor({ steps, setSteps, videos, materiais, avaliacoes }: FluxoEditorProps) {
+export function FluxoEditor({ steps, setSteps, videos, materiais, avaliacoes, color }: FluxoEditorProps) {
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -597,7 +600,7 @@ function FluxoEditor({ steps, setSteps, videos, materiais, avaliacoes }: FluxoEd
             <button
               type="button"
               onClick={() => adicionarStep("video")}
-              className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded cursor-pointer"
+              className={`${color ?? "bg-blue-500 hover:bg-blue-600"} text-white text-sm px-3 py-2 rounded cursor-pointer`}
             >
               + Adicionar Etapa
             </button>

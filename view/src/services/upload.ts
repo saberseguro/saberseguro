@@ -1,4 +1,4 @@
-import { ref, uploadBytesResumable, getDownloadURL, uploadString } from "firebase/storage";
+import { ref, uploadBytesResumable, getDownloadURL, uploadString, deleteObject } from "firebase/storage";
 import { storage } from "./firebase";
 
 export function uploadMaterialArquivo(
@@ -28,6 +28,27 @@ export function uploadMaterialArquivo(
       }
     );
   });
+}
+
+export async function deleteMaterialArquivo(pathOrUrl: string): Promise<void> {
+  try {
+    // 🔹 Detecta se veio uma URL completa e extrai o caminho real
+    let path = pathOrUrl;
+    if (pathOrUrl.includes("firebasestorage.googleapis.com")) {
+      path = decodeURIComponent(pathOrUrl.split("/o/")[1].split("?")[0]);
+    }
+
+    const fileRef = ref(storage, path);
+    await deleteObject(fileRef);
+
+  } catch (err: any) {
+    if (err.code === "storage/object-not-found") {
+      console.warn("Arquivo não encontrado no Firebase:", pathOrUrl);
+      return;
+    }
+    console.error("Erro ao excluir arquivo do Firebase:", err);
+    throw err;
+  }
 }
 
 export async function uploadAssinaturaResponsavel(base64: string, idResponsavel: number | string): Promise<string> {

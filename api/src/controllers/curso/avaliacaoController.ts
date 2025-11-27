@@ -52,7 +52,6 @@ export const excluirAvaliacaoController = async (req: Request, res: Response) =>
 };
 
 
-
 // Pergunta
 export const buscarPerguntaController = async (req: Request, res: Response) => {
   try {

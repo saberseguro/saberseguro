@@ -20,7 +20,7 @@ export interface Curso {
   criado_em: string;
   editado_em: string;
   fkResponsavelTecnicoId: number;
-  fkEmpresaId?: number;
+  fkEmpresaId?: number | null;
 
   steps?: Step[];
   responsaveltecnico?: ResponsavelTecnico;
@@ -62,6 +62,7 @@ export interface Modulo {
   ativo?: number;
   progresso?: Progresso;
   descricao?: string;
+  fkCursoId?: number;
 
   aulas: Aula[];
   avaliacoes?: Avaliacao[];
@@ -77,6 +78,7 @@ export interface Aula {
   ativo?: number;
   criado_em?: string;
   editado_em?: string;
+  fkModuloId?: number;
 
   videos?: AulaVideo[];
   materiais?: MaterialComplementar[];
@@ -142,6 +144,7 @@ export interface Avaliacao {
   titulo: string;
   descricao?: string;
   tempo_limite?: number;
+  aplicacao?: string;
   tipoAplicacao?: string;
   ordem: number;
   ativo: number;

@@ -78,6 +78,40 @@ export const editarModulo = {
   }
 };
 
+export const reordenarModulos = {
+  async execute(idCurso: number, modulos: any[], usuario: any) {
+    const idsValidos = new Set(modulos.map(m => m.idModulo));
+
+    for (const item of modulos) {
+      if (!idsValidos.has(item.idModulo)) {
+        throw new Error(`O módulo ${item.idModulo} não pertence ao curso informado.`);
+      }
+    }
+
+    // salva ordem em transação
+    const atualizados = await prisma.$transaction(
+      modulos.map((m) =>
+        prisma.modulo.update({
+          where: { idModulo: m.idModulo },
+          data: { ordem: m.ordem }
+        })
+      )
+    );
+
+    await registrarEvento({
+      idUsuario: usuario.idUsuario,
+      tipo: "editar",
+      entidade: "modulo",
+      entidadeId: idCurso,
+      descricao: `Ordem dos módulos do curso ${idCurso} atualizada.`,
+      dadosAntes: null,
+      dadosDepois: atualizados
+    });
+
+    return atualizados;
+  },
+};
+
 export const excluirModulo = {
   async execute(id: number, usuario: any) {
     const modulo = await prisma.modulo.findUnique({ where: { idModulo: id } });

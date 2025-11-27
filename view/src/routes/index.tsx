@@ -9,6 +9,7 @@ const LoginPage = lazy(() => import('../pages/Auth/LoginPage'));
 const HomePage = lazy(() => import('../pages/Home/HomePage'));
 const EmpresaPage = lazy(() => import('../pages/Empresa/EmpresaPage'));
 const CursoPage = lazy(() => import('../pages/Curso/CursoPage'));
+const CursoRouter = lazy(() => import('../pages/Curso/CursoRouter'));
 const MeusCursos = lazy(() => import('../pages/Curso/MeusCursos'));
 const PlayerCurso = lazy(() => import('../pages/Curso/PlayerCurso'));
 const MedidaPage = lazy(() => import('../pages/Medida/MedidaPage'));
@@ -78,6 +79,7 @@ export default function AppRoutes() {
 
               {/* Curso */}
               <Route path="/cursos/gerenciar" element={<CursoPage />} />
+              <Route path="/cursos/:id/*" element={<CursoRouter />} />
               <Route path="/cursos/meuscursos" element={<MeusCursos />} />
               <Route path="/cursos/playcurso/:idCurso" element={<PlayerCurso />} />
 

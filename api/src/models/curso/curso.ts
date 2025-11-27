@@ -396,7 +396,9 @@ export const buscarMeusCursos = {
 
 export const criarCurso = {
   async execute(data: any, usuario: any) {
-    const categoriasIds: number[] = data.categorias || [];
+    const categoriasIds = (data.categorias || []).map((c: any) =>
+      typeof c === "number" ? c : c.idCategoria
+    );
 
     const categoriasValidas = await prisma.categoria.findMany({
       where: { idCategoria: { in: categoriasIds } }
@@ -415,8 +417,8 @@ export const criarCurso = {
         fkResponsavelTecnicoId: data.fkResponsavelTecnicoId,
         categorias: {
           createMany: {
-            data: categoriasValidas.map((cat) => ({
-              fkCategoriaId: cat.idCategoria
+            data: categoriasIds.map((id: number) => ({
+              fkCategoriaId: id
             }))
           }
         }
@@ -445,25 +447,39 @@ export const editarCurso = {
       where: { idCurso: id },
       include: {
         categorias: { include: { categoria: true } },
-      }
+      },
     });
 
     if (!antes) {
-      throw new Error('Nenhum curso encontrado com esse ID.');
+      throw new Error("Nenhum curso encontrado com esse ID.");
     }
 
-    const categoriasIds: number[] = data.categorias || [];
+    if (!Array.isArray(data.categorias)) {
+      throw new Error("Formato de categorias inválido — esperado array.");
+    }
 
+    // 🔹 Extrai apenas os IDs das categorias (aceita ambos formatos)
+    const categoriasIds = (data.categorias || [])
+      .map((c: any) => c.idCategoria || c.fkCategoriaId)
+      .filter(Boolean);
+
+    if (!categoriasIds.length) {
+      throw new Error("O curso precisa de pelo menos uma categoria válida.");
+    }
+
+    // 🔹 Busca as categorias válidas no banco
     const categoriasValidas = await prisma.categoria.findMany({
-      where: { idCategoria: { in: categoriasIds } }
+      where: { idCategoria: { in: categoriasIds } },
     });
 
-    if (categoriasValidas.length === 0) {
-      throw new Error('O curso precisa de pelo menos uma categoria válida.');
+    if (!categoriasValidas.length) {
+      throw new Error("Nenhuma categoria válida encontrada.");
     }
 
+    // 🔹 Limpa vínculos antigos
     await prisma.categoriacurso.deleteMany({ where: { fkCursoId: id } });
 
+    // 🔹 Atualiza o curso e recria vínculos
     const cursoAtualizado = await prisma.curso.update({
       where: { idCurso: id },
       data: {
@@ -474,14 +490,14 @@ export const editarCurso = {
         categorias: {
           createMany: {
             data: categoriasValidas.map((cat) => ({
-              fkCategoriaId: cat.idCategoria
-            }))
-          }
-        }
+              fkCategoriaId: cat.idCategoria,
+            })),
+          },
+        },
       },
       include: {
-        categorias: { include: { categoria: true } }
-      }
+        categorias: { include: { categoria: true } },
+      },
     });
 
     await registrarEvento({
@@ -491,11 +507,11 @@ export const editarCurso = {
       entidadeId: id,
       descricao: `Curso "${antes.titulo}" atualizado.`,
       dadosAntes: antes,
-      dadosDepois: cursoAtualizado
+      dadosDepois: cursoAtualizado,
     });
 
     return cursoAtualizado;
-  }
+  },
 };
 
 export const excluirCurso = {

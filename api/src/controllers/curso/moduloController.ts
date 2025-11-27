@@ -3,7 +3,8 @@ import {
   buscarModulo,
   criarModulo,
   editarModulo,
-  excluirModulo
+  excluirModulo,
+  reordenarModulos
 } from '../../models/curso/modulo';
 
 export const buscarModuloController = async (req: Request, res: Response) => {
@@ -33,6 +34,24 @@ export const editarModuloController = async (req: Request, res: Response) => {
     if (err.message?.includes("Nenhum módulo encontrado")) {
       return res.status(404).json({ error: err.message });
     }
+    return res.status(400).json({ error: err.message });
+  }
+};
+
+export const reordenarModulosController = async (req: Request, res: Response) => {
+  try {
+    const { modulos } = req.body;
+    console.log(modulos);
+    const idCurso = Number(req.params.idCurso);
+
+    if (!Array.isArray(modulos)) {
+      return res.status(400).json({ error: "Formato inválido. Esperado: array de módulos." });
+    }
+
+    const result = await reordenarModulos.execute(idCurso, modulos, req.user);
+    return res.json(result);
+
+  } catch (err: any) {
     return res.status(400).json({ error: err.message });
   }
 };

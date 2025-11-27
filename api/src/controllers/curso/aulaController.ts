@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { buscarAula, criarAula, editarAula, excluirAula } from '../../models/curso/aula';
+import { buscarAula, criarAula, editarAula, excluirAula, reordenarAulas } from '../../models/curso/aula';
 
 
 export const buscarAulaController = async (req: Request, res: Response) => {
@@ -15,12 +15,7 @@ export const buscarAulaController = async (req: Request, res: Response) => {
 export const criarAulaController = async (req: Request, res: Response) => {
   try {
     const resultado = await criarAula.execute(req.body, req.user as any);
-    return res.status(201).json({
-      message: 'Aula criada com sucesso.',
-      aula: resultado.aula,
-      videos: resultado.videos,
-      materiais: resultado.materiais
-    });
+    return res.status(201).json(resultado);
   } catch (err: any) {
     if (err.message?.includes("Nenhum módulo encontrado")) {
       return res.status(404).json({ error: err.message });
@@ -37,6 +32,21 @@ export const editarAulaController = async (req: Request, res: Response) => {
     if (err.message?.includes("Nenhuma aula encontrada")) {
       return res.status(404).json({ error: err.message });
     }
+    return res.status(400).json({ error: err.message });
+  }
+};
+
+export const reordenarAulasController = async (req: Request, res: Response) => {
+  try {
+    const { aulas } = req.body;
+
+    if (!Array.isArray(aulas)) {
+      return res.status(400).json({ error: "Formato inválido. Esperado: array de aulas." });
+    }
+
+    const resultado = await reordenarAulas.execute(aulas, req.user);
+    return res.json(resultado);
+  } catch (err: any) {
     return res.status(400).json({ error: err.message });
   }
 };

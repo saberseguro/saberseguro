@@ -16,7 +16,7 @@ export const buscarAula = {
 
 export const criarAula = {
   async execute(data: any, usuario: any) {
-    const { titulo, descricao, tipo, duracao, ordem, ativo, fkModuloId, videos = [], materiais = [] } = data;
+    const { titulo, descricao, tipo, duracao, ordem, ativo, fkModuloId } = data;
 
     const modulo = await prisma.modulo.findUnique({ where: { idModulo: fkModuloId } });
     if (!modulo) throw new Error("Nenhum módulo encontrado com esse ID");
@@ -35,51 +35,19 @@ export const criarAula = {
         },
       });
 
-      // Cria vídeos se existirem
-      const videosCriados = await Promise.all(
-        videos.map((v: any) =>
-          tx.aulavideo.create({
-            data: {
-              url: v.url,
-              fkAulaId: aulaCriada.idAula,
-            },
-          })
-        )
-      );
-
-      // Cria materiais se existirem
-      const materiaisCriados = await Promise.all(
-        materiais.map((m: any) =>
-          tx.materialcomplementar.create({
-            data: {
-              titulo: m.titulo,
-              tipo: m.tipo,
-              material: m.material,
-              fkAulaId: aulaCriada.idAula,
-            },
-          })
-        )
-      );
-
       // Registra evento da aula
       await registrarEvento({
         idUsuario: usuario.idUsuario,
         tipo: 'criar',
         entidade: 'aula',
         entidadeId: aulaCriada.idAula,
-        descricao: `Aula "${aulaCriada.titulo}" criada com ${videos.length} vídeos e ${materiais.length} materiais.`,
+        descricao: `Aula "${aulaCriada.titulo}" criada.`,
         dadosDepois: {
           aula: aulaCriada,
-          videos: videosCriados,
-          materiais: materiaisCriados,
         },
       });
 
-      return {
-        aula: aulaCriada,
-        videos: videosCriados,
-        materiais: materiaisCriados,
-      };
+      return aulaCriada;
     });
 
     return resultado;
@@ -115,6 +83,34 @@ export const editarAula = {
 
     return aulaAtualizada;
   }
+};
+
+export const reordenarAulas = {
+  async execute( aulas: any[], usuario: any) {
+    const idsValidos = new Set(aulas.map(a => a.idAula));
+
+    // Atualiza a ordem com transação
+    const atualizadas = await prisma.$transaction(
+      aulas.map((a: any) =>
+        prisma.aula.update({
+          where: { idAula: a.idAula },
+          data: { ordem: a.ordem },
+        })
+      )
+    );
+
+    await registrarEvento({
+      idUsuario: usuario.idUsuario,
+      tipo: "editar",
+      entidade: "aula",
+      entidadeId: aulas[0].fkModuloId,
+      descricao: `Ordem das aulas do módulo ${aulas[0].fkModuloId} atualizada.`,
+      dadosAntes: null,
+      dadosDepois: atualizadas,
+    });
+
+    return atualizadas;
+  },
 };
 
 export const excluirAula = {

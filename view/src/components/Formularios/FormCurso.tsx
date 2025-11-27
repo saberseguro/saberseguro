@@ -81,21 +81,25 @@ export default function FormCurso({ curso, setCurso }: FormCursoProps) {
         />
 
         <div className="flex items-center gap-2">
-          <Input
-            label="Carga Horária"
-            name="cargaHoraria"
-            type="number"
-            value={Number(curso.cargaHoraria) || ""}
-            onChange={(e) =>
-              setCurso({
-                ...curso,
-                cargaHoraria: Number(e.target.value) || 0,
-              })
-            }
-          />
-          <span className="text-xs text-gray-500 mt-5">
-            ({formatarMinutosEmHoras(curso.cargaHoraria)})
-          </span>
+          <div className="flex items-center gap-2 w-full">
+            <div className="flex-1">
+              <Input
+                label="Carga Horária (min)"
+                name="cargaHoraria"
+                type="number"
+                value={Number(curso.cargaHoraria) || ""}
+                onChange={(e) =>
+                  setCurso({
+                    ...curso,
+                    cargaHoraria: Number(e.target.value) || 0,
+                  })
+                }
+              />
+            </div>
+            <span className="text-xs text-gray-500 whitespace-nowrap mt-6">
+              ({formatarMinutosEmHoras(curso.cargaHoraria)})
+            </span>
+          </div>
         </div>
 
         <SearchableSelect

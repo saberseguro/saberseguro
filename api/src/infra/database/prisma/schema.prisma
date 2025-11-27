@@ -19,9 +19,9 @@ model usuario {
   fkCargoId              Int?
   firebaseId             String               @unique
   cpf                    String?              @unique(map: "cpf_UNIQUE") @db.VarChar(12)
-  telefone               String?
   assinatura             String?
   trocarsenha            Boolean              @default(true)
+  telefone               String?
   aulas                  aulausuario[]
   progressoVideos        aulavideoprogresso[]
   avaliacoes             avaliacaousuario[]
@@ -605,6 +605,22 @@ model certificadoempresa {
   @@unique([fkEmpresaId, competencia])
 }
 
+model certificadomodelo {
+  idCertificadoModelo Int                     @id @default(autoincrement())
+  titulo              String                  @db.VarChar(100)
+  conteudoHtml        String                  @db.LongText
+  tipoEscopo          TipoEscopoCertificado   @default(GLOBAL)
+
+  fkEmpresaId         Int?
+  empresa             Empresa?                @relation(fields: [fkEmpresaId], references: [idEmpresa])
+
+  criadoEm            DateTime                @default(now()) @db.DateTime(0)
+  editadoEm           DateTime                @updatedAt @db.DateTime(0)
+  ativo               Int                     @default(1) @db.TinyInt
+
+  cursos              Curso[]                 // relação com Curso
+}
+
 enum materialcomplementar_tipo {
   pdf
   doc
@@ -664,4 +680,9 @@ enum aulastep_tipo {
   video
   material
   avaliacao
+}
+
+enum TipoEscopoCertificado {
+  global
+  empresa
 }

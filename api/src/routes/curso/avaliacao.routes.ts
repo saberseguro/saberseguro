@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { authorize } from '../../middlewares/authorize';
-import { buscarAvaliacaoController, buscarAvaliacoesController, criarAlternativaController, criarAvaliacaoController, criarPerguntaController, editarAlternativaController, editarAvaliacaoController, editarPerguntaController, excluirAvaliacaoController, finalizarAvaliacaoController, iniciarAvaliacaoController, responderAvaliacaoController, resultadoAvaliacaoController } from '../../controllers/curso/avaliacaoController';
+import { buscarAvaliacaoController, buscarAvaliacoesController, buscarPerguntaController, criarAlternativaController, criarAvaliacaoController, criarPerguntaController, editarAlternativaController, editarAvaliacaoController, editarPerguntaController, excluirAvaliacaoController, finalizarAvaliacaoController, iniciarAvaliacaoController, responderAvaliacaoController, resultadoAvaliacaoController } from '../../controllers/curso/avaliacaoController';
+import { buscarPergunta } from '../../models/curso/avaliacao';
 
 const router = Router();
 
 router.get('/', authorize(['ver_avaliacoes']), buscarAvaliacoesController);
 router.get('/:id', authorize(['ver_avaliacoes']), buscarAvaliacaoController);
+router.get('/pergunta/:id', authorize(['ver_avaliacoes']), buscarPerguntaController);
 
 router.post('/', authorize(['criar_avaliacoes']), criarAvaliacaoController);
 router.post('/:id/pergunta', authorize(['criar_avaliacoes']), criarPerguntaController);
