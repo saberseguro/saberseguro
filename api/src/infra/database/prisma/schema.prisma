@@ -612,7 +612,7 @@ model certificadoempresa {
 model certificadomodelo {
   idCertificadoModelo Int                     @id @default(autoincrement())
   titulo              String                  @db.VarChar(100)
-  conteudoHtml        String                  @db.LongText
+  conteudoHtml        Json
   tipoEscopo          TipoEscopoCertificado   @default(global)
 
   fkEmpresaId         Int?

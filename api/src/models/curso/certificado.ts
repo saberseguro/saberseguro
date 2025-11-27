@@ -25,6 +25,219 @@ export function formatarMinutosEmHoras(min?: number): string {
   return `${m}min`;
 }
 
+// Modelos de certificados
+export const buscarModeloCertificado = {
+  async execute(id: number, usuario: any) {
+    const modelo = await prisma.certificadomodelo.findUnique({
+      where: { idCertificadoModelo: id },
+      include: {
+        empresa: {
+          select: {
+            idEmpresa: true,
+            nomeFantasia: true,
+          },
+        },
+        cursos: {
+          select: {
+            idCurso: true,
+            titulo: true,
+          },
+        },
+      },
+    });
+
+    if (!modelo) {
+      throw new Error("Modelo de certificado não encontrado.");
+    }
+
+    const isAdmin = usuario.roles?.includes("admin");
+    const isGestor = usuario.roles?.includes("gestor");
+
+    if (isGestor && modelo.fkEmpresaId !== usuario.fkEmpresaId && modelo.tipoEscopo !== "global") {
+      throw new Error("Você não tem permissão para visualizar este modelo.");
+    }
+
+    return {
+      idCertificadoModelo: modelo.idCertificadoModelo,
+      titulo: modelo.titulo,
+      conteudoHtml: modelo.conteudoHtml,
+      tipoEscopo: modelo.tipoEscopo,
+      empresa: modelo.empresa ? {
+        idEmpresa: modelo.empresa.idEmpresa,
+        nomeFantasia: modelo.empresa.nomeFantasia,
+      } : null,
+      cursosVinculados: modelo.cursos.map((c) => ({
+        idCurso: c.idCurso,
+        titulo: c.titulo,
+      })),
+      criadoEm: modelo.criadoEm.toLocaleDateString("pt-BR"),
+    };
+  },
+};
+
+export const listarModelosCertificado = {
+  async execute(usuario: any) {
+    const isGestor = usuario.roles?.includes("gestor");
+    const isAdmin = usuario.roles?.includes("admin");
+
+    if (!isGestor && !isAdmin) {
+      throw new Error("Usuário sem permissão para visualizar modelos de certificado.");
+    }
+
+    const where: any = {
+      ativo: 1,
+    };
+
+    if (isGestor) {
+      if (!usuario.fkEmpresaId) {
+        throw new Error("Empresa do usuário não identificada.");
+      }
+
+      where.OR = [
+        { tipoEscopo: "global" },
+        { fkEmpresaId: usuario.fkEmpresaId },
+      ];
+    }
+
+    if (isAdmin) {
+      // Admin vê todos; pode ter filtro depois se quiser
+    }
+
+    const modelos = await prisma.certificadomodelo.findMany({
+      where,
+      orderBy: { criadoEm: "desc" },
+      include: {
+        empresa: {
+          select: {
+            idEmpresa: true,
+            nomeFantasia: true,
+          },
+        },
+        cursos: {
+          select: {
+            idCurso: true,
+            titulo: true,
+          },
+        },
+      },
+    });
+
+    return modelos.map((m) => ({
+      idCertificadoModelo: m.idCertificadoModelo,
+      titulo: m.titulo,
+      tipoEscopo: m.tipoEscopo,
+      empresa: m.empresa ? {
+        idEmpresa: m.empresa.idEmpresa,
+        nomeFantasia: m.empresa.nomeFantasia,
+      } : null,
+      cursosVinculados: m.cursos.map((c) => ({
+        idCurso: c.idCurso,
+        titulo: c.titulo,
+      })),
+      criadoEm: m.criadoEm.toLocaleDateString("pt-BR"),
+    }));
+  },
+};
+
+export const criarModeloCertificado = {
+  async execute(dados: any, usuario: any) {
+    const isAdmin = usuario.roles?.includes("admin");
+    const isGestor = usuario.roles?.includes("gestor");
+
+    if (!isAdmin && !isGestor) {
+      throw new Error("Usuário sem permissão para criar modelos de certificado.");
+    }
+
+    let tipoEscopo: "global" | "empresa" = "empresa";
+    let fkEmpresaId: number | null = usuario.fkEmpresaId ?? null;
+
+    if (isAdmin) {
+      tipoEscopo = "global";
+      fkEmpresaId = null;
+    }
+
+    const novoModelo = await prisma.certificadomodelo.create({
+      data: {
+        titulo: dados.titulo,
+        conteudoHtml: dados.conteudoHtml,
+        tipoEscopo,
+        fkEmpresaId,
+        ativo: 1,
+      },
+    });
+
+    return {
+      idCertificadoModelo: novoModelo.idCertificadoModelo,
+      titulo: novoModelo.titulo,
+      tipoEscopo: novoModelo.tipoEscopo,
+      criadoEm: novoModelo.criadoEm.toLocaleDateString("pt-BR"),
+    };
+  },
+};
+
+export const editarModeloCertificado = {
+  async execute(id: number, dados: any, usuario: any) {
+    const modelo = await prisma.certificadomodelo.findUnique({
+      where: { idCertificadoModelo: id },
+    });
+
+    if (!modelo) {
+      throw new Error("Modelo de certificado não encontrado.");
+    }
+
+    const isAdmin = usuario.roles?.includes("admin");
+    const isGestor = usuario.roles?.includes("gestor");
+
+    // Gestor só pode editar os da própria empresa
+    if (isGestor && modelo.fkEmpresaId !== usuario.fkEmpresaId) {
+      throw new Error("Você não tem permissão para editar este modelo.");
+    }
+
+    const atualizado = await prisma.certificadomodelo.update({
+      where: { idCertificadoModelo: id },
+      data: {
+        titulo: dados.titulo,
+        conteudoHtml: dados.conteudoHtml,
+        editadoEm: new Date(),
+      },
+    });
+
+    return {
+      idCertificadoModelo: atualizado.idCertificadoModelo,
+      titulo: atualizado.titulo,
+      tipoEscopo: atualizado.tipoEscopo,
+      atualizadoEm: atualizado.editadoEm.toLocaleDateString("pt-BR"),
+    };
+  },
+};
+
+export const excluirModeloCertificado = {
+  async execute(id: number, usuario: any) {
+    const modelo = await prisma.certificadomodelo.findUnique({
+      where: { idCertificadoModelo: id },
+    });
+
+    if (!modelo) {
+      throw new Error("Modelo não encontrado.");
+    }
+
+    const isAdmin = usuario.roles?.includes("admin");
+    const isGestor = usuario.roles?.includes("gestor");
+
+    if (isGestor && modelo.fkEmpresaId !== usuario.fkEmpresaId) {
+      throw new Error("Você não tem permissão para excluir este modelo.");
+    }
+
+    await prisma.certificadomodelo.update({
+      where: { idCertificadoModelo: id },
+      data: { ativo: 0 },
+    });
+
+    return { mensagem: "Modelo excluído com sucesso." };
+  },
+};
+
+// Certificados
 export const listarCertificados = {
   async execute(usuario: any) {
     const isGestor =
@@ -311,6 +524,8 @@ export const gerarCertificado = {
     return certificado;
   },
 };
+
+
 
 async function toBase64FromUrl(url: string): Promise<string> {
   return new Promise((resolve) => {

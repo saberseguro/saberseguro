@@ -1,3 +1,5 @@
+import type { Empresa } from "./EstruturaEmpresa";
+
 export interface Step {
   idAulaStep: string | number;
   tipo: "video" | "material" | "avaliacao" | "avaliacao_modulo" | "avaliacao_curso";
@@ -254,4 +256,18 @@ export interface CertificadoEmpresa {
   totalGerados: number;
   limiteMensal: number;
   competencia: string;
+}
+
+export interface CertificadoModelo {
+  id: number;
+  nome: string;
+  titulo: string;
+  pagina1: string;
+  pagina2: string;
+  criado_em?: string;
+  editado_em?: string;
+
+  empresa?: Empresa;
+  cursos?: Curso[];
+  ativo?: number;
 }

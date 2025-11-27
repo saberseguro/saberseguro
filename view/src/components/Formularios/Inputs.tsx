@@ -438,3 +438,14 @@ export function SearchableSelect({
     </div>
   );
 }
+
+export function Button({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      {...props}
+      className={`bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded disabled:opacity-50 ${props.className ?? ''}`}
+    >
+      {children}
+    </button>
+  );
+}
