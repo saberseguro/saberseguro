@@ -245,11 +245,14 @@ model curso {
   ativo                  Int                @default(1) @db.TinyInt
   fkResponsavelTecnicoId Int
   fkEmpresaId            Int?
+  fkCertificadoModeloId  Int?
+
   avaliacoes             avaliacao[]
   categorias             categoriacurso[]
   certificados           certificado[]
   empresa                empresa?           @relation(fields: [fkEmpresaId], references: [idEmpresa], map: "fk_curso_fkEmpresaId")
   responsaveltecnico     responsaveltecnico @relation(fields: [fkResponsavelTecnicoId], references: [idResponsavelTecnico], onDelete: NoAction, map: "fk_curso_fkResponsavelTecnicoId")
+  certificadomodelo      certificadomodelo? @relation(fields: [fkCertificadoModeloId], references: [idCertificadoModelo])
   acessos                cursoacesso[]
   medidas                medidacurso[]
   modulos                modulo[]
@@ -609,16 +612,16 @@ model certificadomodelo {
   idCertificadoModelo Int                     @id @default(autoincrement())
   titulo              String                  @db.VarChar(100)
   conteudoHtml        String                  @db.LongText
-  tipoEscopo          TipoEscopoCertificado   @default(GLOBAL)
+  tipoEscopo          TipoEscopoCertificado   @default(global)
 
   fkEmpresaId         Int?
-  empresa             Empresa?                @relation(fields: [fkEmpresaId], references: [idEmpresa])
+  empresa             empresa?                @relation(fields: [fkEmpresaId], references: [idEmpresa])
 
   criadoEm            DateTime                @default(now()) @db.DateTime(0)
   editadoEm           DateTime                @updatedAt @db.DateTime(0)
   ativo               Int                     @default(1) @db.TinyInt
 
-  cursos              Curso[]                 // relação com Curso
+  cursos              curso[]
 }
 
 enum materialcomplementar_tipo {
