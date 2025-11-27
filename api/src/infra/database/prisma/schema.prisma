@@ -316,6 +316,7 @@ model empresa {
   medidasvinculos     medidavinculo[]
   unidades            unidade[]
   funcionarios        usuario[]
+  certificadosmodelo  certificadomodelo[]
 }
 
 model materialcomplementar {
