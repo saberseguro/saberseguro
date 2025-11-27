@@ -26,7 +26,6 @@ export default function SortableAulas({
   onReorder: (novas: any[]) => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor));
-  const { idModulo } = useParams();
   const [saving, setSaving] = useState(false);
 
   const handleDragEnd = async (event: any) => {
