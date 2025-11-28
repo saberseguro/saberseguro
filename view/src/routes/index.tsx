@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import Loading from '../components/Loading';
 import "sweetalert2/dist/sweetalert2.min.css";
+import CertificadoEditorPage from '../pages/Curso/CertificadoEditorPage';
 
 const LoginPage = lazy(() => import('../pages/Auth/LoginPage'));
 const HomePage = lazy(() => import('../pages/Home/HomePage'));
@@ -91,6 +92,10 @@ export default function AppRoutes() {
 
               {/* Configurações */}
               <Route path="/configuracoes" element={<ConfigPage />} />
+
+              {/* Certificado */}
+              <Route path="/certificados/novo" element={<CertificadoEditorPage />} />
+              <Route path="/certificados/:idCertificadoModelo/editar" element={<CertificadoEditorPage />} />
             </Route>
           </Route>
 

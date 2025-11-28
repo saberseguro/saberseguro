@@ -20,6 +20,7 @@ type CursoCompleto = Prisma.cursoGetPayload<{
   include: {
     modulos: {
       include: {
+        certificadomodelo: true;
         aulas: {
           include: {
             steps: true;
@@ -79,6 +80,7 @@ export const buscarCursoCompleto = {
       where: { idCurso: id },
       include: {
         categorias: { include: { categoria: true } },
+        certificadomodelo: true,
         modulos: {
           orderBy: { ordem: "asc" },
           include: {
@@ -261,6 +263,7 @@ export const buscarCursos = {
         where,
         include: {
           categorias: { include: { categoria: true } },
+          certificadomodelo: true,
           modulos: {
             orderBy: { ordem: "asc" },
             include: {
@@ -606,6 +609,72 @@ export const finalizarCurso = {
   },
 };
 
+export const vincularCertificado = {
+  async execute(idCurso: number, fkCertificadoModeloId: number | null, usuario: any) {
+    const idUsuario = usuario?.idUsuario;
+    const roles = usuario?.roles || [];
+
+    // 1️⃣ Buscar o curso
+    const curso = await prisma.curso.findUnique({
+      where: { idCurso },
+      include: {
+        certificadomodelo: true,
+      },
+    });
+
+    if (!curso) throw new Error("Curso não encontrado.");
+
+    const isGestor = roles.includes("gestor");
+    const isAdmin = roles.includes("admin");
+
+    if (isGestor && curso.fkEmpresaId !== usuario.fkEmpresaId) {
+      throw new Error("Você não tem permissão para alterar este curso.");
+    }
+
+    // 2️⃣ Validar modelo de certificado (se informado)
+    if (fkCertificadoModeloId) {
+      const modelo = await prisma.certificadomodelo.findUnique({
+        where: { idCertificadoModelo: fkCertificadoModeloId },
+      });
+
+      if (!modelo) {
+        throw new Error("Modelo de certificado não encontrado.");
+      }
+
+      const ehGlobal = modelo.tipoEscopo === "global";
+      const mesmaEmpresa = modelo.fkEmpresaId === usuario.fkEmpresaId;
+
+      if (isGestor && !ehGlobal && !mesmaEmpresa) {
+        throw new Error("Você não tem permissão para vincular este modelo.");
+      }
+    }
+
+    // 3️⃣ Atualizar curso
+    const cursoAtualizado = await prisma.curso.update({
+      where: { idCurso },
+      data: {
+        fkCertificadoModeloId: fkCertificadoModeloId || null,
+      },
+      include: {
+        certificadomodelo: true,
+      },
+    });
+
+    // 4️⃣ Logar evento
+    await registrarEvento({
+      idUsuario,
+      tipo: "curso.vincularCertificado",
+      entidade: "curso",
+      entidadeId: idCurso,
+      descricao: `Vinculou certificado modelo ID ${fkCertificadoModeloId || "removido"} ao curso "${curso.titulo}"`,
+      dadosAntes: curso,
+      dadosDepois: cursoAtualizado,
+    });
+
+    // 5️⃣ Retornar curso atualizado
+    return cursoAtualizado;
+  },
+};
 
 // Adicionar Medidas
 export const adicionarMedidasAoCurso = {

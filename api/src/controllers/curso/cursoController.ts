@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { buscarCursoCompleto, buscarCursoAcessos, buscarCursos, buscarMeusCursos, criarCurso, criarCursoAcesso, editarCurso, excluirCurso, excluirCursoAcesso, syncCurso, finalizarCurso, registrarCursoAcesso } from '../../models/curso/curso';
+import { buscarCursoCompleto, buscarCursoAcessos, buscarCursos, buscarMeusCursos, criarCurso, criarCursoAcesso, editarCurso, excluirCurso, excluirCursoAcesso, syncCurso, finalizarCurso, registrarCursoAcesso, vincularCertificado } from '../../models/curso/curso';
 import { desvincularCursoDaMedida, listarMedidasDoCurso, vincularCursoNaMedida } from '../../models/medida';
 import { listarCertificados, previewCertificado } from '../../models/curso/certificado';
 import { registrarEvento } from '../../shared/utils/registrarEvento';
@@ -34,7 +34,6 @@ export const buscarCursosController = async (req: Request, res: Response) => {
     return res.status(500).json({ error: err.message });
   }
 };
-
 
 export const buscarMeusCursosController = async (req: Request, res: Response) => {
   try {
@@ -153,6 +152,18 @@ export const desvincularMedidaDoCursoController = async (req: Request, res: Resp
   }
 };
 
+export const vincularCertificadoController = async (req: Request, res: Response) => {
+  try {
+    const idCurso = Number(req.params.id);
+    const { fkCertificadoModeloId } = req.body;
+    const usuario = req.user;
+
+    const curso = await vincularCertificado.execute(idCurso, fkCertificadoModeloId, usuario);
+    return res.json(curso);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || "Erro ao vincular certificado." });
+  }
+};
 
 // Controlar Acessos
 export const buscarCursoAcessosController = async (req: Request, res: Response) => {

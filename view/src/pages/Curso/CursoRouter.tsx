@@ -9,6 +9,7 @@ import AvaliacaoFormPage from "./AvaliacaoFormPage";
 import AvaliacaoViewPage from "./AvaliacaoViewPage";
 import PerguntaFormPage from "./PerguntaFormPage";
 import PerguntaViewPage from "./PerguntaViewPage";
+import CertificadoEditorPage from "./CertificadoEditorPage";
 
 export default function CursoRouter() {
   const { id } = useParams();
@@ -71,6 +72,9 @@ export default function CursoRouter() {
         path="avaliacao/:idAvaliacao/pergunta/:idPergunta/editar"
         element={<PerguntaFormPage modo="editar" />}
       />
+
+      {/* Certificado */}
+      <Route path="certificados/:idCertificadoModelo/editar" element={<CertificadoEditorPage />} />
 
     </Routes>
   );

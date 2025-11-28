@@ -1,4 +1,4 @@
-import type { Empresa } from "./EstruturaEmpresa";
+import type { PaginaCertificado } from "../pages/Curso/CertificadoEditorPage";
 
 export interface Step {
   idAulaStep: string | number;
@@ -23,7 +23,9 @@ export interface Curso {
   editado_em: string;
   fkResponsavelTecnicoId: number;
   fkEmpresaId?: number | null;
+  fkCertificadoModeloId?: number | null;
 
+  certificadomodelo?: CertificadoModelo | null;
   steps?: Step[];
   responsaveltecnico?: ResponsavelTecnico;
   categorias?: CategoriaCurso[];
@@ -259,15 +261,12 @@ export interface CertificadoEmpresa {
 }
 
 export interface CertificadoModelo {
-  id: number;
-  nome: string;
+  idCertificadoModelo: number;
   titulo: string;
-  pagina1: string;
-  pagina2: string;
-  criado_em?: string;
-  editado_em?: string;
-
-  empresa?: Empresa;
-  cursos?: Curso[];
-  ativo?: number;
+  conteudoHtml: PaginaCertificado[];
+  tipoEscopo: "global" | "empresa";
+  fkEmpresaId?: number;
+  criadoEm: string;
+  editadoEm: string;
+  ativo: number;
 }
