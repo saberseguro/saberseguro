@@ -4,6 +4,7 @@ import { formatarCpf } from "../../auxiliares/formatter";
 import { format } from "date-fns";
 import https from "https";
 import { registrarEvento } from "../../shared/utils/registrarEvento";
+import { cert } from "firebase-admin/app";
 
 export interface DadosCertificado {
   curso: string;
@@ -319,12 +320,12 @@ export const listarCertificados = {
 
 export const previewCertificado = {
   async execute(idCertificado: number, usuario: any) {
-    // 🔹 Busca o certificado
     const certificado = await prisma.certificado.findUnique({
       where: { idCertificado },
       include: {
         curso: {
           include: {
+            certificadomodelo: true,
             empresa: true,
             responsaveltecnico: true,
             categorias: { include: { categoria: true } },
@@ -371,13 +372,6 @@ export const previewCertificado = {
                 },
               },
             },
-            acessos: {
-              where: { fkUsuarioId: usuario.idUsuario },
-              select: {
-                concluido: true,
-                dataConclusao: true,
-              },
-            },
           },
         },
         usuario: {
@@ -386,38 +380,40 @@ export const previewCertificado = {
             nome: true,
             cpf: true,
             assinatura: true,
-            empresa: {
-              select: {
-                idEmpresa: true,
-                nomeFantasia: true,
-              },
-            },
+            empresa: { select: { nomeFantasia: true } },
           },
         },
       },
     });
 
-    if (!certificado) {
-      throw new Error("Certificado não encontrado.");
-    }
+    if (!certificado) throw new Error("Certificado não encontrado.");
+
+    const acessos = await prisma.cursoacesso.findMany({
+      where: {
+        fkCursoId: certificado.fkCursoId,
+        fkUsuarioId: certificado.fkUsuarioId,
+      },
+      select: { concluido: true, dataConclusao: true },
+    });
+
+    (certificado as any).curso.acessos = acessos;
 
     const isDono = certificado.fkUsuarioId === usuario.idUsuario;
     const roles: string[] = usuario.roles || [];
     const isGestor = roles.includes("admin") || roles.includes("gestor");
 
     if (!isDono && !isGestor) {
-      throw new Error("Você não tem permissão para visualizar este certificado.");
+      throw new Error("Sem permissão para visualizar este certificado.");
     }
 
     const curso = certificado.curso;
-    const acesso = curso.acessos?.[0];
+    const acesso = acessos?.[0];
 
-    if (!curso || !acesso || acesso.concluido !== 1) {
-      throw new Error("Curso não concluído ou dados incompletos.");
-    }
+    if (!curso || !acesso || acesso.concluido !== 1)
+      throw new Error("Curso não concluído.");
 
-    // 🔹 Monta os dados organizados
-    const dadosOrganizados = {
+    // ==== DADOS ORGANIZADOS ====
+    const dados = {
       curso: {
         idCurso: curso.idCurso,
         titulo: curso.titulo,
@@ -436,18 +432,11 @@ export const previewCertificado = {
           })),
         })),
       },
-      empresa: {
-        idEmpresa: curso.empresa?.idEmpresa,
-        nomeFantasia: curso.empresa?.nomeFantasia,
-        tipoDocumento: curso.empresa?.tipoDocumento,
-        documento: curso.empresa?.documento,
-      },
       usuario: {
-        idUsuario: certificado.usuario?.idUsuario,
-        nome: certificado.usuario?.nome,
-        cpf: certificado.usuario?.cpf,
-        assinatura: certificado.usuario?.assinatura,
-        empresa: certificado.usuario?.empresa?.nomeFantasia,
+        nome: certificado.usuario.nome,
+        cpf: certificado.usuario.cpf,
+        empresa: certificado.usuario.empresa?.nomeFantasia,
+        assinatura: certificado.usuario.assinatura,
       },
       instrutor: {
         nome: curso.responsaveltecnico?.nome,
@@ -456,17 +445,26 @@ export const previewCertificado = {
         assinatura: curso.responsaveltecnico?.assinatura,
       },
       certificado: {
-        idCertificado: certificado.idCertificado,
         codigo: certificado.codigo,
-        dataGeracao: new Date(certificado.dataGeracao ?? new Date()).toLocaleDateString("pt-BR"),
+        dataGeracao: new Date(certificado.dataGeracao).toLocaleDateString("pt-BR"),
       },
+      modelo: curso.certificadomodelo,
     };
 
-    // 🔹 Gera o PDF base64
-    const pdfBuffer = await gerarCertificadoPdf(dadosOrganizados);
-    const pdfBase64 = pdfBuffer.toString("base64");
 
-    return { pdfBase64: pdfBase64 };
+    let pdfBuffer: Buffer;
+
+    if (
+      dados.modelo &&
+      Array.isArray(dados.modelo.conteudoHtml) &&
+      dados.modelo.conteudoHtml.length > 0
+    ) {
+      pdfBuffer = await gerarCertificadoPdf(dados);
+    } else {
+      pdfBuffer = await gerarCertificadoPdf(dados);
+    }
+
+    return { pdfBase64: pdfBuffer.toString("base64") };
   },
 };
 
@@ -525,8 +523,6 @@ export const gerarCertificado = {
   },
 };
 
-
-
 async function toBase64FromUrl(url: string): Promise<string> {
   return new Promise((resolve) => {
     https.get(url, (res) => {
@@ -544,6 +540,25 @@ async function toBase64FromUrl(url: string): Promise<string> {
   });
 }
 
+function garantirString(valor: any): string {
+  if (!valor) return "";
+  if (typeof valor === "string") return valor;
+
+  // Se veio array → pega primeiro
+  if (Array.isArray(valor)) return valor.join(" ");
+
+  // Se veio objeto → transforma em HTML bruto
+  return JSON.stringify(valor);
+}
+
+function aplicarVariaveis(texto: string, vars: Record<string, any>) {
+  let html = texto || "";
+  Object.entries(vars).forEach(([key, value]) => {
+    html = html.split(key).join(value ?? "");
+  });
+  return html;
+}
+
 export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
   // 🔹 Converte a logo Saber e a assinatura (se houver)
   const logoUrl =
@@ -557,6 +572,91 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
   const assinaturaUsuarioBase64 = dados.usuario?.assinatura
     ? await toBase64FromUrl(dados.usuario.assinatura)
     : null;
+
+  const textoPagina1Padrao = `
+    Funcionário(a) da empresa <strong>${dados.usuario?.empresa}</strong>,
+    portador do CPF <strong>${formatarCpf(dados.usuario?.cpf)}</strong>,
+    concluiu com êxito o curso <strong>${dados.curso?.titulo}</strong>,
+    com carga horária de <strong>${formatarMinutosEmHoras(dados.curso?.cargaHoraria)}</strong>,
+    finalizado em <strong>${dados.certificado?.dataGeracao}</strong>.
+  `;
+
+  function gerarConteudoProgramaticoPadrao(dados: any) {
+    let contadorModulo = 1;
+
+    const htmlModulos = dados.curso?.grade
+      ?.map((m: any) => {
+        const aulasOrdenadas = [...m.aulas].sort(
+          (a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)
+        );
+
+        let contadorAula = 1;
+
+        const bloco = `
+        <li style="margin-bottom: 10px;">
+          <strong>${contadorModulo}. ${m.titulo}</strong>
+
+          <ol style="margin-left: 25px; list-style: none; padding-left: 0;">
+            ${aulasOrdenadas
+            .map(
+              (a: any) =>
+                `<li>${contadorModulo}.${contadorAula++} ${a.titulo}</li>`
+            )
+            .join("")}
+          </ol>
+        </li>
+      `;
+
+        contadorModulo++; // 🔥 INCREMENTA AQUI!
+
+        return bloco;
+      })
+      .join("");
+
+    const avaliacaoFinal = dados.curso?.avaliacoes?.length
+      ? `
+      <li style="margin-bottom: 5px;">
+        <strong>${contadorModulo}. Avaliação final do curso</strong>
+      </li>
+    `
+      : "";
+
+    return `
+    <ol style="padding-left: 18px; list-style: none; margin: 0;">
+      ${htmlModulos}
+      ${avaliacaoFinal}
+    </ol>
+  `;
+  };
+
+  const variaveis = {
+    "{{nomeAluno}}": dados.usuario.nome,
+    "{{cpfAluno}}": formatarCpf(dados.usuario.cpf),
+    "{{empresaAluno}}": dados.usuario.empresa ?? "",
+    "{{nomeInstrutor}}": dados.instrutor?.nome ?? "",
+    "{{funcaoInstrutor}}": dados.instrutor?.funcao ?? "",
+    "{{registroInstrutor}}": dados.instrutor?.registro ?? "",
+    "{{nomeCurso}}": dados.curso.titulo,
+    "{{cargaHoraria}}": formatarMinutosEmHoras(dados.curso.cargaHoraria),
+    "{{dataConclusao}}": dados.certificado.dataGeracao,
+    "{{dataAtual}}": new Date().toLocaleDateString("pt-BR"),
+    "{{codigoCertificado}}": dados.certificado.codigo,
+  };
+
+  const modeloPagina1 =
+    Array.isArray(dados.modelo?.conteudoHtml) &&
+      dados.modelo.conteudoHtml[0]
+      ? garantirString(dados.modelo.conteudoHtml[0].html)
+      : textoPagina1Padrao;
+
+  const modeloPagina2 =
+    Array.isArray(dados.modelo?.conteudoHtml) &&
+      dados.modelo.conteudoHtml[1]
+      ? garantirString(dados.modelo.conteudoHtml[1].html)
+      : gerarConteudoProgramaticoPadrao(dados);
+
+  const pagina1Texto = aplicarVariaveis(modeloPagina1, variaveis);
+  const pagina2Texto = aplicarVariaveis(modeloPagina2, variaveis);
 
   // 🔹 Monta o HTML
   const html = `
@@ -720,12 +820,9 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
           <div class="nome-aluno">${dados.usuario?.nome}</div>
 
           <div class="texto">
-            Funcionário(a) da empresa <strong>${dados.usuario?.empresa}</strong>,
-            portador do CPF <strong>${formatarCpf(dados.usuario?.cpf)}</strong>,
-            concluiu com êxito o curso <strong>${dados.curso?.titulo}</strong>,
-            com carga horária de <strong>${formatarMinutosEmHoras(dados.curso?.cargaHoraria)}</strong>,
-            finalizado em <strong>${dados.certificado?.dataGeracao}</strong>.
+            ${pagina1Texto}
           </div>
+
 
           ${dados.empresa?.nomeFantasia
       ? `<div class="texto">Curso promovido por: <strong>${dados.empresa.nomeFantasia}</strong></div>`
@@ -756,12 +853,8 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
       : `<div class="linha"></div>`
     }
               <div class="linha"></div>
-              ${dados.empresa
-      ? `
-                    <div>Funcionário: <strong>${dados.usuario.nome}</strong></div>
-                  `
-      : ""
-    }
+              <div>Funcionário: <strong>${dados.usuario.nome}</strong></div>
+              <div>CPF: ${formatarCpf(dados.usuario.cpf)}</div>
             </div>
           </div>
 
@@ -774,42 +867,8 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
         <!-- Página 2: Conteúdo Programático -->
         <div class="container container-programa" style="page-break-before: always;">
           <div class="programa-titulo">CONTEÚDO PROGRAMÁTICO</div>
-
-          <div class="programa-corpo" style="display: flex; gap: 60px;">
-            <div style="flex: 1;">
-              <div class="secao-titulo">Item 5.1</div>
-              <ul style="font-size: 12px; line-height: 1.6; padding-left: 18px;">
-                <li>a) riscos de exposição ao benzeno e vias de absorção;</li>
-                <li>b) conceitos básicos sobre monitoramento ambiental, biológico e de saúde;</li>
-                <li>c) sinais e sintomas de intoxicação ocupacional por benzeno;</li>
-                <li>d) medidas de prevenção;</li>
-                <li>e) procedimentos de emergência;</li>
-                <li>f) caracterização básica das instalações, atividades de risco e pontos de possíveis emissões de benzeno;</li>
-                <li>g) dispositivos legais sobre o benzeno.</li>
-              </ul>
-            </div>
-
-            <div style="flex: 1;">
-              <div class="secao-titulo">Item 5.1.1</div>
-              <ul style="font-size: 12px; line-height: 1.6; padding-left: 18px;">
-                <li>a) conferência do produto no caminhão-tanque no ato do descarregamento;</li>
-                <li>b) coleta de amostras no caminhão-tanque com amostrador específico;</li>
-                <li>c) medição volumétrica de tanque subterrâneo com régua;</li>
-                <li>d) estacionamento do caminhão, aterramento e conexão via mangotes aos tanques subterrâneos;</li>
-                <li>e) descarregamento de combustíveis para os tanques subterrâneos;</li>
-                <li>f) desconexão dos mangotes e retirada do conteúdo residual;</li>
-                <li>g) abastecimento de combustível para veículos;</li>
-                <li>h) abastecimento de combustíveis em recipientes certificados;</li>
-                <li>i) análises físico-químicas para o controle de qualidade dos produtos comercializados;</li>
-                <li>j) limpeza de válvulas, bombas e seus compartimentos de contenção de vazamentos;</li>
-                <li>k) esgotamento e limpeza de caixas separadoras;</li>
-                <li>l) limpeza de caixas de passagem e canaletas;</li>
-                <li>m) aferição de bombas de abastecimento;</li>
-                <li>n) manutenção operacional de bombas;</li>
-                <li>o) manutenção e reforma do sistema de abastecimento subterrâneo de combustível (SASC);</li>
-                <li>p) outras operações e atividades passíveis de exposição ao benzeno.</li>
-              </ul>
-            </div>
+          <div class="programa-corpo">
+            ${pagina2Texto}
           </div>
         </div>
 
@@ -838,67 +897,3 @@ export async function gerarCertificadoPdf(dados: any): Promise<Buffer> {
 
   return Buffer.from(pdf);
 }
-
-
-// <!-- Página 2: Conteúdo Programático -->
-//         <div class="container container-programa" style="page-break-before: always;">
-//           <div class="programa-titulo">Conteúdo Programático</div>
-
-//           <div class="programa-corpo">
-
-//             ${dados.curso?.grade
-//       ?.map((m: any, i: number) => {
-//         const aulasOrdenadas = [...m.aulas].sort(
-//           (a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)
-//         );
-
-//         return `
-//                   <div class="modulo-bloco">
-//                     <div class="modulo-titulo">Módulo ${m.titulo}</div>
-
-//                     ${aulasOrdenadas
-//             .map(
-//               (a: any, j: number) => `
-//                         <div class="aula-bloco">
-//                           <div class="aula-titulo">${a.titulo}</div>
-//                           ${a.descricao
-//                   ? `<div class="aula-descricao">${a.descricao}</div>`
-//                   : ""
-//                 }
-//                           ${a.avaliacao
-//                   ? `
-//                                 <div class="avaliacoes-bloco">
-//                                   <div class="avaliacoes-titulo">Avaliações:</div>
-//                                   <div class="avaliacao-item">Avaliação da aula</div>
-//                                 </div>
-//                               `
-//                   : ""
-//                 }
-//                         </div>
-//                       `
-//             )
-//             .join("")}
-
-//                     ${m.avaliacao
-//             ? `
-//                           <div class="avaliacoes-bloco">
-//                             <div class="avaliacoes-titulo">Avaliações:</div>
-//                             <div class="avaliacao-item">Avaliação do módulo</div>
-//                           </div>
-//                         `
-//             : ""
-//           }
-//                   </div>
-//                 `;
-//       })
-//       .join("")}
-
-//             ${dados.curso?.avaliacoes
-//       ? `
-//                   <div class="modulo-titulo">Avaliações do Curso:</div>
-//                   <div class="avaliacao-item">Avaliação final do curso</div>
-//                 `
-//       : ""
-//     }
-//           </div>
-//         </div>

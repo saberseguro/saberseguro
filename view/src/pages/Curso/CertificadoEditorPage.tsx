@@ -30,6 +30,21 @@ export default function CertificadoEditorPage() {
     { titulo: "Página 2 - Conteúdo Programático", html: "" },
   ]);
   const [abaAtiva, setAbaAtiva] = useState("pagina-0");
+  const variaveisDisponiveis = [
+    "{{nomeAluno}}",
+    "{{cpfAluno}}",
+    "{{empresaAluno}}",
+    "{{nomeCurso}}",
+    "{{cargaHoraria}}",
+    "{{dataConclusao}}",
+    "{{dataAtual}}",
+    "{{codigoCertificado}}",
+
+    // Instrutor
+    "{{nomeInstrutor}}",
+    "{{funcaoInstrutor}}",
+    "{{registroInstrutor}}",
+  ];
 
   useEffect(() => {
     console.log(idCertificadoModelo);
@@ -206,16 +221,8 @@ export default function CertificadoEditorPage() {
             Clique para inserir a variável no conteúdo do certificado.
           </p>
 
-          <div className="flex flex-col gap-2 mt-2">
-
-            {[
-              "{{nomeAluno}}",
-              "{{curso}}",
-              "{{dataConclusao}}",
-              "{{cargaHoraria}}",
-              "{{instrutor}}",
-              "{{empresa}}",
-            ].map((varName) => (
+          <div className="grid grid-cols-2 gap-2">
+            {variaveisDisponiveis.map((varName) => (
               <button
                 key={varName}
                 className="text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm font-mono"
@@ -224,9 +231,7 @@ export default function CertificadoEditorPage() {
                 {varName}
               </button>
             ))}
-
           </div>
-
         </div>
 
       </div>
