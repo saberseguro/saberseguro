@@ -3,16 +3,20 @@ import TabelaBase from "../components/Tabelas/TabelaBase";
 import ModalBase from "../components/Modais/ModalBase";
 import FormResponsavelTecnico from "../components/Formularios/FormResponsavelTecnico";
 import FormCategoria from "../components/Formularios/FormCategoria";
-import type { Categoria, ResponsavelTecnico } from "../types/EstruturaCurso";
+import type { Categoria, CertificadoModelo, ResponsavelTecnico } from "../types/EstruturaCurso";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/Tabs/Tabs";
 import { getCategorias, getResponsaveisTecnicos } from "../services/apiCurso";
 import { formatarDocumento, formatarTelefone } from "../auxiliares/formatters";
+import { getCertificadosModelo } from "../services/apiCertificadoModelo";
+import { useNavigate } from "react-router-dom";
 
 export default function ConfigPage() {
+  const navigate = useNavigate();
   const [aba, setAba] = useState("responsavel");
   const [modalOpen, setModalOpen] = useState(false);
   const [responsaveis, setResponsaveis] = useState<ResponsavelTecnico[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [certificados, setCertificados] = useState<CertificadoModelo[]>([]);
 
   const [editando, setEditando] = useState<any>(null);
 
@@ -79,9 +83,20 @@ export default function ConfigPage() {
       },
     ];
 
+  const columnsCertificados: {
+    header: string;
+    accessor: keyof any;
+    sortable?: boolean;
+    render?: (val: any, row: any) => React.ReactNode;
+  }[] = [
+      { header: "ID", accessor: "idCertificadoModelo", sortable: true },
+      { header: "Título", accessor: "titulo", sortable: true },
+    ];
+
   useEffect(() => {
     fetchResponsaveis();
     fetchCategorias();
+    fetchCertificados();
   }, []);
 
   const fetchResponsaveis = async () => {
@@ -93,6 +108,12 @@ export default function ConfigPage() {
     const res = await getCategorias();
     setCategorias(res);
   };
+
+  const fetchCertificados = async () => {
+    const res = await getCertificadosModelo();
+    setCertificados(res);
+  };
+
 
   const handleAdd = () => {
     setEditando(null);
@@ -112,6 +133,7 @@ export default function ConfigPage() {
         <TabsList className="mb-4">
           <TabsTrigger value="responsavel">Responsável Técnico</TabsTrigger>
           <TabsTrigger value="categoria">Categorias</TabsTrigger>
+          <TabsTrigger value="certificados">Certificados</TabsTrigger>
         </TabsList>
 
         {/* === ABA RESPONSÁVEL === */}
@@ -174,6 +196,25 @@ export default function ConfigPage() {
             />
           </ModalBase>
         </TabsContent>
+
+        {/* === ABA CERTIFICADOS === */}
+        <TabsContent value="certificados">
+          <div className="flex justify-end mb-4">
+            <button
+              className="bg-sky-600 text-white px-4 py-2 rounded cursor-pointer text-sm"
+              onClick={() => navigate("/certificados/novo")}
+            >
+              + Novo Modelo
+            </button>
+          </div>
+
+          <TabelaBase<any>
+            columns={columnsCertificados}
+            data={certificados}
+            onEdit={(item) => navigate(`/certificados/${item.idCertificadoModelo}/editar`)}
+          />
+        </TabsContent>
+
       </Tabs>
     </div>
   );

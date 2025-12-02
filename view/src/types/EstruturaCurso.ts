@@ -1,3 +1,5 @@
+import type { PaginaCertificado } from "../pages/Curso/CertificadoEditorPage";
+
 export interface Step {
   idAulaStep: string | number;
   tipo: "video" | "material" | "avaliacao" | "avaliacao_modulo" | "avaliacao_curso";
@@ -21,7 +23,9 @@ export interface Curso {
   editado_em: string;
   fkResponsavelTecnicoId: number;
   fkEmpresaId?: number | null;
+  fkCertificadoModeloId?: number | null;
 
+  certificadomodelo?: CertificadoModelo | null;
   steps?: Step[];
   responsaveltecnico?: ResponsavelTecnico;
   categorias?: CategoriaCurso[];
@@ -254,4 +258,15 @@ export interface CertificadoEmpresa {
   totalGerados: number;
   limiteMensal: number;
   competencia: string;
+}
+
+export interface CertificadoModelo {
+  idCertificadoModelo: number;
+  titulo: string;
+  conteudoHtml: PaginaCertificado[];
+  tipoEscopo: "global" | "empresa";
+  fkEmpresaId?: number;
+  criadoEm: string;
+  editadoEm: string;
+  ativo: number;
 }

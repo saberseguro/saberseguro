@@ -24,3 +24,67 @@
   width: 0;
   height: 0;
 }
+
+/* =========================================
+   CUSTOMIZAÇÃO DO TEMA DO REACT QUILL
+   ========================================= */
+@layer base {
+
+  .ql-container {
+    height: 100% !important;
+    min-height: 100% !important;
+    border-radius: 0 0 8px 8px !important;
+    border: 1px solid #E5E7EB !important;
+    background: white !important;
+  }
+
+  .ql-toolbar {
+    background: rgb(237, 238, 240) !important;
+    border: 1px solid #E5E7EB !important;
+    border-bottom: none !important;
+    border-radius: 8px 8px 0 0 !important;
+    padding: 8px !important;
+  }
+
+  .ql-toolbar button {
+    border-radius: 6px !important;
+    margin: 0 3px !important;
+    transition: 0.2s;
+  }
+
+  .ql-toolbar button:hover {
+    background: #E2E8F0 !important;
+  }
+
+  .ql-toolbar .ql-formats button .ql-stroke {
+    stroke: #475569 !important;
+  }
+
+  .ql-toolbar .ql-formats button .ql-fill {
+    fill: #475569 !important;
+  }
+
+  .ql-toolbar .ql-formats button.ql-active {
+    background: #2563EB !important;
+  }
+
+  .ql-toolbar .ql-formats button.ql-active .ql-stroke,
+  .ql-toolbar .ql-formats button.ql-active .ql-fill {
+    stroke: white !important;
+    fill: white !important;
+  }
+
+  .ql-editor {
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+    padding: 20px !important;
+    color: #1E293B !important;
+    min-height: 100% !important;
+    height: 100% !important;
+  }
+
+  .ql-editor.ql-blank::before {
+    color: #94A3B8 !important;
+    font-style: normal !important;
+  }
+}

@@ -5,6 +5,7 @@ interface TabsProps {
   onValueChange?: (value: string) => void;
   children: ReactNode;
   className?: string;
+  defaultValue?: string;
 }
 
 interface TabsListProps {
@@ -30,8 +31,9 @@ const TabsContext = React.createContext<{
   setActive: (val: string) => void;
 } | null>(null);
 
-export function Tabs({ value, onValueChange, children, className }: TabsProps) {
-  const [internalValue, setInternalValue] = useState(value || "");
+export function Tabs({ value, onValueChange, children, className, defaultValue }: TabsProps) {
+  const [internalValue, setInternalValue] = useState(value ?? defaultValue ?? "");
+
 
   const setActive = (val: string) => {
     setInternalValue(val);

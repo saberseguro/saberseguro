@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authorize } from '../../middlewares/authorize';
-import { buscarCursoAcessosController, buscarCursoController, buscarCursosController, buscarMeusCursosController, criarCursoAcessoController, criarCursoController, desvincularMedidaDoCursoController, editarCursoController, excluirCursoAcessoController, excluirCursoController, finalizarCursoController, listarCertificadosController, listarMedidasDoCursoController, previewCertificadoController, registrarCursoAcessoController, syncCursoController, vincularMedidaAoCursoController } from '../../controllers/curso/cursoController';
+import { buscarCursoAcessosController, buscarCursoController, buscarCursosController, buscarMeusCursosController, criarCursoAcessoController, criarCursoController, desvincularMedidaDoCursoController, editarCursoController, excluirCursoAcessoController, excluirCursoController, finalizarCursoController, listarCertificadosController, listarMedidasDoCursoController, previewCertificadoController, registrarCursoAcessoController, syncCursoController, vincularCertificadoController, vincularMedidaAoCursoController } from '../../controllers/curso/cursoController';
 
 const router = Router();
 
@@ -18,6 +18,7 @@ router.post('/:id/finalizar', authorize(['ver_cursos']), finalizarCursoControlle
 // Certicificado
 router.get("/certificado/listar", authorize(["ver_cursos"]), listarCertificadosController);
 router.get('/certificado/preview/:id', authorize(['ver_cursos']), previewCertificadoController);
+router.put('/:id/vincular-certificado', authorize(['editar_cursos']), vincularCertificadoController);
 
 // Adicionar Medidas
 router.get('/:id/medidas', authorize(['vincular_cursos_medidas']), listarMedidasDoCursoController);
