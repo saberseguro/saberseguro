@@ -246,6 +246,7 @@ model curso {
   fkResponsavelTecnicoId Int
   fkEmpresaId            Int?
   fkCertificadoModeloId  Int?
+  prazo                  Int?
 
   avaliacoes             avaliacao[]
   categorias             categoriacurso[]
@@ -272,8 +273,11 @@ model cursoacesso {
   percentual    Float     @default(0) @db.Float
   concluido     Int       @default(0) @db.TinyInt
   dataInicio    DateTime? @db.DateTime(0)
+  prazoLimite   DateTime? @db.DateTime(0)
+  expirado      Boolean   @default(false)
   dataConclusao DateTime? @db.DateTime(0)
   atualizado_em DateTime  @updatedAt @db.DateTime(0)
+  
   cargo         cargo?    @relation(fields: [fkCargoId], references: [idCargo])
   curso         curso     @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade)
   empresa       empresa?  @relation(fields: [fkEmpresaId], references: [idEmpresa])
