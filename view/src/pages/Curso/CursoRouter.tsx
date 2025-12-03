@@ -22,7 +22,6 @@ export default function CursoRouter() {
     return <CursoFormPage modo="criar" fkEmpresaId={fkEmpresaId ? Number(fkEmpresaId) : null} />;
   }
 
-
   if (modo === "editar") {
     return <CursoFormPage modo="editar" idCurso={Number(id)} />;
   }
