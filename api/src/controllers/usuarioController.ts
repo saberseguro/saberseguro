@@ -34,7 +34,7 @@ export const buscarUsuarioController = async (req: Request, res: Response) => {
 export const criarUsuarioController = async (req: Request, res: Response) => {
   try {
     const idUsuario = (req.user as any)?.idUsuario;
-    const { nome, cpf, telefone, email, senha, ativo, fkEmpresaId, fkCargoId, fkResponsavelTecnicoId, roles, horarios, cursos, medidas } = req.body;
+    const { nome, cpf, telefone, email, senha, ativo, fkEmpresaId, fkCargoId, fkResponsavelTecnicoId, roles, horarios, cursos, medidas, ajustesObrigatorios } = req.body;
 
     if (!nome || !email || !senha || !roles || roles.length === 0) {
       return res.status(400).json({ error: "Nome, email, senha e roles são obrigatórios." });
