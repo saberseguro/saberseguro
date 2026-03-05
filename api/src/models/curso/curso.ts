@@ -418,6 +418,7 @@ export const criarCurso = {
         cargaHoraria: data.cargaHoraria,
         fkEmpresaId: data.fkEmpresaId,
         fkResponsavelTecnicoId: data.fkResponsavelTecnicoId,
+        prazo: Number(data.prazo),
         categorias: {
           createMany: {
             data: categoriasIds.map((id: number) => ({
@@ -490,6 +491,7 @@ export const editarCurso = {
         descricao: data.descricao,
         cargaHoraria: data.cargaHoraria,
         fkResponsavelTecnicoId: data.fkResponsavelTecnicoId,
+        prazo: Number(data.prazo),
         categorias: {
           createMany: {
             data: categoriasValidas.map((cat) => ({
@@ -762,11 +764,31 @@ export const criarCursoAcesso = {
 
     const curso = await prisma.curso.findUnique({
       where: { idCurso: Number(data.fkCursoId) },
+      select: {
+        prazo: true,
+        titulo: true,
+      },
     });
+
     if (!curso) throw new Error("Curso não encontrado");
 
+    // ============================================================
+    // 📌 Calcular o prazoLimite com base no curso
+    // ============================================================
+    let prazoLimite: Date | null = null;
+
+    if (curso.prazo && curso.prazo > 0) {
+      prazoLimite = new Date();
+      prazoLimite.setDate(prazoLimite.getDate() + curso.prazo);
+    }
+
+    // ============================================================
+    // 🔄 Transação
+    // ============================================================
     const acesso = await prisma.$transaction(async (tx) => {
-      // 1. Cria ou atualiza cursoacesso
+      // ============================================================
+      // (1) Criar ou atualizar cursoacesso
+      // ============================================================
       const cursoAcesso = await tx.cursoacesso.upsert({
         where: {
           uniq_cursoacesso_scope: {
@@ -785,17 +807,24 @@ export const criarCursoAcesso = {
           fkSetorId: data.fkSetorId ?? null,
           fkCargoId: data.fkCargoId ?? null,
           fkUsuarioId: data.fkUsuarioId ?? null,
+          dataInicio: new Date(),
+          prazoLimite,
+          expirado: false,
         },
-        update: {},
+        update: {
+          // Se já existia -> NÃO altera dataInicio, mas pode atualizar prazo se quiser
+          // Se quiser evitar atualização do prazo, deixe vazio
+        },
       });
 
-      // 2. Busca os módulos do curso
+      // ============================================================
+      // (2) Criar acessos aos módulos
+      // ============================================================
       const modulos = await tx.modulo.findMany({
         where: { fkCursoId: Number(data.fkCursoId) },
         select: { idModulo: true },
       });
 
-      // 3. Cria moduloacesso para cada módulo, se ainda não existir
       for (const mod of modulos) {
         await tx.moduloacesso.upsert({
           where: {
@@ -814,13 +843,15 @@ export const criarCursoAcesso = {
         });
       }
 
-      // 4. Registra evento
+      // ============================================================
+      // (3) Registrar evento
+      // ============================================================
       await registrarEvento({
         idUsuario: usuario.idUsuario,
         tipo: "criar",
         entidade: "cursoacesso",
         entidadeId: cursoAcesso.idCursoAcesso,
-        descricao: `Vínculo criado (escopo: ${scopeKey}) para curso ${data.fkCursoId}.`,
+        descricao: `Vínculo criado (escopo: ${scopeKey}) para curso "${curso.titulo}" com prazo de ${curso.prazo ?? "0"} dias.`,
         dadosDepois: cursoAcesso,
       });
 
@@ -837,23 +868,60 @@ export const registrarCursoAcesso = {
       throw new Error("Curso e usuário são obrigatórios.");
     }
 
-    // 🔍 Verifica se já existe acesso
+    // ========================================================
+    // 1. Verificar se já existe acesso
+    // ========================================================
     const existente = await prisma.cursoacesso.findFirst({
       where: { fkCursoId: idCurso, fkUsuarioId: idUsuario },
     });
 
     if (existente) return existente;
 
-    // 🆕 Cria o novo acesso
+    // ========================================================
+    // 2. Buscar o curso para pegar o prazo
+    // ========================================================
+    const curso = await prisma.curso.findUnique({
+      where: { idCurso },
+      select: { prazo: true, titulo: true }
+    });
+
+    if (!curso) {
+      throw new Error("Curso não encontrado.");
+    }
+
+    // ========================================================
+    // 3. Calcular prazoLimite automaticamente
+    // ========================================================
+    let prazoLimite: Date | null = null;
+
+    if (curso.prazo && curso.prazo > 0) {
+      prazoLimite = new Date();
+      prazoLimite.setDate(prazoLimite.getDate() + curso.prazo);
+    }
+
+    // ========================================================
+    // 4. Criar novo cursoacesso
+    // ========================================================
     const novo = await prisma.cursoacesso.create({
       data: {
         fkCursoId: idCurso,
         fkUsuarioId: idUsuario,
         dataInicio: new Date(),
+        prazoLimite,
+        expirado: false,
       },
     });
 
-    await registrarEvento({ idUsuario, tipo: "cursoacesso", descricao: "Novo acesso ao curso", entidade: "curso", entidadeId: idCurso });
+    // ========================================================
+    // 5. Registrar evento no log
+    // ========================================================
+    await registrarEvento({
+      idUsuario,
+      tipo: "cursoacesso",
+      descricao: `Acesso criado para o curso "${curso.titulo}" (prazo: ${curso.prazo ?? "sem prazo"} dias)`,
+      entidade: "curso",
+      entidadeId: idCurso
+    });
 
     return novo;
   },

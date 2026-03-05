@@ -35,6 +35,7 @@ export default function CursoFormPage({ idCurso, modo, fkEmpresaId }: Props) {
         editado_em: new Date().toISOString(),
         fkResponsavelTecnicoId: 0,
         fkEmpresaId: fkEmpresaId ?? null,
+        prazo: 0,
         modulos: [],
         avaliacoes: [],
       });

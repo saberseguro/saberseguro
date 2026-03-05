@@ -142,19 +142,31 @@ export default function FormCurso({ curso, setCurso }: FormCursoProps) {
         />
       </div>
 
-      <div className="md:col-span-3">
-        <SelectMultiInput<number>
-          label="Categorias"
-          name="categorias"
-          value={categoriasSelecionadas}
-          onChange={handleCategoriasChange}
-          options={categoriasOpts.map((c) => ({
-            value: (c as any).idCategoria,
-            label: c.nome,
-          }))}
-          placeholder="Selecione as categorias"
-          required
-        />
+      <div className="md:col-span-3 flex items-center gap-4">
+        <div>
+          <Input
+            label="Prazo (dias)"
+            name="prazo"
+            type='number'
+            value={curso.prazo || ''}
+            onChange={handleChange}
+            required={false}
+          />
+        </div>
+        <div className='flex-1'>
+          <SelectMultiInput<number>
+            label="Categorias"
+            name="categorias"
+            value={categoriasSelecionadas}
+            onChange={handleCategoriasChange}
+            options={categoriasOpts.map((c) => ({
+              value: (c as any).idCategoria,
+              label: c.nome,
+            }))}
+            placeholder="Selecione as categorias"
+            required
+          />
+        </div>
       </div>
 
       <TextArea

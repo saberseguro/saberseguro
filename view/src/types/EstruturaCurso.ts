@@ -24,6 +24,7 @@ export interface Curso {
   fkResponsavelTecnicoId: number;
   fkEmpresaId?: number | null;
   fkCertificadoModeloId?: number | null;
+  prazo?: number;
 
   certificadomodelo?: CertificadoModelo | null;
   steps?: Step[];

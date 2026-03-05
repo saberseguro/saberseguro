@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, Clock, User, Plus, LinkIcon, Pencil } from "lucide-react";
+import { ArrowLeft, Edit, Clock, User, Plus, LinkIcon, Pencil, CalendarClock } from "lucide-react";
 import { getCursoPorId } from "../../services/apiCurso";
 import toast from "react-hot-toast";
 import type { CertificadoModelo, Curso, Modulo } from "../../types/EstruturaCurso";
@@ -103,7 +103,7 @@ export default function CursoViewPage({ idCurso }: { idCurso: number }) {
                 <p className="text-gray-500 text-sm">{curso.descricao || "Sem descrição"}</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="flex items-center gap-2 bg-gray-50 rounded-md p-3">
                   <Clock className="text-blue-500 w-5 h-5" />
                   <div>
@@ -119,6 +119,15 @@ export default function CursoViewPage({ idCurso }: { idCurso: number }) {
                     <p className="text-xs text-gray-500">Responsável</p>
                     <p className="text-sm font-medium text-gray-700">
                       {curso.responsaveltecnico?.nome || "—"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-gray-50 rounded-md p-3">
+                  <CalendarClock className="text-green-500 w-5 h-5" />
+                  <div>
+                    <p className="text-xs text-gray-500">Prazo (dias)</p>
+                    <p className="text-sm font-medium text-gray-700">
+                      {curso.prazo || "-"}
                     </p>
                   </div>
                 </div>
