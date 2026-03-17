@@ -40,7 +40,7 @@ export default function RelatoriosPage() {
   const [empresaSelecionada, setEmpresaSelecionada] = useState<Empresa | null>(null);
   const [buscaEmpresa, setBuscaEmpresa] = useState("");
 
-  const [empresa, setEmpresa] = useState<Empresa | null>(null);
+  const [_empresa, setEmpresa] = useState<Empresa | null>(null);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [setores, setSetores] = useState<Setor[]>([]);
   const [cargos, setCargos] = useState<Cargo[]>([]);
