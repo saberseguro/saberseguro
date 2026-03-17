@@ -4,6 +4,7 @@ import { auth } from "../services/firebase";
 import { apiFetch } from "../services/apiFetch";
 import type { Usuario, HorarioAcesso } from "../types/Usuario";
 import toast from "react-hot-toast";
+import { clearSelectedCompany, setSelectedCompany } from "../auxiliares/saberStorage";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -79,6 +80,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!res.ok) {
         throw new Error(data.message || data.error || "Erro ao validar no backend.");
+      }
+
+      if (data.usuario.fkEmpresaId) {
+        setSelectedCompany({
+          idEmpresa: data.usuario.fkEmpresaId,
+          razaoSocial: data.usuario.empresa?.razaoSocial || "",
+          nomeFantasia: data.usuario.empresa?.nomeFantasia || "",
+          cnpj: data.usuario.empresa?.cnpj || "",
+        });
+      } else {
+        clearSelectedCompany();
       }
 
       localStorage.setItem("token", data.token);

@@ -1,3 +1,10 @@
+export interface EmpresaResumo {
+  idEmpresa: number;
+  razaoSocial: string;
+  nomeFantasia?: string | null;
+  cnpj?: string | null;
+}
+
 export interface Usuario {
   idUsuario: number;
   email: string;
@@ -11,6 +18,7 @@ export interface Usuario {
   fkEmpresaId?: number;
   fkResponsavelTecnicoId?: number;
   fkCargoId?: number;
+  empresa?: EmpresaResumo;
 }
 
 export interface DiaHorarioAcesso {

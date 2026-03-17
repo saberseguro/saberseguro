@@ -356,6 +356,7 @@ interface FooterProps {
   stepAtual: Step | null;
   registrarStepBackend: (step: Step) => Promise<void>;
   loadingStep: boolean;
+  handleGerarCertificado: () => Promise<void>;
 }
 
 function FooterNavegacao({
@@ -368,26 +369,30 @@ function FooterNavegacao({
   setLiberadoProximo,
   loadingStep,
   stepsConcluidos,
+  handleGerarCertificado,
 }: FooterProps) {
+  const isUltimoStep = stepAtualIndex === steps.length - 1;
 
   const handleProximo = async () => {
     if (!stepAtual) return;
 
-    if (stepsConcluidos.includes(stepAtual.idAulaStep)) {
-      setStepAtualIndex((i) => i + 1);
-      setLiberadoProximo(false);
+    const jaConcluido = stepsConcluidos.includes(stepAtual.idAulaStep);
+
+    if (!jaConcluido) {
+      await registrarStepBackend(stepAtual);
+    }
+
+    if (isUltimoStep) {
+      await handleGerarCertificado();
       return;
     }
 
-    await registrarStepBackend(stepAtual);
     setStepAtualIndex((i) => i + 1);
     setLiberadoProximo(false);
   };
 
-
   return (
     <div className="flex items-center gap-6">
-      {/* Botão Anterior */}
       <button
         disabled={stepAtualIndex === 0}
         onClick={() => setStepAtualIndex((i) => i - 1)}
@@ -399,17 +404,20 @@ function FooterNavegacao({
         <span className="mr-1">‹</span> Anterior
       </button>
 
-      {/* Botão Próximo */}
       <button
-        disabled={!liberadoProximo || stepAtualIndex === steps.length - 1 || loadingStep}
+        disabled={!liberadoProximo || loadingStep}
         onClick={handleProximo}
         className={`flex items-center text-sm font-medium transition 
-    ${liberadoProximo && !loadingStep
+          ${liberadoProximo && !loadingStep
             ? "text-blue-600 hover:text-blue-800 cursor-pointer"
             : "text-gray-300 cursor-not-allowed"}`}
       >
         {loadingStep ? (
           <span className="animate-spin inline-block w-4 h-4 border-2 border-t-transparent border-blue-500 rounded-full" />
+        ) : isUltimoStep ? (
+          <>
+            Finalizar curso <span className="ml-1">✓</span>
+          </>
         ) : (
           <>
             Próximo <span className="ml-1">›</span>
@@ -435,6 +443,7 @@ export default function PlayCursoPage() {
   const [liberadoProximo, setLiberadoProximo] = useState(false);
   const [cursoConcluido, setCursoConcluido] = useState(false);
   const [loadingStep, setLoadingStep] = useState(false);
+  const [loadingCertificado, setLoadingCertificado] = useState(false);
 
   const navigate = useNavigate();
 
@@ -510,6 +519,7 @@ export default function PlayCursoPage() {
   const handleGerarCertificado = async () => {
     if (!idCurso) return;
 
+    setLoadingCertificado(true);
     try {
       const res = await finalizarCurso(Number(idCurso));
       if (res?.sucesso) {
@@ -520,6 +530,8 @@ export default function PlayCursoPage() {
     } catch (err) {
       console.error("Erro ao finalizar curso:", err);
       toast.error("Erro ao finalizar o curso. Tente novamente.");
+    } finally {
+      setLoadingCertificado(false);
     }
   };
 
@@ -628,9 +640,10 @@ export default function PlayCursoPage() {
           </div>
           <button
             onClick={handleGerarCertificado}
+            disabled={loadingCertificado}
             className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition disabled:opacity-70 cursor-pointer"
           >
-            Gerar Certificado
+            {loadingCertificado ? "Gerando..." : "Gerar Certificado"}
           </button>
         </div>
       )}
@@ -668,6 +681,7 @@ export default function PlayCursoPage() {
                 registrarStepBackend={registrarStepBackend}
                 loadingStep={loadingStep}
                 stepsConcluidos={stepsConcluidos}
+                handleGerarCertificado={handleGerarCertificado}
               />
             </div>
 

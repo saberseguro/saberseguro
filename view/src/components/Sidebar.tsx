@@ -11,12 +11,16 @@ import {
   ChevronDown,
   ChevronUp,
   ShieldCheck,
+  FileBarChart,
+  Import,
 } from "lucide-react";
 import ToolTip from "./Auxiliares/ToolTip";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import CertificadosResumoGrafico from "./Auxiliares/CertificadosResumoGrafico";
 import logo from "../assets/media/logotipos/logo_h_azul_preto.png";
+import { useCompany } from "../contexts/CompanyContext";
+import ModalSelecionarEmpresa from "./Modais/ModalSelecionarEmpresa";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -38,6 +42,10 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const navigate = useNavigate();
 
   const { user, logout } = useAuth();
+  const { selectedCompany, leaveCompany } = useCompany();
+  const [openCompanyModal, setOpenCompanyModal] = useState(false);
+
+  const isAdminGlobal = !!user && !user.fkEmpresaId;
 
   const isAdmin = user?.role?.includes("admin");
   const isGestor = user?.role?.includes("gestor");
@@ -58,6 +66,15 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
       ],
     },
     { label: "Medidas", icon: <HardHat />, path: "/medida", permissoes: ['criar_medidas'] },
+    {
+      label: "Gestão",
+      icon: <BookOpenText />,
+      permissoes: ['ver_cursos'],
+      children: [
+        { label: "Relatórios", icon: <FileBarChart />, path: "/gestao/relatorios", permissoes: ['editar_empresas'] },
+        { label: "Importar Dados", icon: <Import />, path: "/gestao/importar", permissoes: ['editar_empresas'] },
+      ],
+    },
   ];
 
   let menuItems = [] as any[];
@@ -126,6 +143,64 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
 
         {isGestor && <CertificadosResumoGrafico isOpen={isOpen} />}
 
+        {isAdminGlobal && (
+          isOpen ? (
+            <div className="mb-2 flex items-stretch gap-2 px-3 max-w-full">
+              <button
+                onClick={() => setOpenCompanyModal(true)}
+                className="flex-1 min-w-0 rounded-md border border-gray-200 bg-white px-3 py-2 text-left hover:bg-gray-50 transition cursor-pointer"
+              >
+                <p className="text-[11px] uppercase tracking-wide text-gray-400">
+                  Empresa selecionada
+                </p>
+
+                <div className="flex items-center gap-2 mt-1 min-w-0">
+                  <Building className="text-sky-700 shrink-0" size={15} />
+
+                  <p className="text-xs font-medium text-sky-700 truncate max-w-[150px]">
+                    {selectedCompany?.nomeFantasia ||
+                      selectedCompany?.razaoSocial ||
+                      "Nenhuma empresa selecionada"}
+                  </p>
+                </div>
+              </button>
+
+              {selectedCompany && (
+                <ToolTip text="Sair da empresa" position="right">
+                  <button
+                    onClick={() => {
+                      leaveCompany();
+                      setOpenCompanyModal(true);
+                      navigate("/");
+                    }}
+                    className="shrink-0 rounded-full border border-red-100 bg-red-50 px-2 py-2 text-red-500 hover:bg-red-100 hover:text-red-600 transition shadow-sm flex items-center justify-center cursor-pointer"
+                  >
+                    <LogOut size={16} />
+                  </button>
+                </ToolTip>
+              )}
+            </div>
+          ) : (
+            <div className="mb-2 flex justify-center px-2">
+              <ToolTip
+                text={
+                  selectedCompany?.nomeFantasia ||
+                  selectedCompany?.razaoSocial ||
+                  "Selecionar empresa"
+                }
+                position="right"
+              >
+                <button
+                  onClick={() => setOpenCompanyModal(true)}
+                  className="flex h-10 w-10 items-center justify-center rounded-md border border-gray-200 bg-white text-sky-700 hover:bg-gray-50 transition cursor-pointer shadow-sm"
+                >
+                  <Building size={18} />
+                </button>
+              </ToolTip>
+            </div>
+          )
+        )}
+
         <div className="border-t border-gray-300 p-3">
           <div className={`flex ${isOpen ? "items-center gap-3" : "flex-col items-center"}`}>
             {isOpen ? (
@@ -138,7 +213,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                   {isAdmin && (
                     <>
                       <ToolTip text="Configurações" position="top">
-                        <button onClick={() => {navigate("/configuracoes");}}
+                        <button onClick={() => { navigate("/configuracoes"); }}
                           className="cursor-pointer"
                         >
                           <Settings className="text-gray-400 hover:text-gray-700" size={16} />
@@ -165,6 +240,13 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
           <p className="text-xs text-gray-400 text-center mt-2">v 1.0.0</p>
         </div>
       </nav>
+
+      {isAdminGlobal && (
+        <ModalSelecionarEmpresa
+          open={openCompanyModal}
+          onClose={() => setOpenCompanyModal(false)}
+        />
+      )}
     </aside>
   );
 }

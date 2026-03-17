@@ -322,81 +322,14 @@ export const previewCertificado = {
   async execute(idCertificado: number, usuario: any) {
     const certificado = await prisma.certificado.findUnique({
       where: { idCertificado },
-      include: {
-        curso: {
-          include: {
-            certificadomodelo: true,
-            empresa: true,
-            responsaveltecnico: true,
-            categorias: { include: { categoria: true } },
-            modulos: {
-              orderBy: { ordem: "asc" },
-              include: {
-                aulas: {
-                  orderBy: { ordem: "asc" },
-                  include: {
-                    steps: {
-                      include: {
-                        avaliacao: {
-                          include: {
-                            perguntas: { include: { alternativas: true } },
-                            avaliacoesUsuarios: {
-                              where: { fkUsuarioId: usuario.idUsuario },
-                            },
-                          },
-                        },
-                      },
-                    },
-                    materiais: true,
-                    videos: true,
-                    aulausuarios: {
-                      where: { fkUsuarioId: usuario.idUsuario },
-                    },
-                  },
-                },
-                avaliacoes: {
-                  include: {
-                    perguntas: { include: { alternativas: true } },
-                    avaliacoesUsuarios: {
-                      where: { fkUsuarioId: usuario.idUsuario },
-                    },
-                  },
-                },
-              },
-            },
-            avaliacoes: {
-              include: {
-                perguntas: { include: { alternativas: true } },
-                avaliacoesUsuarios: {
-                  where: { fkUsuarioId: usuario.idUsuario },
-                },
-              },
-            },
-          },
-        },
-        usuario: {
-          select: {
-            idUsuario: true,
-            nome: true,
-            cpf: true,
-            assinatura: true,
-            empresa: { select: { nomeFantasia: true } },
-          },
-        },
+      select: {
+        idCertificado: true,
+        fkCursoId: true,
+        fkUsuarioId: true,
       },
     });
 
     if (!certificado) throw new Error("Certificado não encontrado.");
-
-    const acessos = await prisma.cursoacesso.findMany({
-      where: {
-        fkCursoId: certificado.fkCursoId,
-        fkUsuarioId: certificado.fkUsuarioId,
-      },
-      select: { concluido: true, dataConclusao: true },
-    });
-
-    (certificado as any).curso.acessos = acessos;
 
     const isDono = certificado.fkUsuarioId === usuario.idUsuario;
     const roles: string[] = usuario.roles || [];
@@ -406,63 +339,13 @@ export const previewCertificado = {
       throw new Error("Sem permissão para visualizar este certificado.");
     }
 
-    const curso = certificado.curso;
-    const acesso = acessos?.[0];
+    const dados = await montarDadosCertificado(
+      certificado.fkCursoId,
+      certificado.fkUsuarioId,
+      idCertificado
+    );
 
-    if (!curso || !acesso || acesso.concluido !== 1)
-      throw new Error("Curso não concluído.");
-
-    // ==== DADOS ORGANIZADOS ====
-    const dados = {
-      curso: {
-        idCurso: curso.idCurso,
-        titulo: curso.titulo,
-        cargaHoraria: curso.cargaHoraria,
-        avaliacoes: !!curso.avaliacoes?.length,
-        grade: curso.modulos.map((m) => ({
-          idModulo: m.idModulo,
-          titulo: m.titulo,
-          avaliacao: !!m.avaliacoes?.length,
-          aulas: m.aulas.map((a) => ({
-            idAula: a.idAula,
-            titulo: a.titulo,
-            descricao: a.descricao,
-            ordem: a.ordem,
-            avaliacao: !!a.steps?.some((s) => s.avaliacao),
-          })),
-        })),
-      },
-      usuario: {
-        nome: certificado.usuario.nome,
-        cpf: certificado.usuario.cpf,
-        empresa: certificado.usuario.empresa?.nomeFantasia,
-        assinatura: certificado.usuario.assinatura,
-      },
-      instrutor: {
-        nome: curso.responsaveltecnico?.nome,
-        funcao: curso.responsaveltecnico?.funcao,
-        registro: curso.responsaveltecnico?.registro,
-        assinatura: curso.responsaveltecnico?.assinatura,
-      },
-      certificado: {
-        codigo: certificado.codigo,
-        dataGeracao: new Date(certificado.dataGeracao).toLocaleDateString("pt-BR"),
-      },
-      modelo: curso.certificadomodelo,
-    };
-
-
-    let pdfBuffer: Buffer;
-
-    if (
-      dados.modelo &&
-      Array.isArray(dados.modelo.conteudoHtml) &&
-      dados.modelo.conteudoHtml.length > 0
-    ) {
-      pdfBuffer = await gerarCertificadoPdf(dados);
-    } else {
-      pdfBuffer = await gerarCertificadoPdf(dados);
-    }
+    const pdfBuffer = await gerarCertificadoPdf(dados);
 
     return { pdfBase64: pdfBuffer.toString("base64") };
   },
@@ -522,6 +405,145 @@ export const gerarCertificado = {
     return certificado;
   },
 };
+
+export async function montarDadosCertificado(
+  idCurso: number,
+  idUsuario: number,
+  idCertificado: number
+) {
+  const certificado = await prisma.certificado.findUnique({
+    where: { idCertificado },
+    include: {
+      curso: {
+        include: {
+          certificadomodelo: true,
+          empresa: true,
+          responsaveltecnico: true,
+          categorias: { include: { categoria: true } },
+          modulos: {
+            orderBy: { ordem: "asc" },
+            include: {
+              aulas: {
+                orderBy: { ordem: "asc" },
+                include: {
+                  steps: {
+                    include: {
+                      avaliacao: {
+                        include: {
+                          perguntas: { include: { alternativas: true } },
+                          avaliacoesUsuarios: {
+                            where: { fkUsuarioId: idUsuario },
+                          },
+                        },
+                      },
+                    },
+                  },
+                  materiais: true,
+                  videos: true,
+                  aulausuarios: {
+                    where: { fkUsuarioId: idUsuario },
+                  },
+                },
+              },
+              avaliacoes: {
+                include: {
+                  perguntas: { include: { alternativas: true } },
+                  avaliacoesUsuarios: {
+                    where: { fkUsuarioId: idUsuario },
+                  },
+                },
+              },
+            },
+          },
+          avaliacoes: {
+            include: {
+              perguntas: { include: { alternativas: true } },
+              avaliacoesUsuarios: {
+                where: { fkUsuarioId: idUsuario },
+              },
+            },
+          },
+        },
+      },
+      usuario: {
+        select: {
+          idUsuario: true,
+          nome: true,
+          email: true,
+          cpf: true,
+          assinatura: true,
+          empresa: { select: { nomeFantasia: true } },
+        },
+      },
+      empresa: {
+        select: {
+          idEmpresa: true,
+          nomeFantasia: true,
+        },
+      },
+    },
+  });
+
+  if (!certificado) {
+    throw new Error("Certificado não encontrado.");
+  }
+
+  const acessos = await prisma.cursoacesso.findMany({
+    where: {
+      fkCursoId: idCurso,
+      fkUsuarioId: idUsuario,
+    },
+    select: { concluido: true, dataConclusao: true },
+  });
+
+  const curso = certificado.curso;
+  const acesso = acessos?.[0];
+
+  if (!curso || !acesso || acesso.concluido !== 1) {
+    throw new Error("Curso não concluído.");
+  }
+
+  return {
+    curso: {
+      idCurso: curso.idCurso,
+      titulo: curso.titulo,
+      cargaHoraria: curso.cargaHoraria,
+      avaliacoes: !!curso.avaliacoes?.length,
+      grade: curso.modulos.map((m) => ({
+        idModulo: m.idModulo,
+        titulo: m.titulo,
+        avaliacao: !!m.avaliacoes?.length,
+        aulas: m.aulas.map((a) => ({
+          idAula: a.idAula,
+          titulo: a.titulo,
+          descricao: a.descricao,
+          ordem: a.ordem,
+          avaliacao: !!a.steps?.some((s) => s.avaliacao),
+        })),
+      })),
+    },
+    usuario: {
+      nome: certificado.usuario.nome,
+      email: certificado.usuario.email,
+      cpf: certificado.usuario.cpf,
+      empresa: certificado.usuario.empresa?.nomeFantasia,
+      assinatura: certificado.usuario.assinatura,
+    },
+    instrutor: {
+      nome: curso.responsaveltecnico?.nome,
+      funcao: curso.responsaveltecnico?.funcao,
+      registro: curso.responsaveltecnico?.registro,
+      assinatura: curso.responsaveltecnico?.assinatura,
+    },
+    empresa: certificado.empresa,
+    certificado: {
+      idCertificado: certificado.idCertificado,
+      codigo: certificado.codigo,
+      dataGeracao: new Date(certificado.dataGeracao).toLocaleDateString("pt-BR"),
+    },
+    modelo: curso.certificadomodelo,
+  };
+}
 
 async function toBase64FromUrl(url: string): Promise<string> {
   return new Promise((resolve) => {

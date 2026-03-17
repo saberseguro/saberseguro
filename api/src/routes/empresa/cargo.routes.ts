@@ -4,12 +4,18 @@ import {
   buscarCargoController,
   buscarCargosSetorController,
   buscarFuncionariosDoCargoController,
+  buscarFuncionariosRelatorioController,
   criarCargoController,
   editarCargoController
 } from '../../controllers/empresa/cargoController';
 
 const router = Router();
 
+router.get(
+  "/funcionarios-relatorio",
+  authorize(["ver_usuarios"]),
+  buscarFuncionariosRelatorioController
+);
 router.get('/:id', authorize(['ver_empresas']), buscarCargoController);
 router.get('/cargosSetor/:id', authorize(['ver_empresas']), buscarCargosSetorController);
 router.post('/', authorize(['criar_empresas']), criarCargoController);

@@ -5,9 +5,9 @@ import ToolTip from "../../components/Auxiliares/ToolTip";
 import { getMeusCursos } from "../../services/apiCurso";
 import CursoSidePanel from "./CursoSidePanel";
 import { useSearchParams } from "react-router-dom";
-import { useAuth } from "../../contexts/AuthContext";
 import { formatarMinutosEmHoras } from "../../auxiliares/formatters";
 import FiltrosCursos from "../../components/Filtros/FiltrosCursos";
+import { useCompany } from "../../contexts/CompanyContext";
 
 type CursoListItem = Pick<Curso, "idCurso" | "titulo" | "descricao" | "cargaHoraria" | "ativo"> & {
   thumbUrl?: string | null;
@@ -135,7 +135,7 @@ function CursoCard({ curso, onOpen }: { curso: CursoListItem; onOpen: (id: numbe
 }
 
 export default function MeusCursos() {
-  const { user } = useAuth();
+  const { companyId } = useCompany();
   const [cursos, setCursos] = useState<CursoListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -164,7 +164,7 @@ export default function MeusCursos() {
   };
 
   useEffect(() => {
-    if (!user?.fkEmpresaId) return;
+    if (!companyId) return;
     const load = async () => {
       try {
         setLoading(true);

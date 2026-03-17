@@ -69,8 +69,6 @@ export default function HomePage() {
 
   const kpis = dados?.kpis;
 
-  console.log(dados);
-
   const statusChartData =
     dados?.statusCursos.map((s) => ({
       status:

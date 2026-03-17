@@ -19,10 +19,12 @@ import ToolTip from "../../components/Auxiliares/ToolTip";
 import { SearchDropdown } from "../../components/SearchDropDown";
 import { getCursos } from "../../services/apiCurso";
 import { getMedidas } from "../../services/apiMedida";
+import { useCompany } from "../../contexts/CompanyContext";
 
 export default function GerenciaEmpresa() {
 
   const { user } = useAuth();
+  const { companyId } = useCompany();
 
   const isAdmin = Array.isArray(user?.role) && user.role.includes("admin");
 
@@ -61,10 +63,20 @@ export default function GerenciaEmpresa() {
   const [medidasOptions, setMedidasOptions] = useState<{ label: string; value: number }[]>([]);
 
   useEffect(() => {
-    if (!isAdmin && user?.fkEmpresaId) {
-      setIdEmpresaSelecionada(user.fkEmpresaId);
+    if (companyId) {
+      setIdEmpresaSelecionada(companyId);
+    } else {
+      setIdEmpresaSelecionada(null);
+      setEmpresa(null);
+      setUnidades([]);
+      setUnidadeSelecionada(null);
+      setSetores([]);
+      setSetorSelecionado(null);
+      setCargos([]);
+      setCargoSelecionado(null);
+      setFuncionarios([]);
     }
-  }, [user, isAdmin]);
+  }, [companyId]);
 
   const fetchEmpresa = async () => {
     if (!idEmpresaSelecionada) return;
@@ -255,7 +267,7 @@ export default function GerenciaEmpresa() {
   return (
     <>
       <div className="flex flex-col h-full shadow-md rounded-md bg-white">
-        {isAdmin && (
+        {isAdmin && !companyId ? (
           <div className="p-4 border-b border-gray-300">
             <SearchDropdown<Empresa>
               placeholder="Buscar empresa..."
@@ -274,6 +286,10 @@ export default function GerenciaEmpresa() {
               chaveUnica={(e) => e.idEmpresa}
             />
           </div>
+        ) : (
+          <>
+          
+          </>
         )}
 
         {/* Card Empresa */}
@@ -693,7 +709,7 @@ export default function GerenciaEmpresa() {
         largura="max-w-8/12"
       >
         <FormCadastroUnidade
-          fkEmpresaId={idEmpresaSelecionada ?? user?.fkEmpresaId ?? undefined}
+          fkEmpresaId={idEmpresaSelecionada ?? companyId ?? undefined}
           fetchUnidades={fetchUnidades}
           onEdit={unidadeSelecionada ?? undefined}
           setIsOpenUnidade={setIsOpenUnidade}
@@ -741,7 +757,7 @@ export default function GerenciaEmpresa() {
         largura="max-w-8/12"
       >
         <FormFuncionario
-          fkEmpresaId={idEmpresaSelecionada ?? user?.fkEmpresaId ?? undefined}
+          fkEmpresaId={idEmpresaSelecionada ?? companyId ?? undefined}
           fkCargoId={cargoSelecionado?.idCargo}
           onEdit={funcionarioSelecionado ?? undefined}
           setIsOpenFuncionario={setIsOpenFuncionario}
