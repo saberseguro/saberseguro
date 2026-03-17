@@ -5,6 +5,7 @@ import {
   criarCargo,
   editarCargo,
   buscarFuncionariosDoCargo,
+  buscarFuncionariosRelatorio,
 } from '../../models/empresa/cargo';
 import { BuscarOpts } from '../../types/BuscarOpts';
 
@@ -76,6 +77,35 @@ export const buscarFuncionariosDoCargoController = async (req: Request, res: Res
     const { id } = req.params;
     const funcionarios = await buscarFuncionariosDoCargo.execute(Number(id));
     if (!funcionarios.length) return res.status(404).json({ error: 'Nenhum funcionário encontrado' });
+    return res.json(funcionarios);
+  } catch (err: any) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+export const buscarFuncionariosRelatorioController = async (req: Request, res: Response) => {
+  try {
+    const fkEmpresaId = Number(req.query.fkEmpresaId);
+    const fkUnidadeId = req.query.fkUnidadeId ? Number(req.query.fkUnidadeId) : undefined;
+    const fkSetorId = req.query.fkSetorId ? Number(req.query.fkSetorId) : undefined;
+    const fkCargoId = req.query.fkCargoId ? Number(req.query.fkCargoId) : undefined;
+    const fkFuncionarioId = req.query.fkFuncionarioId ? Number(req.query.fkFuncionarioId) : undefined;
+    const ativo = req.query.ativo !== undefined ? Number(req.query.ativo) : undefined;
+
+    if (!fkEmpresaId || Number.isNaN(fkEmpresaId)) {
+      return res.status(400).json({ error: "fkEmpresaId é obrigatório." });
+    }
+
+    const funcionarios = await buscarFuncionariosRelatorio.execute({
+      fkEmpresaId,
+      fkUnidadeId,
+      fkSetorId,
+      fkCargoId,
+      fkFuncionarioId,
+      ativo,
+    });
+
     return res.json(funcionarios);
   } catch (err: any) {
     console.error(err);

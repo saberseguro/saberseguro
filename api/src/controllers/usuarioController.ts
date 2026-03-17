@@ -54,7 +54,8 @@ export const criarUsuarioController = async (req: Request, res: Response) => {
       idUsuario,
       horarios,
       cursos,
-      medidas
+      medidas,
+      ajustesObrigatorios,
     });
 
     res.status(201).json(usuario);

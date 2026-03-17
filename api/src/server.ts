@@ -40,6 +40,9 @@ import medidaRoutes from './routes/medida.routes';
 // Dashboard
 import dashboardRoutes from './routes/dashboard.routes';
 
+// Relatorios
+import relatorioRoutes from './routes/relatorio.routes';
+
 const app = express();
 
 app.use(cors({
@@ -87,6 +90,9 @@ app.use("/api/medida", medidaRoutes);
 
 // Dashboard
 app.use("/api/dashboard", dashboardRoutes);
+
+// Relatorios
+app.use("/api/relatorios", relatorioRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Servidor rodando na porta ${env.PORT}`);

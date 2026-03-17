@@ -633,3 +633,91 @@ export const buscarFuncionariosDoCargo = {
     });
   },
 };
+
+interface BuscarFuncionariosRelatorioParams {
+  fkEmpresaId: number;
+  fkUnidadeId?: number;
+  fkSetorId?: number;
+  fkCargoId?: number;
+  fkFuncionarioId?: number;
+  ativo?: number;
+}
+
+export const buscarFuncionariosRelatorio = {
+  async execute(params: BuscarFuncionariosRelatorioParams) {
+    const {
+      fkEmpresaId,
+      fkUnidadeId,
+      fkSetorId,
+      fkCargoId,
+      fkFuncionarioId,
+      ativo,
+    } = params;
+
+    const funcionarios = await prisma.usuario.findMany({
+      where: {
+        fkEmpresaId,
+        ...(fkFuncionarioId ? { idUsuario: fkFuncionarioId } : {}),
+        ...(fkCargoId ? { fkCargoId } : {}),
+        ...(ativo !== undefined ? { ativo } : {}),
+        ...(fkSetorId || fkUnidadeId
+          ? {
+            cargo: {
+              ...(fkSetorId ? { fkSetorId } : {}),
+              ...(fkUnidadeId
+                ? {
+                  setor: {
+                    fkUnidadeId,
+                  },
+                }
+                : {}),
+            },
+          }
+          : {}),
+      },
+      include: {
+        cargo: {
+          include: {
+            setor: {
+              include: {
+                unidade: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: [{ nome: "asc" }],
+    });
+
+    return funcionarios.map((f) => ({
+      idUsuario: f.idUsuario,
+      nome: f.nome,
+      cpf: f.cpf,
+      telefone: f.telefone,
+      email: f.email,
+      ativo: f.ativo,
+      fkEmpresaId: f.fkEmpresaId,
+      fkCargoId: f.fkCargoId,
+      criado_em: f.criado_em,
+      editado_em: f.editado_em,
+      cargo: f.cargo
+        ? {
+          idCargo: f.cargo.idCargo,
+          nome: f.cargo.nome,
+        }
+        : null,
+      setor: f.cargo?.setor
+        ? {
+          idSetor: f.cargo.setor.idSetor,
+          nome: f.cargo.setor.nome,
+        }
+        : null,
+      unidade: f.cargo?.setor?.unidade
+        ? {
+          idUnidade: f.cargo.setor.unidade.idUnidade,
+          nomeFantasia: f.cargo.setor.unidade.nomeFantasia,
+        }
+        : null,
+    }));
+  },
+};

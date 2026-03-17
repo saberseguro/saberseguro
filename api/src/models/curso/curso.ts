@@ -1,7 +1,8 @@
 import { Prisma, aulastep_tipo } from '@prisma/client';
 import { prisma } from '../../config/prisma-client';
 import { registrarEvento } from '../../shared/utils/registrarEvento';
-import { gerarCertificado } from './certificado';
+import { gerarCertificado, gerarCertificadoPdf, montarDadosCertificado } from './certificado';
+import { enviarCertificadoPorEmail } from '../../services/email/enviarCertificadoPorEmail';
 
 // helper: normalização segura de arrays
 const arr = <T = unknown>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
@@ -575,18 +576,21 @@ export const finalizarCurso = {
       },
     });
 
-    // 2️⃣ Busca o curso para pegar dados do certificado
+    // 2️⃣ Busca o curso
     const curso = await prisma.curso.findUnique({
       where: { idCurso },
       select: {
+        idCurso: true,
         titulo: true,
         fkEmpresaId: true,
       },
     });
 
-    if (!curso) throw new Error("Curso não encontrado para gerar certificado.");
+    if (!curso) {
+      throw new Error("Curso não encontrado para gerar certificado.");
+    }
 
-    // 3️⃣ Gera (ou reaproveita) o certificado
+    // 3️⃣ Gera ou reaproveita o certificado
     const certificado = await gerarCertificado.execute(
       {
         idCurso,
@@ -597,7 +601,57 @@ export const finalizarCurso = {
       user
     );
 
-    // 4️⃣ Loga evento
+    // 4️⃣ Monta os dados completos do certificado
+    const dadosCertificado = await montarDadosCertificado(
+      idCurso,
+      idUsuario,
+      certificado.idCertificado
+    );
+
+    // 5️⃣ Gera o PDF
+    const pdfBuffer = await gerarCertificadoPdf(dadosCertificado);
+
+    // 6️⃣ Envia por e-mail
+    try {
+      await enviarCertificadoPorEmail.execute({
+        para: "adm@sabersegurotreinamentos.com",
+        assunto: `Certificado gerado - ${dadosCertificado.curso.titulo}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+            <h2>Certificado gerado automaticamente</h2>
+            <p>Um curso foi finalizado e o certificado foi emitido.</p>
+            <p><strong>Aluno:</strong> ${dadosCertificado.usuario.nome}</p>
+            <p><strong>Curso:</strong> ${dadosCertificado.curso.titulo}</p>
+            <p><strong>Código:</strong> ${dadosCertificado.certificado.codigo}</p>
+            <p><strong>Data:</strong> ${dadosCertificado.certificado.dataGeracao}</p>
+          </div>
+        `,
+        pdfBuffer,
+        nomeArquivo: `certificado-${certificado.codigo}.pdf`,
+      });
+
+      await registrarEvento({
+        idUsuario,
+        tipo: "envio_certificado_email",
+        entidade: "certificado",
+        entidadeId: certificado.idCertificado,
+        descricao: `Certificado ${certificado.codigo} enviado por e-mail para adm@fabricadelaudos.com.`,
+      });
+    } catch (error: any) {
+      console.error("Erro ao enviar certificado por e-mail:", error);
+
+      await registrarEvento({
+        idUsuario,
+        tipo: "erro_envio_certificado_email",
+        entidade: "certificado",
+        entidadeId: certificado.idCertificado,
+        descricao: `Falha ao enviar o certificado ${certificado.codigo} por e-mail: ${error.message}`,
+      });
+
+      // recomendo não quebrar a conclusão do curso por falha de e-mail
+    }
+
+    // 7️⃣ Log principal
     await registrarEvento({
       idUsuario,
       tipo: "concluir_curso",
@@ -606,7 +660,6 @@ export const finalizarCurso = {
       descricao: `Curso "${curso.titulo}" concluído. Certificado registrado.`,
     });
 
-    // 5️⃣ Retorna resultado
     return { acesso, certificado };
   },
 };

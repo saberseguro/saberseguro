@@ -29,7 +29,10 @@ export async function loginUser(idToken: string) {
   if (email) {
     usuario = await prisma.usuario.findUnique({
       where: { firebaseId: uid },
-      include: { usuariohorario: true },
+      include: {
+        usuariohorario: true,
+        empresa: true,
+      },
     });
   } else if (phone_number) {
     // Limpa número (+55 etc)
