@@ -592,6 +592,7 @@ export const gerarRelatorioPendenciasCursosPdf = {
     const funcionarios = await prisma.usuario.findMany({
       where: {
         fkEmpresaId: filtros.fkEmpresaId,
+        ativo: 1,
         ...(filtros.fkFuncionarioId ? { idUsuario: filtros.fkFuncionarioId } : {}),
         ...(filtros.fkCargoId ? { fkCargoId: filtros.fkCargoId } : {}),
         ...(filtros.ativo !== undefined ? { ativo: filtros.ativo } : {}),
