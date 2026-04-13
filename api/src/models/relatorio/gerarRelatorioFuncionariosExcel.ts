@@ -27,6 +27,7 @@ export const gerarRelatorioFuncionariosExcel = {
     const funcionarios = await prisma.usuario.findMany({
       where: {
         fkEmpresaId: filtros.fkEmpresaId,
+        ativ: 1,
         ...(filtros.fkFuncionarioId ? { idUsuario: filtros.fkFuncionarioId } : {}),
         ...(filtros.fkCargoId ? { fkCargoId: filtros.fkCargoId } : {}),
         ...(filtros.ativo !== undefined ? { ativo: filtros.ativo } : {}),
