@@ -4,6 +4,6 @@ import { buscarDashBoard } from '../controllers/dashBoardController';
 
 const router = Router();
 
-router.get('/home/:id', authorize([]), buscarDashBoard);
+router.get('/', authorize([]), buscarDashBoard);
 
 export default router;
