@@ -58,8 +58,6 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
     roles: number[];
     cursos: CursoVincRow[];
     medidas: MedidaVincRow[];
-    exigirTrocaSenha: boolean;
-    exigirAssinatura: boolean;
   }>({
     nome: initialData.nome || "",
     cpf: initialData.cpf || "",
@@ -71,8 +69,6 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
     roles: (initialData as any)?.roles || [],
     cursos: [],
     medidas: [],
-    exigirTrocaSenha: true,
-    exigirAssinatura: true,
   });
 
   const [horarios, setHorarios] = useState(
@@ -194,10 +190,6 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
           horarios: horarios,
           cursos: form.cursos.filter((c) => c.origem === "FUNCIONARIO"),
           medidas: form.medidas.filter((m) => m.origem === "FUNCIONARIO"),
-          ajustesObrigatorios: {
-            trocarsenha: form.exigirTrocaSenha ? 1 : 0,
-            assinatura: form.exigirAssinatura ? 0 : 1,
-          },
         }
         : {
           ...form,
@@ -246,8 +238,6 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
       roles: [],
       cursos: [],
       medidas: [],
-      exigirTrocaSenha: true,
-      exigirAssinatura: true,
     });
 
     setHorarios(
@@ -316,32 +306,6 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
               placeholder="Selecione as funções"
               required
             />
-
-            {!onEdit && (
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.exigirTrocaSenha}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, exigirTrocaSenha: e.target.checked }))
-                    }
-                  />
-                  Exigir troca de senha no primeiro acesso
-                </label>
-
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={form.exigirAssinatura}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, exigirAssinatura: e.target.checked }))
-                    }
-                  />
-                  Exigir assinatura no primeiro acesso
-                </label>
-              </div>
-            )}
           </>
         )}
 
