@@ -115,7 +115,6 @@ interface NovoUsuarioDTO {
   horarios?: HorarioDTO[];
   cursos?: { idCurso: number; ativo: 0 | 1; origem?: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" }[];
   medidas?: { idMedida: number; ativo: 0 | 1; origem?: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" }[];
-  ajustesObrigatorios?: AjustesObrigatoriosDTO;
 }
 
 const to01 = (v: any, def: number) => {
@@ -143,15 +142,10 @@ export async function criarUsuario(data: NovoUsuarioDTO) {
       cursos = [],
       medidas = [],
       idUsuario,
-      ajustesObrigatorios,
     } = data;
 
     const jaExiste = await prisma.usuario.findUnique({ where: { email } });
     if (jaExiste) throw new Error("E-mail já cadastrado");
-
-    const trocarsenha = Boolean(ajustesObrigatorios?.trocarsenha);
-    const assinatura =
-      Number(ajustesObrigatorios?.assinatura) === 1 ? null : ".";
 
     const firebaseUser = await auth().createUser({
       email,
@@ -174,8 +168,8 @@ export async function criarUsuario(data: NovoUsuarioDTO) {
           fkEmpresaId,
           fkCargoId,
           fkResponsavelTecnicoId,
-          trocarsenha,
-          assinatura,
+          trocarsenha: true,
+          assinatura: null,
         },
       });
 

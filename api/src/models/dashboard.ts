@@ -12,6 +12,19 @@ type CertificadosPorMes = {
   total: number;
 };
 
+type FuncionarioCursoAndamento = {
+  funcionarioId: number;
+  funcionarioNome: string;
+  cursoId: number;
+  cursoNome: string;
+  unidade: string;
+  setor: string;
+  cargo: string;
+  status: "NAO_INICIADO" | "EM_ANDAMENTO" | "CONCLUIDO" | "ATRASADO";
+  percentualConclusao: number;
+  dataConclusao: string | null;
+};
+
 type DashboardHomeDTO = {
   kpis: {
     funcionariosAtivos: number;
@@ -26,6 +39,7 @@ type DashboardHomeDTO = {
   };
   statusCursos: StatusResumo[];
   certificadosPorMes: CertificadosPorMes[];
+  funcionariosCursos: FuncionarioCursoAndamento[];
 };
 
 
@@ -102,13 +116,63 @@ async function buscarCursosDisponiveisDashboard(idUsuario: number, fkCargoId: nu
   return todosIds; // retorna só IDs
 };
 
+async function calcularProgressoCursoUsuario(fkUsuarioId: number, fkCursoId: number) {
+  const aulas = await prisma.aula.findMany({
+    where: {
+      modulo: {
+        fkCursoId,
+      },
+    },
+    select: {
+      idAula: true,
+    },
+  });
+
+  const totalAulas = aulas.length;
+
+  if (totalAulas === 0) return 0;
+
+  const aulasIds = aulas.map((a) => a.idAula);
+
+  const aulasConcluidas = await prisma.aulausuario.count({
+    where: {
+      fkUsuarioId,
+      fkAulaId: {
+        in: aulasIds,
+      },
+      concluida: 1,
+    },
+  });
+
+  return Math.round((aulasConcluidas / totalAulas) * 100);
+}
+
 export const getDashboardHome = {
   async execute(fkEmpresaId: number) {
 
     // 🔹 Buscar todos os funcionários da empresa
     const funcionarios = await prisma.usuario.findMany({
       where: { fkEmpresaId },
-      select: { idUsuario: true, fkCargoId: true }
+      select: {
+        idUsuario: true,
+        nome: true,
+        fkCargoId: true,
+        cargo: {
+          select: {
+            nome: true,
+            setor: {
+              select: {
+                nome: true,
+                unidade: {
+                  select: {
+                    nomeFantasia: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      }
     });
 
     const funcionariosAtivos = funcionarios.length;
@@ -164,6 +228,7 @@ export const getDashboardHome = {
 
     // 🔹 Lista de todos os cursos obrigatórios da empresa (sem duplicação)
     const cursosDisponiveisGlobal = new Set<number>();
+    const funcionariosCursos: FuncionarioCursoAndamento[] = [];
 
     // 🔥 PROCESSAMENTO PRINCIPAL
     for (const user of funcionarios) {
@@ -192,29 +257,61 @@ export const getDashboardHome = {
       for (const idCurso of cursosDisponiveis) {
         const acesso = acessosDoUsuario.find(a => a.fkCursoId === idCurso);
 
+        const curso = await prisma.curso.findUnique({
+          where: { idCurso },
+          select: { titulo: true },
+        });
+
         const hoje = new Date();
 
-        if (!acesso) {
+        let status: FuncionarioCursoAndamento["status"] = "NAO_INICIADO";
+        let percentualConclusao = 0;
+        let dataConclusao: string | null = null;
+
+        percentualConclusao = await calcularProgressoCursoUsuario(
+          user.idUsuario,
+          idCurso
+        );
+
+        if (!acesso && percentualConclusao === 0) {
+          status = "NAO_INICIADO";
           totalNaoIniciado++;
-          continue;
-        }
+        } else if (percentualConclusao >= 100 || acesso?.concluido === 1) {
+          status = "CONCLUIDO";
+          percentualConclusao = 100;
 
-        // Concluído
-        if (acesso.concluido === 1) {
+          dataConclusao = acesso?.dataConclusao
+            ? format(acesso.dataConclusao, "dd/MM/yyyy")
+            : null;
+
           totalConcluido++;
-        }
-        else {
-          const prazo = acesso.prazoLimite ? new Date(acesso.prazoLimite) : null;
+        } else {
+          const prazo = acesso?.prazoLimite ? new Date(acesso.prazoLimite) : null;
 
-          // ATRASADO
           if (prazo && prazo < hoje) {
+            status = "ATRASADO";
             totalAtrasado++;
-          }
-          // EM ANDAMENTO
-          else {
+          } else if (percentualConclusao > 0) {
+            status = "EM_ANDAMENTO";
             totalEmAndamento++;
+          } else {
+            status = "NAO_INICIADO";
+            totalNaoIniciado++;
           }
         }
+
+        funcionariosCursos.push({
+          funcionarioId: user.idUsuario,
+          funcionarioNome: user.nome,
+          cursoId: idCurso,
+          cursoNome: curso?.titulo ?? "Curso não encontrado",
+          unidade: user.cargo?.setor?.unidade?.nomeFantasia ?? "-",
+          setor: user.cargo?.setor?.nome ?? "-",
+          cargo: user.cargo?.nome ?? "-",
+          status,
+          percentualConclusao,
+          dataConclusao,
+        });
       }
     }
 
@@ -243,7 +340,9 @@ export const getDashboardHome = {
         { status: "EM_ANDAMENTO", quantidade: totalEmAndamento },
         { status: "CONCLUIDO", quantidade: totalConcluido },
         { status: "ATRASADO", quantidade: totalAtrasado }
-      ]
+      ],
+
+      funcionariosCursos,
     };
   },
 };
