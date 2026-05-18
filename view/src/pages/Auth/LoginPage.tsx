@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { toast } from "react-hot-toast";
+import { getAuth, sendPasswordResetEmail } from "firebase/auth";
 import ModalAcesso from "../../components/Modais/ModalAcesso";
 import logo from '../../assets/media/logotipos/logo_h_branca.png';
 
@@ -71,6 +72,28 @@ export default function LoginPage() {
     }
   };
 
+  const handleRedefinirSenha = async () => {
+    if (!email) {
+      toast.error("Informe seu e-mail para redefinir a senha.");
+      return;
+    }
+
+    try {
+      const auth = getAuth();
+
+      await toast.promise(
+        sendPasswordResetEmail(auth, email),
+        {
+          loading: "Enviando link de redefinição...",
+          success: "Enviamos um link de redefinição para seu e-mail.",
+          error: "Não foi possível enviar o e-mail de redefinição.",
+        }
+      );
+    } catch (error) {
+      console.error("Erro ao redefinir senha:", error);
+    }
+  };
+
   // 🔹 Garante que o reCAPTCHA container existe no DOM e é persistente
   if (!document.getElementById("recaptcha-container")) {
     const el = document.createElement("div");
@@ -112,9 +135,13 @@ export default function LoginPage() {
                   required
                 />
                 <div className="text-right">
-                  <a href="#" className="text-sm text-blue-600 hover:underline">
+                  <button
+                    type="button"
+                    onClick={handleRedefinirSenha}
+                    className="text-sm text-blue-600 hover:underline cursor-pointer"
+                  >
                     Esqueceu a senha?
-                  </a>
+                  </button>
                 </div>
               </div>
 

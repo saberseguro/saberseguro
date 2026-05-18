@@ -4,6 +4,8 @@ import { searchEmpresas, getEmpresa, getUnidades, getSetores, getCargos, getFunc
 import { useAuth } from "../../contexts/AuthContext";
 import { formatarDocumento, formatarTelefone } from "../../auxiliares/formatters";
 import { temPermissao } from "../../auxiliares/permissoes";
+import { getAuth, sendPasswordResetEmail } from "firebase/auth";
+import { RotateCcwKey } from "lucide-react";
 
 // Components
 import ModalBase from "../../components/Modais/ModalBase";
@@ -20,6 +22,7 @@ import { SearchDropdown } from "../../components/SearchDropDown";
 import { getCursos } from "../../services/apiCurso";
 import { getMedidas } from "../../services/apiMedida";
 import { useCompany } from "../../contexts/CompanyContext";
+import toast from "react-hot-toast";
 
 export default function GerenciaEmpresa() {
 
@@ -264,6 +267,24 @@ export default function GerenciaEmpresa() {
     }
   };
 
+  const handleRedefinirSenhaFuncionario = async (email?: string | null) => {
+    if (!email) {
+      toast.error("Funcionário sem e-mail cadastrado.");
+      return;
+    }
+
+    try {
+      const auth = getAuth();
+
+      await sendPasswordResetEmail(auth, email);
+
+      toast.success(`E-mail de redefinição enviado para ${email}.`);
+    } catch (error) {
+      console.error("Erro ao redefinir senha:", error);
+      toast.error("Não foi possível enviar o e-mail de redefinição.");
+    }
+  };
+
   return (
     <>
       <div className="flex flex-col h-full shadow-md rounded-md bg-white">
@@ -288,7 +309,7 @@ export default function GerenciaEmpresa() {
           </div>
         ) : (
           <>
-          
+
           </>
         )}
 
@@ -652,6 +673,17 @@ export default function GerenciaEmpresa() {
                                             </button>
                                           </ToolTip>
                                         )}
+
+                                        {/* Redefinir senha */}
+                                        <ToolTip text="Redefinir senha">
+                                          <button
+                                            type="button"
+                                            className="text-amber-600 hover:text-amber-700 cursor-pointer"
+                                            onClick={() => handleRedefinirSenhaFuncionario(f.email)}
+                                          >
+                                            <RotateCcwKey size={15} />
+                                          </button>
+                                        </ToolTip>
 
                                         {/* Ativo/Inativo */}
                                         {f.ativo === 1 ? (
