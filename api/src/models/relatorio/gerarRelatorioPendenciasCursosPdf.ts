@@ -60,16 +60,24 @@ interface ItemRelatorioPendencia {
   dataConclusao: string;
 }
 
-function definirStatus(percentual: number, concluido?: boolean): "Não iniciado" | "Em andamento" | "Concluído" {
+function definirStatus(
+  percentual: number,
+  concluido?: boolean,
+  iniciado?: boolean
+): "Não iniciado" | "Em andamento" | "Concluído" {
   if (concluido || percentual >= 100) return "Concluído";
-  if (percentual <= 0) return "Não iniciado";
-  return "Em andamento";
+  if (iniciado) return "Em andamento";
+  return "Não iniciado";
 }
 
-function calcularNivelPendencia(percentual: number, concluido?: boolean): number {
+function calcularNivelPendencia(
+  percentual: number,
+  concluido?: boolean,
+  iniciado?: boolean
+): number {
   if (concluido || percentual >= 100) return 3;
-  if (percentual <= 0) return 1;
-  return 2;
+  if (iniciado) return 2;
+  return 1;
 }
 
 function normalizarPercentual(valor: unknown): number {
@@ -551,6 +559,14 @@ function gerarHtmlRelatorioPendencias(
   `;
 }
 
+type ProgressoCursoMap = {
+  percentual: number;
+  concluido: boolean;
+  iniciado: boolean;
+  prazoLimite: Date | null;
+  dataConclusao: Date | null;
+};
+
 async function gerarPdf(html: string) {
   const browser = await puppeteer.launch({
     headless: true,
@@ -697,19 +713,12 @@ export const gerarRelatorioPendenciasCursosPdf = {
         percentual: true,
         concluido: true,
         prazoLimite: true,
+        dataInicio: true,
         dataConclusao: true,
       },
     });
 
-    const progressoMap = new Map<
-      string,
-      {
-        percentual: number;
-        concluido: boolean;
-        prazoLimite: Date | null;
-        dataConclusao: Date | null;
-      }
-    >();
+    const progressoMap = new Map<string, ProgressoCursoMap>();
 
     for (const progresso of progressosUsuario) {
       if (!progresso.fkUsuarioId) continue;
@@ -717,6 +726,7 @@ export const gerarRelatorioPendenciasCursosPdf = {
       progressoMap.set(`${progresso.fkUsuarioId}_${progresso.fkCursoId}`, {
         percentual: normalizarPercentual(progresso.percentual),
         concluido: Number(progresso.concluido) === 1,
+        iniciado: !!progresso.dataInicio,
         prazoLimite: progresso.prazoLimite ?? null,
         dataConclusao: progresso.dataConclusao ?? null,
       });
@@ -765,8 +775,10 @@ export const gerarRelatorioPendenciasCursosPdf = {
 
         const percentualConclusao = progresso?.percentual ?? 0;
         const concluido = progresso?.concluido ?? false;
-        const status = definirStatus(percentualConclusao, concluido);
-        const nivelPendencia = calcularNivelPendencia(percentualConclusao, concluido);
+        const iniciado = progresso?.iniciado ?? false;
+
+        const status = definirStatus(percentualConclusao, concluido, iniciado);
+        const nivelPendencia = calcularNivelPendencia(percentualConclusao, concluido, iniciado);
 
         const chaveItem = `${funcionario.idUsuario}_${curso.idCurso}`;
 
