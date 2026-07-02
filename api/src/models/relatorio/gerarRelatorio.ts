@@ -1,3 +1,4 @@
+import { gerarRelatorioListaPresencaCursosPdf } from "./gerarListaPresenca";
 import { gerarRelatorioFuncionariosExcel } from "./gerarRelatorioFuncionariosExcel";
 import { gerarRelatorioPendenciasCursosPdf } from "./gerarRelatorioPendenciasCursosPdf";
 
@@ -20,6 +21,13 @@ export const gerarRelatorio = {
 
       case "pendencias_cursos":
         return await gerarRelatorioPendenciasCursosPdf.execute({
+          formato,
+          filtros,
+          usuario,
+        });
+
+      case "lista_presenca_cursos":
+        return await gerarRelatorioListaPresencaCursosPdf.execute({
           formato,
           filtros,
           usuario,

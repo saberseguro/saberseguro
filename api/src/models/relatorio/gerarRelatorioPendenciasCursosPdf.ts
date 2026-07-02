@@ -10,8 +10,8 @@ interface Params {
     fkCargoId?: number;
     fkFuncionarioId?: number;
     fkCursoId?: number;
-    ativo?: number;
     somentePendentes?: boolean;
+    ativo?: number;
   };
   usuario?: any;
 }
@@ -103,14 +103,39 @@ function escapeHtml(text: any) {
     .replace(/"/g, "&quot;");
 }
 
-function getPrioridadeLabel(nivel: number) {
-  switch (nivel) {
-    case 1:
-      return "Alta";
-    case 2:
-      return "Média";
-    default:
-      return "Baixa";
+type ProgressoCursoMap = {
+  percentual: number;
+  concluido: boolean;
+  iniciado: boolean;
+  prazoLimite: Date | null;
+  dataConclusao: Date | null;
+};
+
+async function gerarPdf(html: string) {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      landscape: true,
+      printBackground: true,
+      margin: {
+        top: "5mm",
+        right: "8mm",
+        bottom: "10mm",
+        left: "8mm",
+      },
+    });
+
+    return Buffer.from(pdfBuffer);
+  } finally {
+    await browser.close();
   }
 }
 
@@ -557,42 +582,6 @@ function gerarHtmlRelatorioPendencias(
       </body>
     </html>
   `;
-}
-
-type ProgressoCursoMap = {
-  percentual: number;
-  concluido: boolean;
-  iniciado: boolean;
-  prazoLimite: Date | null;
-  dataConclusao: Date | null;
-};
-
-async function gerarPdf(html: string) {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
-
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      landscape: true,
-      printBackground: true,
-      margin: {
-        top: "5mm",
-        right: "8mm",
-        bottom: "10mm",
-        left: "8mm",
-      },
-    });
-
-    return Buffer.from(pdfBuffer);
-  } finally {
-    await browser.close();
-  }
 }
 
 export const gerarRelatorioPendenciasCursosPdf = {

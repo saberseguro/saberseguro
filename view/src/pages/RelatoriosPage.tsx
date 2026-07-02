@@ -481,43 +481,49 @@ export default function RelatoriosPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                <select
-                  value={filtros.ativo ?? ""}
-                  onChange={(e) =>
-                    atualizarFiltro("ativo", e.target.value === "" ? undefined : Number(e.target.value))
-                  }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2"
-                >
-                  <option value="">Todos</option>
-                  <option value="1">Ativos</option>
-                  <option value="0">Inativos</option>
-                </select>
-              </div>
+              {relatorioSelecionado !== "lista_presenca_cursos" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    value={filtros.ativo ?? ""}
+                    onChange={(e) =>
+                      atualizarFiltro("ativo", e.target.value === "" ? undefined : Number(e.target.value))
+                    }
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                  >
+                    <option value="">Todos</option>
+                    <option value="1">Ativos</option>
+                    <option value="0">Inativos</option>
+                  </select>
+                </div>
+              )}
 
               {relatorioSelecionado === "pendencias_cursos" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Situação do curso</label>
+                  <select
+                    value={filtros.statusCurso ?? "TODOS"}
+                    onChange={(e) =>
+                      atualizarFiltro(
+                        "statusCurso",
+                        e.target.value as "PENDENTE" | "CONCLUIDO" | "TODOS"
+                      )
+                    }
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                  >
+                    <option value="TODOS">Todos</option>
+                    <option value="PENDENTE">Pendentes</option>
+                    <option value="CONCLUIDO">Concluídos</option>
+                  </select>
+                </div>
+              )}
+
+              {["pendencias_cursos", "lista_presenca_cursos"].includes(relatorioSelecionado) && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Situação do curso</label>
-                    <select
-                      value={filtros.statusCurso ?? "TODOS"}
-                      onChange={(e) =>
-                        atualizarFiltro(
-                          "statusCurso",
-                          e.target.value as "PENDENTE" | "CONCLUIDO" | "TODOS"
-                        )
-                      }
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2"
-                    >
-                      <option value="TODOS">Todos</option>
-                      <option value="PENDENTE">Pendentes</option>
-                      <option value="CONCLUIDO">Concluídos</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Data início</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Data início {relatorioSelecionado === "lista_presenca_cursos" ? "do período" : ""}
+                    </label>
                     <input
                       type="date"
                       value={filtros.dataInicio || ""}
@@ -527,7 +533,9 @@ export default function RelatoriosPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Data fim</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Data fim {relatorioSelecionado === "lista_presenca_cursos" ? "do período" : ""}
+                    </label>
                     <input
                       type="date"
                       value={filtros.dataFim || ""}
@@ -565,6 +573,16 @@ export default function RelatoriosPage() {
                   <p>
                     <strong>Funcionário:</strong> {filtros.fkFuncionarioId ?? "Todos"}
                   </p>
+                  {["pendencias_cursos", "lista_presenca_cursos"].includes(relatorioSelecionado) && (
+                    <>
+                      <p>
+                        <strong>Data início:</strong> {filtros.dataInicio || "Não informado"}
+                      </p>
+                      <p>
+                        <strong>Data fim:</strong> {filtros.dataFim || "Não informado"}
+                      </p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <p className="text-sm text-gray-500">Selecione um relatório para visualizar o resumo.</p>

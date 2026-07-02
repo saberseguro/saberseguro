@@ -19,6 +19,13 @@ export const opcoesRelatorio: OpcaoRelatorio[] = [
     formato: "pdf",
     categoria: "Treinamentos",
   },
+  {
+    id: "lista_presenca_cursos",
+    titulo: "Listagem de Presença",
+    descricao: "Gera um PDF com listagem de presença.",
+    formato: "pdf",
+    categoria: "Treinamentos",
+  },
 ];
 
 function baixarBlob(blob: Blob, fileName: string) {
