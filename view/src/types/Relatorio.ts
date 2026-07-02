@@ -2,7 +2,8 @@ export type TipoArquivoRelatorio = "pdf" | "xlsx" | "csv";
 
 export type TipoRelatorio =
   | "funcionarios_listagem"
-  | "pendencias_cursos";
+  | "pendencias_cursos"
+  | "lista_presenca_cursos";
 
 export interface FiltrosRelatorio {
   fkEmpresaId?: number;
