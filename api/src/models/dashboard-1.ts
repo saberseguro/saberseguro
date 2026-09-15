@@ -230,6 +230,11 @@ export const getDashboardHome = {
     const cursoIdsPorUsuario = new Map<number, number[]>();
     const acessoPorChave = new Map<string, (typeof acessosUsuarioNivel)[number]>();
     for (const a of acessosUsuarioNivel) {
+      // fkUsuarioId é opcional no schema (cursoacesso também é usado pra
+      // vínculos por cargo/setor/unidade/empresa), mas a query acima já
+      // filtra só por `fkUsuarioId: { in: funcionarioIds }`, então aqui
+      // nunca vem null de fato — o guard só satisfaz o TS.
+      if (a.fkUsuarioId == null) continue;
       const lista = cursoIdsPorUsuario.get(a.fkUsuarioId) ?? [];
       lista.push(a.fkCursoId);
       cursoIdsPorUsuario.set(a.fkUsuarioId, lista);
@@ -238,6 +243,9 @@ export const getDashboardHome = {
 
     const medidaIdsPorUsuario = new Map<number, number[]>();
     for (const m of medidasUsuarioNivel) {
+      // Mesmo caso do loop acima: medidavinculo.fkUsuarioId é opcional no
+      // schema, mas a query já filtrou só pelos funcionarioIds informados.
+      if (m.fkUsuarioId == null) continue;
       const lista = medidaIdsPorUsuario.get(m.fkUsuarioId) ?? [];
       lista.push(m.fkMedidaId);
       medidaIdsPorUsuario.set(m.fkUsuarioId, lista);
