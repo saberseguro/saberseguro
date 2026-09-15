@@ -1,6 +1,6 @@
-import puppeteer from "puppeteer";
 import { prisma } from "../../config/prisma-client";
 import { formatarCpf } from "../../auxiliares/formatter";
+import { gerarPdfDeHtml } from "../../shared/utils/puppeteerBrowser";
 
 interface Params {
   formato: string;
@@ -65,31 +65,20 @@ function escapeHtml(text: any) {
 }
 
 async function gerarPdf(html: string) {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  // Correção de performance: antes cada relatório abria e fechava um
+  // Chromium inteiro (~1-3s só nisso). Agora reusa um navegador
+  // compartilhado (ver puppeteerBrowser.ts), abrindo só uma aba por PDF.
+  return gerarPdfDeHtml(html, {
+    format: "A4",
+    landscape: true,
+    printBackground: true,
+    margin: {
+      top: "5mm",
+      right: "8mm",
+      bottom: "10mm",
+      left: "8mm",
+    },
   });
-
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      landscape: true,
-      printBackground: true,
-      margin: {
-        top: "5mm",
-        right: "8mm",
-        bottom: "10mm",
-        left: "8mm",
-      },
-    });
-
-    return Buffer.from(pdfBuffer);
-  } finally {
-    await browser.close();
-  }
 }
 
 function gerarHtmlListaPresenca(itens: ItemListaPresenca[]) {

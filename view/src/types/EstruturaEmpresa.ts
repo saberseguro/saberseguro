@@ -18,6 +18,9 @@ export interface Empresa {
   criado_em: Date;
   editado_em: Date;
   ativo: number;
+
+  cursos?: Curso[];
+  medidas?: Medida[];
 }
 
 export interface Unidade {
@@ -68,6 +71,14 @@ export interface Cargo {
 
   cursos: Curso[];
   medidas: Medida[];
+
+  // Presente quando o cargo vem da busca "todos os cargos da empresa"
+  // (usada no seletor de cargo da Lista de Funcionários).
+  setor?: {
+    idSetor: number;
+    nome: string;
+    unidade?: { idUnidade: number; nomeFantasia: string } | null;
+  } | null;
 }
 
 interface Role {
@@ -101,4 +112,11 @@ export interface Funcionario {
   usuarioHorario?: HorarioAcesso[];
   cursos: Curso[];
   medidas: Medida[];
+
+  // Presentes quando o funcionário vem da busca "flat" por empresa (Lista
+  // de Funcionários / relatório de funcionários), pra mostrar em qual
+  // unidade/setor/cargo ele está sem precisar navegar pela hierarquia.
+  cargo?: { idCargo: number; nome: string } | null;
+  setor?: { idSetor: number; nome: string } | null;
+  unidade?: { idUnidade: number; nomeFantasia: string } | null;
 }

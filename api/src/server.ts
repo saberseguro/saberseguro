@@ -42,6 +42,9 @@ import dashboardRoutes from './routes/dashboard.routes';
 
 // Relatorios
 import relatorioRoutes from './routes/relatorio.routes';
+import relatorioAgendadoRoutes from './routes/relatorioAgendado.routes';
+import { iniciarNotificacaoCursoPendenteWhatsappScheduler } from './schedulers/notificacaoCursoPendenteWhatsappScheduler';
+import { iniciarRelatorioAgendadoScheduler } from './schedulers/relatorioAgendadoScheduler';
 
 const app = express();
 
@@ -93,7 +96,11 @@ app.use("/api/dashboard", dashboardRoutes);
 
 // Relatorios
 app.use("/api/relatorios", relatorioRoutes);
+app.use("/api/relatorio-agendado", relatorioAgendadoRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Servidor rodando na porta ${env.PORT}`);
 });
+
+iniciarNotificacaoCursoPendenteWhatsappScheduler();
+iniciarRelatorioAgendadoScheduler();

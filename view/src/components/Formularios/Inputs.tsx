@@ -164,6 +164,14 @@ export const SelectMultiInput = <T extends string | number>({
         placeholder={placeholder}
         className="text-sm"
         classNamePrefix="select"
+        // Dentro de modais o conteúdo tem scroll próprio (overflow-y-auto), o
+        // que corta ou empurra o menu do react-select pra trás/baixo. Usando
+        // um portal pro body (com posição "fixed" acompanhando o campo) o
+        // menu escapa desse contêiner e sempre fica por cima, igual ao
+        // <select> nativo dos outros campos (ex.: Cargo).
+        menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
+        menuPosition="fixed"
+        styles={{ menuPortal: (base) => ({ ...base, zIndex: 9999 }) }}
       />
     </div>
   );

@@ -6,6 +6,7 @@ import {
   editarCargo,
   buscarFuncionariosDoCargo,
   buscarFuncionariosRelatorio,
+  buscarCargosEmpresa,
 } from '../../models/empresa/cargo';
 import { BuscarOpts } from '../../types/BuscarOpts';
 
@@ -78,6 +79,22 @@ export const buscarFuncionariosDoCargoController = async (req: Request, res: Res
     const funcionarios = await buscarFuncionariosDoCargo.execute(Number(id));
     if (!funcionarios.length) return res.status(404).json({ error: 'Nenhum funcionário encontrado' });
     return res.json(funcionarios);
+  } catch (err: any) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+export const buscarCargosEmpresaController = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: "ID da empresa ausente" });
+
+    const apenasAtivos = req.query.apenasAtivos !== "0";
+
+    const cargos = await buscarCargosEmpresa.execute(parseInt(id), { apenasAtivos });
+
+    return res.json(cargos);
   } catch (err: any) {
     console.error(err);
     return res.status(500).json({ error: err.message });

@@ -214,18 +214,18 @@ export const getDashboardHome = {
 
     // 3) Cursos/medidas vinculados diretamente ao funcionário (nível usuário)
     //    — também em uma única consulta para todos os funcionários de uma vez.
-    const [acessosUsuarioNivel, medidasUsuarioNivel] = funcionarioIds.length
-      ? await Promise.all([
-        prisma.cursoacesso.findMany({
-          where: { fkUsuarioId: { in: funcionarioIds } },
-          select: { fkUsuarioId: true, fkCursoId: true, concluido: true, dataConclusao: true, prazoLimite: true },
-        }),
-        prisma.medidavinculo.findMany({
-          where: { fkUsuarioId: { in: funcionarioIds } },
-          select: { fkUsuarioId: true, fkMedidaId: true },
-        }),
-      ])
-      : [[], []];
+    // Nota: não precisa de `if (funcionarioIds.length)` aqui — `{ in: [] }`
+    // no Prisma já retorna uma lista vazia normalmente, sem erro.
+    const [acessosUsuarioNivel, medidasUsuarioNivel] = await Promise.all([
+      prisma.cursoacesso.findMany({
+        where: { fkUsuarioId: { in: funcionarioIds } },
+        select: { fkUsuarioId: true, fkCursoId: true, concluido: true, dataConclusao: true, prazoLimite: true },
+      }),
+      prisma.medidavinculo.findMany({
+        where: { fkUsuarioId: { in: funcionarioIds } },
+        select: { fkUsuarioId: true, fkMedidaId: true },
+      }),
+    ]);
 
     const cursoIdsPorUsuario = new Map<number, number[]>();
     const acessoPorChave = new Map<string, (typeof acessosUsuarioNivel)[number]>();

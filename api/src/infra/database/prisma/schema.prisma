@@ -31,6 +31,7 @@ model usuario {
   acessosMateriais       materialacesso[]
   medidasvinculos        medidavinculo[]
   moduloacesso           moduloacesso[]
+  relatoriosAgendados    relatorioagendado[]
   cargo                  cargo?               @relation(fields: [fkCargoId], references: [idCargo], map: "fk_usuario_fkCargoId")
   empresa                empresa?             @relation(fields: [fkEmpresaId], references: [idEmpresa], map: "fk_usuario_fkEmpresaId")
   usuariohorario         usuariohorario[]
@@ -277,6 +278,8 @@ model cursoacesso {
   expirado      Boolean   @default(false)
   dataConclusao DateTime? @db.DateTime(0)
   atualizado_em DateTime  @updatedAt @db.DateTime(0)
+  ultimaNotificacaoWhatsapp DateTime? @db.DateTime(0)
+  qtdNotificacoesWhatsapp   Int       @default(0)
   
   cargo         cargo?    @relation(fields: [fkCargoId], references: [idCargo])
   curso         curso     @relation(fields: [fkCursoId], references: [idCurso], onDelete: Cascade)
@@ -321,6 +324,7 @@ model empresa {
   unidades            unidade[]
   funcionarios        usuario[]
   certificadosmodelo  certificadomodelo[]
+  relatoriosAgendados relatorioagendado[]
 }
 
 model materialcomplementar {
@@ -585,21 +589,73 @@ model usuariohorario {
 }
 
 model certificado {
-  idCertificado Int      @id @default(autoincrement())
-  codigo        String?  @unique
-  fkUsuarioId   Int
-  fkCursoId     Int
-  fkEmpresaId   Int
-  dataGeracao   DateTime @default(now())
-  urlArquivo    String?
-  valido        Boolean  @default(true)
-  curso         curso    @relation(fields: [fkCursoId], references: [idCurso], onDelete: NoAction)
-  empresa       empresa  @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: NoAction)
-  usuario       usuario  @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: NoAction)
+  idCertificado  Int       @id @default(autoincrement())
+  codigo         String?   @unique
+  fkUsuarioId    Int
+  fkCursoId      Int
+  fkEmpresaId    Int
+  dataGeracao    DateTime  @default(now())
+  urlArquivo     String?
+  valido         Boolean   @default(true)
+  // Marca quando o e-mail de notificação (com o certificado em anexo) foi
+  // enviado com sucesso. Null = ainda não enviado. Usado como trava: antes
+  // de enviar, um UPDATE condicional só "ganha a corrida" se essa coluna
+  // ainda estiver null, o que evita reenviar o mesmo e-mail quando
+  // "finalizar curso" é chamado mais de uma vez pro mesmo certificado
+  // (duplo clique, o botão do rodapé sem trava própria, nova tentativa etc.).
+  emailEnviadoEm DateTime? @db.DateTime(0)
+  curso          curso     @relation(fields: [fkCursoId], references: [idCurso], onDelete: NoAction)
+  empresa        empresa   @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: NoAction)
+  usuario        usuario   @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: NoAction)
 
   @@index([fkCursoId], map: "certificado_fkCursoId_fkey")
   @@index([fkEmpresaId], map: "certificado_fkEmpresaId_fkey")
   @@index([fkUsuarioId], map: "certificado_fkUsuarioId_fkey")
+}
+
+// Configuração de envio automático de relatórios por e-mail: o gestor
+// escolhe o relatório (mesmos tipo/formato/filtros da Central de
+// Relatórios), a frequência e pra quais e-mails mandar, e um cron diário
+// (ver notificacaoRelatorioAgendadoScheduler) gera e envia quando chega a
+// vez de cada um.
+model relatorioagendado {
+  idRelatorioAgendado Int                         @id @default(autoincrement())
+  nome                String                      @db.VarChar(120)
+  fkEmpresaId         Int
+  fkUsuarioId         Int
+  tipoRelatorio       String                      @db.VarChar(60)
+  formato             String                      @db.VarChar(10)
+  // Filtros nos mesmos moldes da tela de Relatórios (fkUnidadeId, fkSetorId,
+  // fkCargoId, fkFuncionarioId, ativo, statusCurso). NÃO inclui
+  // dataInicio/dataFim: o período de cada envio é calculado na hora, com
+  // base na frequência (últimos 7/14/30 dias até ontem), pra nunca mandar
+  // um relatório com um período velho travado na data de criação.
+  filtros             Json
+  // E-mails separados por vírgula — cadastrados manualmente pelo gestor,
+  // sem precisar ser o e-mail de nenhum usuário do sistema.
+  emailsDestino       String                      @db.VarChar(500)
+  frequencia          RelatorioAgendadoFrequencia
+  ativo               Boolean                     @default(true)
+  // Próxima data em que esse agendamento deve ser enviado. O scheduler
+  // diário busca só quem tem proximoEnvioEm <= hoje, e depois de enviar
+  // soma 7/14/30 dias pra calcular o próximo.
+  proximoEnvioEm      DateTime                    @db.DateTime(0)
+  ultimoEnvioEm       DateTime?                   @db.DateTime(0)
+  criadoEm            DateTime                    @default(now()) @db.DateTime(0)
+  editadoEm           DateTime                    @default(now()) @updatedAt @db.DateTime(0)
+
+  empresa             empresa                     @relation(fields: [fkEmpresaId], references: [idEmpresa], onDelete: NoAction)
+  usuario             usuario                     @relation(fields: [fkUsuarioId], references: [idUsuario], onDelete: NoAction)
+
+  @@index([fkEmpresaId], map: "relatorioagendado_fkEmpresaId_fkey")
+  @@index([fkUsuarioId], map: "relatorioagendado_fkUsuarioId_fkey")
+  @@index([ativo, proximoEnvioEm])
+}
+
+enum RelatorioAgendadoFrequencia {
+  semanal
+  quinzenal
+  mensal
 }
 
 model certificadoempresa {

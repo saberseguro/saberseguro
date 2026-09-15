@@ -611,44 +611,69 @@ export const finalizarCurso = {
     // 5️⃣ Gera o PDF
     const pdfBuffer = await gerarCertificadoPdf(dadosCertificado);
 
-    // 6️⃣ Envia por e-mail
-    try {
-      await enviarCertificadoPorEmail.execute({
-        para: "adm@sabersegurotreinamentos.com",
-        assunto: `Certificado gerado - ${dadosCertificado.curso.titulo}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
-            <h2>Certificado gerado automaticamente</h2>
-            <p>Um curso foi finalizado e o certificado foi emitido.</p>
-            <p><strong>Aluno:</strong> ${dadosCertificado.usuario.nome}</p>
-            <p><strong>Curso:</strong> ${dadosCertificado.curso.titulo}</p>
-            <p><strong>Código:</strong> ${dadosCertificado.certificado.codigo}</p>
-            <p><strong>Data:</strong> ${dadosCertificado.certificado.dataGeracao}</p>
-          </div>
-        `,
-        pdfBuffer,
-        nomeArquivo: `certificado-${certificado.codigo}.pdf`,
-      });
+    // 6️⃣ Envia por e-mail — só se ainda não tiver sido enviado pra esse
+    // certificado. finalizarCurso pode ser chamado mais de uma vez pro
+    // mesmo certificado (o botão "Finalizar curso" do rodapé não tem trava
+    // própria contra duplo clique, e o próprio usuário pode clicar "Gerar
+    // Certificado" de novo depois), e gerarCertificado.execute reaproveita
+    // o certificado já existente nesses casos — mas antes disso, essa
+    // função sempre reenviava o e-mail de novo, não importa quantas vezes
+    // fosse chamada. Aqui, um UPDATE condicional (só reivindica o envio se
+    // emailEnviadoEm ainda estiver null) funciona como trava atômica: se
+    // duas chamadas chegarem quase juntas (dois cliques quase simultâneos),
+    // só uma delas "ganha" e dispara o e-mail.
+    const reivindicacaoEnvio = await prisma.certificado.updateMany({
+      where: { idCertificado: certificado.idCertificado, emailEnviadoEm: null },
+      data: { emailEnviadoEm: new Date() },
+    });
 
-      await registrarEvento({
-        idUsuario,
-        tipo: "envio_certificado_email",
-        entidade: "certificado",
-        entidadeId: certificado.idCertificado,
-        descricao: `Certificado ${certificado.codigo} enviado por e-mail para adm@fabricadelaudos.com.`,
-      });
-    } catch (error: any) {
-      console.error("Erro ao enviar certificado por e-mail:", error);
+    if (reivindicacaoEnvio.count === 1) {
+      try {
+        await enviarCertificadoPorEmail.execute({
+          para: "adm@sabersegurotreinamentos.com",
+          assunto: `Certificado gerado - ${dadosCertificado.curso.titulo}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
+              <h2>Certificado gerado automaticamente</h2>
+              <p>Um curso foi finalizado e o certificado foi emitido.</p>
+              <p><strong>Aluno:</strong> ${dadosCertificado.usuario.nome}</p>
+              <p><strong>Curso:</strong> ${dadosCertificado.curso.titulo}</p>
+              <p><strong>Código:</strong> ${dadosCertificado.certificado.codigo}</p>
+              <p><strong>Data:</strong> ${dadosCertificado.certificado.dataGeracao}</p>
+            </div>
+          `,
+          pdfBuffer,
+          nomeArquivo: `certificado-${certificado.codigo}.pdf`,
+        });
 
-      await registrarEvento({
-        idUsuario,
-        tipo: "erro_envio_certificado_email",
-        entidade: "certificado",
-        entidadeId: certificado.idCertificado,
-        descricao: `Falha ao enviar o certificado ${certificado.codigo} por e-mail: ${error.message}`,
-      });
+        await registrarEvento({
+          idUsuario,
+          tipo: "envio_certificado_email",
+          entidade: "certificado",
+          entidadeId: certificado.idCertificado,
+          descricao: `Certificado ${certificado.codigo} enviado por e-mail para adm@fabricadelaudos.com.`,
+        });
+      } catch (error: any) {
+        console.error("Erro ao enviar certificado por e-mail:", error);
 
-      // recomendo não quebrar a conclusão do curso por falha de e-mail
+        // Libera a trava pra uma próxima chamada poder tentar de novo —
+        // sem isso, uma falha de envio (ex.: SMTP fora do ar) bloquearia
+        // pra sempre qualquer notificação futura desse certificado.
+        await prisma.certificado.updateMany({
+          where: { idCertificado: certificado.idCertificado },
+          data: { emailEnviadoEm: null },
+        });
+
+        await registrarEvento({
+          idUsuario,
+          tipo: "erro_envio_certificado_email",
+          entidade: "certificado",
+          entidadeId: certificado.idCertificado,
+          descricao: `Falha ao enviar o certificado ${certificado.codigo} por e-mail: ${error.message}`,
+        });
+
+        // recomendo não quebrar a conclusão do curso por falha de e-mail
+      }
     }
 
     // 7️⃣ Log principal

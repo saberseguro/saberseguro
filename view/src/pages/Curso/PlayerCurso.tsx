@@ -356,6 +356,7 @@ interface FooterProps {
   stepAtual: Step | null;
   registrarStepBackend: (step: Step) => Promise<void>;
   loadingStep: boolean;
+  loadingCertificado: boolean;
   handleGerarCertificado: () => Promise<void>;
 }
 
@@ -368,6 +369,7 @@ function FooterNavegacao({
   liberadoProximo,
   setLiberadoProximo,
   loadingStep,
+  loadingCertificado,
   stepsConcluidos,
   handleGerarCertificado,
 }: FooterProps) {
@@ -405,14 +407,14 @@ function FooterNavegacao({
       </button>
 
       <button
-        disabled={!liberadoProximo || loadingStep}
+        disabled={!liberadoProximo || loadingStep || loadingCertificado}
         onClick={handleProximo}
-        className={`flex items-center text-sm font-medium transition 
-          ${liberadoProximo && !loadingStep
+        className={`flex items-center text-sm font-medium transition
+          ${liberadoProximo && !loadingStep && !loadingCertificado
             ? "text-blue-600 hover:text-blue-800 cursor-pointer"
             : "text-gray-300 cursor-not-allowed"}`}
       >
-        {loadingStep ? (
+        {loadingStep || (isUltimoStep && loadingCertificado) ? (
           <span className="animate-spin inline-block w-4 h-4 border-2 border-t-transparent border-blue-500 rounded-full" />
         ) : isUltimoStep ? (
           <>
@@ -516,9 +518,18 @@ export default function PlayCursoPage() {
     }
   }, [stepsConcluidos, curso]);
 
-  const handleGerarCertificado = async () => {
-    if (!idCurso) return;
+  // Trava síncrona contra chamadas em duplicidade: existem DOIS botões que
+  // podem disparar essa função ("Finalizar curso" no rodapé e "Gerar
+  // Certificado" no banner), e o estado do React (loadingCertificado) só
+  // atualiza a tela no próximo render — um clique duplo rápido, ou clicar
+  // nos dois botões quase ao mesmo tempo, pode disparar duas chamadas antes
+  // do "disabled" surtir efeito. Um ref é síncrono e fecha essa brecha.
+  const gerandoCertificadoRef = useRef(false);
 
+  const handleGerarCertificado = async () => {
+    if (!idCurso || gerandoCertificadoRef.current) return;
+
+    gerandoCertificadoRef.current = true;
     setLoadingCertificado(true);
     try {
       const res = await finalizarCurso(Number(idCurso));
@@ -531,6 +542,7 @@ export default function PlayCursoPage() {
       console.error("Erro ao finalizar curso:", err);
       toast.error("Erro ao finalizar o curso. Tente novamente.");
     } finally {
+      gerandoCertificadoRef.current = false;
       setLoadingCertificado(false);
     }
   };
@@ -680,6 +692,7 @@ export default function PlayCursoPage() {
                 stepAtual={stepAtual}
                 registrarStepBackend={registrarStepBackend}
                 loadingStep={loadingStep}
+                loadingCertificado={loadingCertificado}
                 stepsConcluidos={stepsConcluidos}
                 handleGerarCertificado={handleGerarCertificado}
               />
