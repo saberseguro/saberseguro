@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   FileBarChart,
   Import,
+  Send,
 } from "lucide-react";
 import ToolTip from "./Auxiliares/ToolTip";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -72,6 +73,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
       permissoes: ['ver_cursos'],
       children: [
         { label: "Relatórios", icon: <FileBarChart />, path: "/gestao/relatorios", permissoes: ['editar_empresas'] },
+        { label: "Envio Automático", icon: <Send />, path: "/gestao/relatorios/envio-automatico", permissoes: ['editar_empresas'] },
         { label: "Importar Dados", icon: <Import />, path: "/gestao/importar", permissoes: ['editar_empresas'] },
       ],
     },

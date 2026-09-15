@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import { authorize } from '../../middlewares/authorize';
 import { buscarCursoAcessosController, buscarCursoController, buscarCursosController, buscarMeusCursosController, criarCursoAcessoController, criarCursoController, desvincularMedidaDoCursoController, editarCursoController, excluirCursoAcessoController, excluirCursoController, finalizarCursoController, listarCertificadosController, listarMedidasDoCursoController, previewCertificadoController, registrarCursoAcessoController, syncCursoController, vincularCertificadoController, vincularMedidaAoCursoController } from '../../controllers/curso/cursoController';
+import { listarNotificacoesCursosPendentesWhatsappController, simularNotificacoesCursosPendentesWhatsappController } from '../../controllers/curso/notificacaoCursoPendenteWhatsappController';
 
 const router = Router();
 
 router.get('/', authorize(['ver_cursos']), buscarCursosController);
 router.get('/meus', authorize(['ver_cursos']), buscarMeusCursosController);
+router.get('/notificacoes-pendentes', authorize(['criar_cursos']), listarNotificacoesCursosPendentesWhatsappController);
+router.post('/notificacoes-pendentes/simular', authorize(['criar_cursos']), simularNotificacoesCursosPendentesWhatsappController);
 router.get('/:id', authorize(['ver_cursos']), buscarCursoController);
 
 router.post('/', authorize(['criar_cursos']), criarCursoController);

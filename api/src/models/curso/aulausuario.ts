@@ -418,16 +418,31 @@ async function atualizarProgressoCurso(fkAulaId: number, fkUsuarioId: number) {
   }
 
   // === 4️⃣ Atualizar cursoacesso
+  // Correção de defeito: dataConclusao nunca era gravada aqui, então os
+  // relatórios que dependem dela (ex.: Lista de Presença) nunca encontravam
+  // os funcionários que realmente concluíram o curso. Buscamos o registro
+  // atual pra não sobrescrever a data original em recálculos futuros, e
+  // limpamos a data se o curso deixar de estar concluído (ex.: reabertura).
+  const acessoAtualCurso = await prisma.cursoacesso.findUnique({
+    where: { fkUsuarioId_fkCursoId: { fkUsuarioId, fkCursoId: cursoId } },
+    select: { dataConclusao: true },
+  });
+
+  const dataConclusaoCurso = concluido
+    ? acessoAtualCurso?.dataConclusao ?? new Date()
+    : null;
+
   await prisma.cursoacesso.upsert({
     where: {
       fkUsuarioId_fkCursoId: { fkUsuarioId, fkCursoId: cursoId },
     },
-    update: { percentual, concluido: concluido ? 1 : 0 },
+    update: { percentual, concluido: concluido ? 1 : 0, dataConclusao: dataConclusaoCurso },
     create: {
       fkUsuarioId,
       fkCursoId: cursoId,
       percentual,
       concluido: concluido ? 1 : 0,
+      dataConclusao: dataConclusaoCurso,
     },
   });
 
@@ -475,16 +490,27 @@ async function atualizarProgressoCursoPorIdCurso(fkCursoId: number, fkUsuarioId:
   }
 
   // === 4️⃣ Atualizar progresso no cursoacesso
+  // Mesma correção de dataConclusao aplicada em atualizarProgressoCurso.
+  const acessoAtual = await prisma.cursoacesso.findUnique({
+    where: { fkUsuarioId_fkCursoId: { fkUsuarioId, fkCursoId } },
+    select: { dataConclusao: true },
+  });
+
+  const dataConclusao = concluido
+    ? acessoAtual?.dataConclusao ?? new Date()
+    : null;
+
   await prisma.cursoacesso.upsert({
     where: {
       fkUsuarioId_fkCursoId: { fkUsuarioId, fkCursoId },
     },
-    update: { percentual, concluido: concluido ? 1 : 0 },
+    update: { percentual, concluido: concluido ? 1 : 0, dataConclusao },
     create: {
       fkUsuarioId,
       fkCursoId,
       percentual,
       concluido: concluido ? 1 : 0,
+      dataConclusao,
     },
   });
 

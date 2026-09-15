@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { Empresa, Unidade, Setor, Cargo, Funcionario } from "../../types/EstruturaEmpresa";
-import { searchEmpresas, getEmpresa, getUnidades, getSetores, getCargos, getFuncionarios } from "../../services/apiEmpresa";
+import { searchEmpresas, getEmpresa, getUnidades, getSetores, getCargos, getFuncionarios, buscarFuncionariosRelatorio, gerarLinkRedefinicaoSenha } from "../../services/apiEmpresa";
 import { useAuth } from "../../contexts/AuthContext";
 import { formatarDocumento, formatarTelefone } from "../../auxiliares/formatters";
 import { temPermissao } from "../../auxiliares/permissoes";
@@ -16,7 +16,7 @@ import FormCadastroCargo from '../../components/Formularios/FormCargo';
 import FormFuncionario from "../../components/Formularios/FormFuncionario";
 
 // Icons
-import { ChevronDown, ChevronUp, Pencil, PencilOff, CirclePlus, CircleCheck, CircleX } from 'lucide-react';
+import { ChevronDown, ChevronUp, Pencil, PencilOff, CirclePlus, CircleCheck, CircleX, List, Network } from 'lucide-react';
 import ToolTip from "../../components/Auxiliares/ToolTip";
 import { SearchDropdown } from "../../components/SearchDropDown";
 import { getCursos } from "../../services/apiCurso";
@@ -46,7 +46,15 @@ export default function GerenciaEmpresa() {
   const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
   const [funcionarioSelecionado, setFuncionarioSelecionado] = useState<Funcionario | null>(null);
 
+  // Modo de visualização da tela: "hierarquia" é o drill-down padrão
+  // (Unidade > Setor > Cargo > Funcionário); "lista" mostra todos os
+  // funcionários da empresa numa tabela só, sem precisar navegar.
+  const [visualizacao, setVisualizacao] = useState<"hierarquia" | "lista">("hierarquia");
+  const [funcionariosLista, setFuncionariosLista] = useState<Funcionario[]>([]);
+  const [loadingFuncionariosLista, setLoadingFuncionariosLista] = useState(false);
+
   const [isOpenEmpresa, setIsOpenEmpresa] = useState(false);
+  const [criandoEmpresa, setCriandoEmpresa] = useState(false);
   const [isOpenUnidade, setIsOpenUnidade] = useState(false);
   const [isOpenSetor, setIsOpenSetor] = useState(false);
   const [isOpenCargo, setIsOpenCargo] = useState(false);
@@ -177,11 +185,27 @@ export default function GerenciaEmpresa() {
     }
   };
 
+  const fetchFuncionariosLista = async () => {
+    if (!idEmpresaSelecionada) return;
+
+    setLoadingFuncionariosLista(true);
+    try {
+      const funcionariosData = await buscarFuncionariosRelatorio({ fkEmpresaId: idEmpresaSelecionada });
+      setFuncionariosLista(funcionariosData);
+    } catch (error) {
+      console.error("Erro ao buscar funcionários (lista):", error);
+      setFuncionariosLista([]);
+    } finally {
+      setLoadingFuncionariosLista(false);
+    }
+  };
+
   const buscarCursos = async () => {
     const res = await getCursos({
       page: 1,
       busca: "",
-      filtros: { fkEmpresaId: idEmpresaSelecionada!, includeGlobais: true },
+      // Sem empresa selecionada (ex.: cadastrando uma empresa nova), traz só os cursos globais.
+      filtros: { fkEmpresaId: idEmpresaSelecionada ?? undefined, includeGlobais: true },
       lean: true,
     });
 
@@ -201,9 +225,15 @@ export default function GerenciaEmpresa() {
     if (idEmpresaSelecionada) {
       fetchEmpresa();
       fetchUnidades();
-      buscarCursos();
-      buscarMedidas();
     }
+  }, [idEmpresaSelecionada]);
+
+  // Medidas são globais e cursos aceitam "sem empresa" (só globais) — por isso
+  // rodam sempre, inclusive antes de qualquer empresa ser selecionada, para que
+  // o modal de "Cadastrar Empresa" já abra com essas opções disponíveis.
+  useEffect(() => {
+    buscarCursos();
+    buscarMedidas();
   }, [idEmpresaSelecionada]);
 
   useEffect(() => {
@@ -222,6 +252,12 @@ export default function GerenciaEmpresa() {
   useEffect(() => {
     fetchFuncionarios();
   }, [cargoSelecionado]);
+
+  useEffect(() => {
+    if (visualizacao === "lista" && idEmpresaSelecionada) {
+      fetchFuncionariosLista();
+    }
+  }, [visualizacao, idEmpresaSelecionada]);
 
   const handleSelectUnidade = (unidade: Unidade) => {
     if (unidade.idUnidade === unidadeSelecionada?.idUnidade) {
@@ -267,45 +303,98 @@ export default function GerenciaEmpresa() {
     }
   };
 
-  const handleRedefinirSenhaFuncionario = async (email?: string | null) => {
-    if (!email) {
+  // Copia um texto pra área de transferência. navigator.clipboard só
+  // funciona em contexto seguro (https/localhost); fora disso (ou se o
+  // navegador negar), cai pro truque do textarea + execCommand.
+  const copiarParaAreaDeTransferencia = async (texto: string) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(texto);
+        return;
+      } catch {
+        // segue pro fallback abaixo
+      }
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = texto;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      document.execCommand("copy");
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  };
+
+  const handleRedefinirSenhaFuncionario = async (funcionario?: { idUsuario: number; email?: string | null } | null) => {
+    if (!funcionario?.email) {
       toast.error("Funcionário sem e-mail cadastrado.");
       return;
     }
 
     try {
       const auth = getAuth();
+      await sendPasswordResetEmail(auth, funcionario.email);
 
-      await sendPasswordResetEmail(auth, email);
+      const { link } = await gerarLinkRedefinicaoSenha(funcionario.idUsuario);
+      await copiarParaAreaDeTransferencia(link);
 
-      toast.success(`E-mail de redefinição enviado para ${email}.`);
+      toast.success("E-mail enviado e link de redefinição copiado para a área de transferência.");
     } catch (error) {
       console.error("Erro ao redefinir senha:", error);
-      toast.error("Não foi possível enviar o e-mail de redefinição.");
+      toast.error("Não foi possível gerar o link de redefinição de senha.");
     }
+  };
+
+  const handleEmpresaSalva = (empresaSalva: Empresa) => {
+    if (criandoEmpresa && empresaSalva?.idEmpresa) {
+      setIdEmpresaSelecionada(empresaSalva.idEmpresa);
+      setUnidadeSelecionada(null);
+      setSetorSelecionado(null);
+      setCargoSelecionado(null);
+      setFuncionarios([]);
+    }
+    setCriandoEmpresa(false);
   };
 
   return (
     <>
       <div className="flex flex-col h-full shadow-md rounded-md bg-white">
         {isAdmin && !companyId ? (
-          <div className="p-4 border-b border-gray-300">
-            <SearchDropdown<Empresa>
-              placeholder="Buscar empresa..."
-              valor={buscaEmpresa}
-              onChange={setBuscaEmpresa}
-              onSelect={(empresa) => {
-                setIdEmpresaSelecionada(empresa.idEmpresa);
-                setBuscaEmpresa("");
-                setUnidadeSelecionada(null);
-                setSetorSelecionado(null);
-                setCargoSelecionado(null);
-                setFuncionarios([]);
-              }}
-              buscar={searchEmpresas}
-              renderItem={(e) => <span>{e.nomeFantasia}</span>}
-              chaveUnica={(e) => e.idEmpresa}
-            />
+          <div className="p-4 border-b border-gray-300 flex items-center gap-2">
+            <div className="flex-1">
+              <SearchDropdown<Empresa>
+                placeholder="Buscar empresa..."
+                valor={buscaEmpresa}
+                onChange={setBuscaEmpresa}
+                onSelect={(empresa) => {
+                  setIdEmpresaSelecionada(empresa.idEmpresa);
+                  setBuscaEmpresa("");
+                  setUnidadeSelecionada(null);
+                  setSetorSelecionado(null);
+                  setCargoSelecionado(null);
+                  setFuncionarios([]);
+                }}
+                buscar={searchEmpresas}
+                renderItem={(e) => <span>{e.nomeFantasia}</span>}
+                chaveUnica={(e) => e.idEmpresa}
+              />
+            </div>
+
+            {podeEditar && (
+              <ToolTip text="Cadastrar nova empresa" position="left">
+                <button
+                  className="text-gray-700 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-md p-2 flex-shrink-0"
+                  onClick={() => { setCriandoEmpresa(true); setIsOpenEmpresa(true); }}
+                >
+                  <CirclePlus size={18} />
+                </button>
+              </ToolTip>
+            )}
           </div>
         ) : (
           <>
@@ -325,10 +414,20 @@ export default function GerenciaEmpresa() {
             <div className="p-4 border-b border-gray-300 text-sm">
               <div className="w-full flex justify-between items-center">
                 <h1 className="text-2xl font-bold mb-2">{empresa.nomeFantasia}</h1>
-                <div>
+                <div className="flex items-center gap-2">
+                  <ToolTip text={visualizacao === "lista" ? "Voltar para a hierarquia" : "Ver todos os funcionários em uma lista só"} position="left">
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 cursor-pointer rounded-md px-3 py-2"
+                      onClick={() => setVisualizacao((v) => (v === "lista" ? "hierarquia" : "lista"))}
+                    >
+                      {visualizacao === "lista" ? <Network size={16} /> : <List size={16} />}
+                      {visualizacao === "lista" ? "Ver hierarquia" : "Listar funcionários"}
+                    </button>
+                  </ToolTip>
                   {podeEditar ? (
                     <ToolTip text="Editar" position="left">
-                      <button className="text-sky-500 hover:text-sky-700 cursor-pointer" onClick={() => setIsOpenEmpresa(true)}>
+                      <button className="text-sky-500 hover:text-sky-700 cursor-pointer" onClick={() => { setCriandoEmpresa(false); setIsOpenEmpresa(true); }}>
                         <Pencil size={18} className="mr-2" />
                       </button>
                     </ToolTip>
@@ -349,6 +448,8 @@ export default function GerenciaEmpresa() {
         )}
 
 
+        {visualizacao === "hierarquia" && (
+          <>
         {/* Tabs com as unidades */}
         <div className="flex items-center px-4 py-2 bg-white min-h-14 border-b border-gray-300 overflow-x-auto custom-scrollbar text-sm gap-2">
           <p className="font-light whitespace-nowrap">Unidades:</p>
@@ -679,7 +780,7 @@ export default function GerenciaEmpresa() {
                                           <button
                                             type="button"
                                             className="text-amber-600 hover:text-amber-700 cursor-pointer"
-                                            onClick={() => handleRedefinirSenhaFuncionario(f.email)}
+                                            onClick={() => handleRedefinirSenhaFuncionario(f)}
                                           >
                                             <RotateCcwKey size={15} />
                                           </button>
@@ -718,19 +819,134 @@ export default function GerenciaEmpresa() {
             )}
           </div>
         </div >
+          </>
+        )}
+
+        {visualizacao === "lista" && (
+          <div className="flex flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-md font-semibold">Lista de Funcionários</h2>
+                {podeEditar && idEmpresaSelecionada && (
+                  <ToolTip text="Adicionar" position="left">
+                    <button
+                      className="text-sm text-gray-700 bg-white hover:bg-gray-100 border border-gray-200 hover:border-gray-300 rounded p-2 cursor-pointer"
+                      onClick={() => { setFuncionarioSelecionado(null); setIsOpenFuncionario(true); }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <CirclePlus size={14} />
+                        <p className="text-xs font-medium">Novo Funcionário</p>
+                      </div>
+                    </button>
+                  </ToolTip>
+                )}
+              </div>
+
+              <table className="w-full text-xs border border-gray-200 text-center">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="px-3 py-2">Nome</th>
+                    <th className="px-3 py-2">Email</th>
+                    <th className="px-3 py-2">Telefone</th>
+                    <th className="px-3 py-2">Unidade</th>
+                    <th className="px-3 py-2">Setor</th>
+                    <th className="px-3 py-2">Cargo</th>
+                    <th className="px-3 py-2">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingFuncionariosLista ? (
+                    Array.from({ length: 6 }).map((_, i) => (
+                      <tr key={i} className="border-t border-gray-300 animate-pulse">
+                        <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-24 mx-auto" /></td>
+                        <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-32 mx-auto" /></td>
+                        <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-28 mx-auto" /></td>
+                        <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-24 mx-auto" /></td>
+                        <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-24 mx-auto" /></td>
+                        <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-24 mx-auto" /></td>
+                        <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-20 mx-auto" /></td>
+                      </tr>
+                    ))
+                  ) : funcionariosLista.length > 0 ? (
+                    funcionariosLista.map((f) => (
+                      <tr key={f.idUsuario} className="border-t border-gray-300">
+                        <td className="px-3 py-2">{f.nome}</td>
+                        <td className="px-3 py-2">{f.email}</td>
+                        <td className="px-3 py-2">{formatarTelefone(f.telefone || "") || "-"}</td>
+                        <td className="px-3 py-2">{f.unidade?.nomeFantasia ?? "-"}</td>
+                        <td className="px-3 py-2">{f.setor?.nome ?? "-"}</td>
+                        <td className="px-3 py-2">{f.cargo?.nome ?? "-"}</td>
+                        <td className="px-3 py-2 flex items-center justify-center gap-4">
+                          {podeEditar ? (
+                            <ToolTip text="Editar" position="left">
+                              <button
+                                className="text-sky-500 hover:text-sky-700 cursor-pointer"
+                                onClick={() => {
+                                  setFuncionarioSelecionado(f);
+                                  setIsOpenFuncionario(true);
+                                }}
+                              >
+                                <Pencil size={15} />
+                              </button>
+                            </ToolTip>
+                          ) : (
+                            <ToolTip text="Sem permissão" position="left">
+                              <button className="text-gray-400 cursor-not-allowed">
+                                <PencilOff size={15} />
+                              </button>
+                            </ToolTip>
+                          )}
+
+                          <ToolTip text="Redefinir senha">
+                            <button
+                              type="button"
+                              className="text-amber-600 hover:text-amber-700 cursor-pointer"
+                              onClick={() => handleRedefinirSenhaFuncionario(f)}
+                            >
+                              <RotateCcwKey size={15} />
+                            </button>
+                          </ToolTip>
+
+                          {f.ativo === 1 ? (
+                            <ToolTip text="Ativo">
+                              <CircleCheck size={16} className="text-green-600" />
+                            </ToolTip>
+                          ) : (
+                            <ToolTip text="Inativo">
+                              <CircleX size={16} className="text-red-600" />
+                            </ToolTip>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-4 text-gray-500 italic">
+                        {idEmpresaSelecionada ? "Nenhum funcionário cadastrado." : "Selecione uma empresa para ver os funcionários."}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div >
 
       {/* Modais */}
       <ModalBase
-        titulo="Cadastro da Empresa"
+        titulo={criandoEmpresa ? "Cadastrar Nova Empresa" : "Cadastro da Empresa"}
         isOpen={isOpenEmpresa}
-        onClose={() => setIsOpenEmpresa(false)}
+        onClose={() => { setIsOpenEmpresa(false); setCriandoEmpresa(false); }}
         largura="max-w-8/12"
       >
         <FormCadastroEmpresa
           fetchEmpresa={fetchEmpresa}
-          onEdit={empresa ?? undefined}
+          onEdit={criandoEmpresa ? undefined : (empresa ?? undefined)}
+          onSaved={handleEmpresaSalva}
           setIsOpenEmpresa={setIsOpenEmpresa}
+          cursosOptions={cursosOptions}
+          medidasOptions={medidasOptions}
         />
       </ModalBase>
 
@@ -790,10 +1006,10 @@ export default function GerenciaEmpresa() {
       >
         <FormFuncionario
           fkEmpresaId={idEmpresaSelecionada ?? companyId ?? undefined}
-          fkCargoId={cargoSelecionado?.idCargo}
+          fkCargoId={visualizacao === "lista" ? undefined : cargoSelecionado?.idCargo}
           onEdit={funcionarioSelecionado ?? undefined}
           setIsOpenFuncionario={setIsOpenFuncionario}
-          fetchFuncionarios={fetchFuncionarios}
+          fetchFuncionarios={visualizacao === "lista" ? fetchFuncionariosLista : fetchFuncionarios}
           isOpen={isOpenFuncionario}
           cursosOptions={cursosOptions}
           medidasOptions={medidasOptions}

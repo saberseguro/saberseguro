@@ -24,7 +24,12 @@ interface BuscarUsuarioParams {
   fkResponsavelTecnicoId?: number;
 }
 
-export async function buscarUsuario(params: BuscarUsuarioParams) {
+interface BuscarUsuarioContexto {
+  isAdmin: boolean;
+  fkEmpresaId?: number;
+}
+
+export async function buscarUsuario(params: BuscarUsuarioParams, contexto?: BuscarUsuarioContexto) {
   const { idUsuario, fkEmpresaId, fkCargoId, fkResponsavelTecnicoId } = params;
 
   if (!idUsuario && !fkEmpresaId && !fkCargoId && !fkResponsavelTecnicoId) {
@@ -35,6 +40,12 @@ export async function buscarUsuario(params: BuscarUsuarioParams) {
 
   if (idUsuario) {
     where.idUsuario = idUsuario;
+
+    // Correção de segurança: usuário não-admin só pode buscar por idUsuario
+    // dentro da própria empresa (evita acessar usuários de outras empresas).
+    if (contexto && !contexto.isAdmin) {
+      where.fkEmpresaId = contexto.fkEmpresaId;
+    }
   } else {
     where.OR = [];
     if (fkEmpresaId) where.OR.push({ fkEmpresaId });
@@ -44,24 +55,48 @@ export async function buscarUsuario(params: BuscarUsuarioParams) {
     if (where.OR.length === 0) {
       throw new Error('Informe pelo menos um dos filtros válidos.');
     }
+
+    // Correção de segurança: essa cláusula OR não tinha nenhuma restrição de
+    // empresa, então um não-admin podia passar fkEmpresaId de OUTRA empresa
+    // (ou um fkCargoId/fkResponsavelTecnicoId de outra empresa) e listar os
+    // funcionários de lá. Adicionar fkEmpresaId aqui funciona como um AND
+    // com o OR acima, confinando o resultado à própria empresa.
+    if (contexto && !contexto.isAdmin) {
+      where.fkEmpresaId = contexto.fkEmpresaId;
+    }
   }
 
   const usuarios = await prisma.usuario.findMany({ where });
+  const usuarioIds = usuarios.map((u) => u.idUsuario);
 
-  const usuariosComRoles = await Promise.all(
-    usuarios.map(async (usuario) => {
-      const rolesDoUsuario: UsuarioRoleComPermissoes[] = await prisma.usuariorole.findMany({
-        where: { fkUsuarioId: usuario.idUsuario },
-        include: {
-          role: {
-            include: {
-              rolepermissao: {
-                include: { permissao: true },
-              },
+  // Correção de performance: antes buscava as roles de CADA usuário em uma
+  // consulta separada (1 consulta a mais por usuário retornado). Agora busca
+  // as roles de todos de uma vez só e agrupa em memória.
+  const todasRoles: UsuarioRoleComPermissoes[] = usuarioIds.length
+    ? await prisma.usuariorole.findMany({
+      where: { fkUsuarioId: { in: usuarioIds } },
+      include: {
+        role: {
+          include: {
+            rolepermissao: {
+              include: { permissao: true },
             },
           },
         },
-      });
+      },
+    })
+    : [];
+
+  const rolesPorUsuario = new Map<number, UsuarioRoleComPermissoes[]>();
+  for (const r of todasRoles) {
+    const lista = rolesPorUsuario.get(r.fkUsuarioId) ?? [];
+    lista.push(r);
+    rolesPorUsuario.set(r.fkUsuarioId, lista);
+  }
+
+  const usuariosComRoles = await Promise.all(
+    usuarios.map(async (usuario) => {
+      const rolesDoUsuario = rolesPorUsuario.get(usuario.idUsuario) ?? [];
 
       const permissoes = Array.from(
         new Set(
@@ -86,6 +121,13 @@ export async function buscarUsuario(params: BuscarUsuarioParams) {
 
   return usuariosComRoles;
 }
+
+const to01 = (v: any, def: number) => {
+  if (v === undefined || v === null || v === "") return def;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  const n = Number(v);
+  return Number.isFinite(n) ? (n ? 1 : 0) : def;
+};
 
 interface HorarioDTO {
   diaSemana: number;
@@ -116,14 +158,6 @@ interface NovoUsuarioDTO {
   cursos?: { idCurso: number; ativo: 0 | 1; origem?: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" }[];
   medidas?: { idMedida: number; ativo: 0 | 1; origem?: "EMPRESA" | "UNIDADE" | "SETOR" | "CARGO" }[];
 }
-
-const to01 = (v: any, def: number) => {
-  if (v === undefined || v === null || v === "") return def;
-  if (typeof v === "boolean") return v ? 1 : 0;
-  const n = Number(v);
-  return Number.isFinite(n) ? (n ? 1 : 0) : def;
-};
-
 
 export async function criarUsuario(data: NovoUsuarioDTO) {
   try {
@@ -398,6 +432,25 @@ export async function editarUsuario(data: EditarUsuarioDTO) {
   }
 }
 
+// Busca só o essencial pra checar permissão e gerar o link de redefinição
+// (sem trazer roles/horários/cursos, que não são necessários aqui).
+export async function buscarUsuarioEmailEEmpresa(idUsuario: number) {
+  return prisma.usuario.findUnique({
+    where: { idUsuario },
+    select: { idUsuario: true, nome: true, email: true, fkEmpresaId: true },
+  });
+}
+
+// Gera o link de redefinição de senha do Firebase pro e-mail do funcionário.
+// Diferente do sendPasswordResetEmail do SDK do cliente (que só dispara o
+// e-mail padrão do Firebase, sem expor o link em lugar nenhum), o SDK admin
+// devolve o link pronto — assim o gestor pode copiá-lo e mandar por onde
+// quiser (WhatsApp, e-mail próprio etc.), sem depender só da entrega do
+// e-mail automático.
+export async function gerarLinkRedefinicaoSenha(email: string) {
+  return auth().generatePasswordResetLink(email);
+}
+
 export const buscarRolesComPermissoes = async () => {
   const roles = await prisma.role.findMany({
     include: {
@@ -438,4 +491,143 @@ export async function verificarHorarioAcesso(email: string) {
   }));
 
   return horarios;
+}
+
+// Busca os dados completos de UM funcionário (roles, horários de acesso e
+// cursos/medidas vinculados, com a mesma herança cargo > setor > unidade >
+// empresa usada na listagem por cargo) pra alimentar o modal de edição.
+//
+// É usada sempre que o modal de "Cadastro de Funcionários" abre pra editar
+// alguém, não importa se a tela de origem foi o drill-down (Unidade > Setor
+// > Cargo) ou a Lista de Funcionários — essa última só carrega um resumo
+// leve de cada um (sem roles/horários/cursos/medidas), e usar esse resumo
+// direto no formulário fazia a tela quebrar (roles undefined) e, pior,
+// salvar apagaria as funções e os horários de acesso do funcionário.
+export async function buscarUsuarioDetalhado(idUsuario: number) {
+  const usuario = await prisma.usuario.findUnique({
+    where: { idUsuario },
+    include: {
+      cargo: {
+        include: {
+          setor: {
+            include: { unidade: true },
+          },
+        },
+      },
+      usuariorole: {
+        include: {
+          role: {
+            include: {
+              rolepermissao: { include: { permissao: true } },
+            },
+          },
+        },
+      },
+      usuariohorario: true,
+    },
+  });
+
+  if (!usuario) return null;
+
+  const diasSemana = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+
+  const idCargo = usuario.fkCargoId ?? 0;
+  const idSetor = usuario.cargo?.fkSetorId ?? 0;
+  const idUnidade = usuario.cargo?.setor?.fkUnidadeId ?? 0;
+  const fkEmpresaId = usuario.fkEmpresaId ?? 0;
+
+  const [cursoUsuario, cursoCargo, cursoSetor, cursoUnidade, cursoEmpresa] = await Promise.all([
+    prisma.cursoacesso.findMany({ where: { fkUsuarioId: idUsuario }, include: { curso: true } }),
+    idCargo
+      ? prisma.cursoacesso.findMany({ where: { fkCargoId: idCargo, fkUsuarioId: null }, include: { curso: true } })
+      : Promise.resolve([]),
+    idSetor
+      ? prisma.cursoacesso.findMany({ where: { fkSetorId: idSetor, fkCargoId: null, fkUsuarioId: null }, include: { curso: true } })
+      : Promise.resolve([]),
+    idUnidade
+      ? prisma.cursoacesso.findMany({ where: { fkUnidadeId: idUnidade, fkSetorId: null, fkCargoId: null, fkUsuarioId: null }, include: { curso: true } })
+      : Promise.resolve([]),
+    fkEmpresaId
+      ? prisma.cursoacesso.findMany({ where: { fkEmpresaId, fkUnidadeId: null, fkSetorId: null, fkCargoId: null, fkUsuarioId: null }, include: { curso: true } })
+      : Promise.resolve([]),
+  ]);
+
+  const [medidaUsuario, medidaCargo, medidaSetor, medidaUnidade, medidaEmpresa] = await Promise.all([
+    prisma.medidavinculo.findMany({ where: { fkUsuarioId: idUsuario }, include: { medida: true } }),
+    idCargo
+      ? prisma.medidavinculo.findMany({ where: { fkCargoId: idCargo, fkUsuarioId: null }, include: { medida: true } })
+      : Promise.resolve([]),
+    idSetor
+      ? prisma.medidavinculo.findMany({ where: { fkSetorId: idSetor, fkCargoId: null, fkUsuarioId: null }, include: { medida: true } })
+      : Promise.resolve([]),
+    idUnidade
+      ? prisma.medidavinculo.findMany({ where: { fkUnidadeId: idUnidade, fkSetorId: null, fkCargoId: null, fkUsuarioId: null }, include: { medida: true } })
+      : Promise.resolve([]),
+    fkEmpresaId
+      ? prisma.medidavinculo.findMany({ where: { fkEmpresaId, fkUnidadeId: null, fkSetorId: null, fkCargoId: null, fkUsuarioId: null }, include: { medida: true } })
+      : Promise.resolve([]),
+  ]);
+
+  const cursos = [
+    ...cursoUsuario.map((a) => ({ idCursoAcesso: a.idCursoAcesso, idCurso: a.curso.idCurso, titulo: a.curso.titulo, ativo: a.curso.ativo as 0 | 1, origem: "FUNCIONARIO" as const })),
+    ...cursoCargo.map((a) => ({ idCursoAcesso: a.idCursoAcesso, idCurso: a.curso.idCurso, titulo: a.curso.titulo, ativo: a.curso.ativo as 0 | 1, origem: "CARGO" as const })),
+    ...cursoSetor.map((a) => ({ idCursoAcesso: a.idCursoAcesso, idCurso: a.curso.idCurso, titulo: a.curso.titulo, ativo: a.curso.ativo as 0 | 1, origem: "SETOR" as const })),
+    ...cursoUnidade.map((a) => ({ idCursoAcesso: a.idCursoAcesso, idCurso: a.curso.idCurso, titulo: a.curso.titulo, ativo: a.curso.ativo as 0 | 1, origem: "UNIDADE" as const })),
+    ...cursoEmpresa.map((a) => ({ idCursoAcesso: a.idCursoAcesso, idCurso: a.curso.idCurso, titulo: a.curso.titulo, ativo: a.curso.ativo as 0 | 1, origem: "EMPRESA" as const })),
+  ];
+
+  const medidas = [
+    ...medidaUsuario.map((m) => ({ idMedidaVinculo: m.idMedidaVinculo, idMedida: m.medida.idMedida, nome: m.medida.nome, tipo: m.medida.tipo, ativo: m.medida.ativo as 0 | 1, origem: "FUNCIONARIO" as const })),
+    ...medidaCargo.map((m) => ({ idMedidaVinculo: m.idMedidaVinculo, idMedida: m.medida.idMedida, nome: m.medida.nome, tipo: m.medida.tipo, ativo: m.medida.ativo as 0 | 1, origem: "CARGO" as const })),
+    ...medidaSetor.map((m) => ({ idMedidaVinculo: m.idMedidaVinculo, idMedida: m.medida.idMedida, nome: m.medida.nome, tipo: m.medida.tipo, ativo: m.medida.ativo as 0 | 1, origem: "SETOR" as const })),
+    ...medidaUnidade.map((m) => ({ idMedidaVinculo: m.idMedidaVinculo, idMedida: m.medida.idMedida, nome: m.medida.nome, tipo: m.medida.tipo, ativo: m.medida.ativo as 0 | 1, origem: "UNIDADE" as const })),
+    ...medidaEmpresa.map((m) => ({ idMedidaVinculo: m.idMedidaVinculo, idMedida: m.medida.idMedida, nome: m.medida.nome, tipo: m.medida.tipo, ativo: m.medida.ativo as 0 | 1, origem: "EMPRESA" as const })),
+  ];
+
+  const roles = usuario.usuariorole.map((ur) => ({ idRole: ur.role.idRole, nome: ur.role.nome }));
+
+  const permissoes = Array.from(
+    new Set(usuario.usuariorole.flatMap((ur) => ur.role.rolepermissao.map((rp) => rp.permissao.nome)))
+  );
+
+  const usuarioHorario = usuario.usuariohorario.map((h) => ({
+    diaSemana: h.diaSemana,
+    diaSemanaNome: diasSemana[h.diaSemana],
+    horarioInicio: h.horarioInicio,
+    horarioFim: h.horarioFim,
+  }));
+
+  return {
+    idUsuario: usuario.idUsuario,
+    nome: usuario.nome,
+    cpf: usuario.cpf,
+    telefone: usuario.telefone,
+    email: usuario.email,
+    ativo: usuario.ativo,
+    fkEmpresaId: usuario.fkEmpresaId,
+    fkResponsavelTecnicoId: usuario.fkResponsavelTecnicoId,
+    fkCargoId: usuario.fkCargoId,
+    criado_em: usuario.criado_em,
+    editado_em: usuario.editado_em,
+    roles,
+    permissoes,
+    usuarioHorario,
+    cursos,
+    medidas,
+    cargo: usuario.cargo
+      ? {
+        idCargo: usuario.cargo.idCargo,
+        nome: usuario.cargo.nome,
+        setor: usuario.cargo.setor
+          ? {
+            idSetor: usuario.cargo.setor.idSetor,
+            nome: usuario.cargo.setor.nome,
+            unidade: usuario.cargo.setor.unidade
+              ? { idUnidade: usuario.cargo.setor.unidade.idUnidade, nomeFantasia: usuario.cargo.setor.unidade.nomeFantasia }
+              : null,
+          }
+          : null,
+      }
+      : null,
+  };
 }

@@ -721,3 +721,51 @@ export const buscarFuncionariosRelatorio = {
     }));
   },
 };
+
+/**
+ * Busca todos os cargos de uma empresa (de todas as unidades/setores), já
+ * com o nome do setor (e da unidade) junto. Usada pelo seletor de "Cargo"
+ * do modal de funcionário quando ele é aberto a partir da Lista de
+ * Funcionários (visão plana), onde não existe um cargo já pré-selecionado
+ * via drill-down — por isso o usuário precisa escolher o cargo manualmente,
+ * e a opção mostra "Cargo - Setor" pra não confundir cargos com o mesmo
+ * nome em setores diferentes.
+ */
+export const buscarCargosEmpresa = {
+  async execute(fkEmpresaId: number, opts: { apenasAtivos?: boolean } = {}) {
+    const cargos = await prisma.cargo.findMany({
+      where: {
+        setor: { unidade: { fkEmpresaId } },
+        ...(opts.apenasAtivos ? { ativo: 1 } : {}),
+      },
+      include: {
+        setor: {
+          select: {
+            idSetor: true,
+            nome: true,
+            unidade: {
+              select: { idUnidade: true, nomeFantasia: true },
+            },
+          },
+        },
+      },
+      orderBy: [{ nome: "asc" }],
+    });
+
+    return cargos.map((c) => ({
+      idCargo: c.idCargo,
+      nome: c.nome,
+      ativo: c.ativo,
+      fkSetorId: c.fkSetorId,
+      setor: c.setor
+        ? {
+          idSetor: c.setor.idSetor,
+          nome: c.setor.nome,
+          unidade: c.setor.unidade
+            ? { idUnidade: c.setor.unidade.idUnidade, nomeFantasia: c.setor.unidade.nomeFantasia }
+            : null,
+        }
+        : null,
+    }));
+  },
+};

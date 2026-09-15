@@ -18,10 +18,12 @@ export async function login(req: Request, res: Response) {
 }
 
 export async function atualizarSenha(req: Request, res: Response) {
-  const { idUsuario } = req.body;
+  // Correção de segurança: o idUsuario vem sempre do token (usuário logado),
+  // nunca do body — evita que um usuário altere o status de outro.
+  const idUsuario = req.user?.idUsuario;
 
   if (!idUsuario) {
-    return res.status(400).json({ error: "idUsuario é obrigatório." });
+    return res.status(401).json({ error: "Usuário não autenticado." });
   }
 
   try {
@@ -38,9 +40,13 @@ export async function atualizarSenha(req: Request, res: Response) {
 }
 
 export async function atualizarAssinaturaController(req: Request, res: Response) {
-  const { url, idUsuario } = req.body;
+  const { url } = req.body;
+  // Correção de segurança: o idUsuario vem sempre do token (usuário logado),
+  // nunca do body — evita que um usuário sobrescreva a assinatura de outro
+  // (a assinatura é usada em certificados oficiais).
+  const idUsuario = req.user?.idUsuario;
 
-  if (!url) {
+  if (!url || !idUsuario) {
     return res.status(400).json({ error: "Parametros inválidos." });
   }
 

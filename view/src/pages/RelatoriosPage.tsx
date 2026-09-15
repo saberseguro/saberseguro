@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { FileSpreadsheet, FileText, Download, Filter, Loader2 } from "lucide-react";
+import { FileSpreadsheet, FileText, Download, Filter, Loader2, Eraser } from "lucide-react";
 import type { FiltrosRelatorio, OpcaoRelatorio, TipoArquivoRelatorio, TipoRelatorio } from "../types/Relatorio";
 import { useAuth } from "../contexts/AuthContext";
 import { temPermissao } from "../auxiliares/permissoes";
@@ -59,6 +59,28 @@ export default function RelatoriosPage() {
   );
 
   const formatoAtual: TipoArquivoRelatorio | "" = relatorioAtual?.formato ?? "";
+
+  // Nomes pra exibir no Resumo (em vez dos IDs crus dos filtros).
+  const nomeEmpresaResumo =
+    isAdmin && !companyId
+      ? empresaSelecionada?.nomeFantasia || empresaSelecionada?.razaoSocial || "-"
+      : selectedCompany?.nomeFantasia || selectedCompany?.razaoSocial || "-";
+
+  const nomeUnidadeResumo = filtros.fkUnidadeId
+    ? unidades.find((u) => u.idUnidade === filtros.fkUnidadeId)?.nomeFantasia ?? "-"
+    : "Todas";
+
+  const nomeSetorResumo = filtros.fkSetorId
+    ? setores.find((s) => s.idSetor === filtros.fkSetorId)?.nome ?? "-"
+    : "Todos";
+
+  const nomeCargoResumo = filtros.fkCargoId
+    ? cargos.find((c) => c.idCargo === filtros.fkCargoId)?.nome ?? "-"
+    : "Todos";
+
+  const nomeFuncionarioResumo = filtros.fkFuncionarioId
+    ? funcionarios.find((f) => f.idUsuario === filtros.fkFuncionarioId)?.nome ?? "-"
+    : "Todos";
 
   useEffect(() => {
     if (!isAdmin) {
@@ -198,6 +220,15 @@ export default function RelatoriosPage() {
     setFiltros((prev) => ({ ...prev, [campo]: valor }));
   }
 
+  function limparFiltrosFormulario() {
+    // Mantém a empresa selecionada (pra não obrigar re-buscar/re-selecionar)
+    // e apaga o resto: unidade, setor, cargo, funcionário, status e período.
+    setFiltros((prev) => ({
+      ...valoresIniciaisFiltros,
+      fkEmpresaId: prev.fkEmpresaId,
+    }));
+  }
+
   function handleChangeEmpresa(empresa: Empresa) {
     setEmpresaSelecionada(empresa);
     setBuscaEmpresa("");
@@ -304,7 +335,7 @@ export default function RelatoriosPage() {
   }
 
   return (
-    <div className="h-full bg-gray-50">
+    <div className="h-full">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -536,19 +567,32 @@ export default function RelatoriosPage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Data fim {relatorioSelecionado === "lista_presenca_cursos" ? "do período" : ""}
                     </label>
-                    <input
-                      type="date"
-                      value={filtros.dataFim || ""}
-                      onChange={(e) => atualizarFiltro("dataFim", e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={filtros.dataFim || ""}
+                        onChange={(e) => atualizarFiltro("dataFim", e.target.value)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-end justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={limparFiltrosFormulario}
+                      title="Limpar filtros do formulário"
+                      className="shrink-0 inline-flex items-center justify-center px-6 py-2 gap-2 rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 hover:border-red-400 transition cursor-pointer"
+                    >
+                      Limpar Formulário
+                      <Eraser size={16} />
+                    </button>
                   </div>
                 </>
               )}
             </div>
 
             <div className="mt-6 rounded-xl bg-gray-50 border border-gray-200 p-4">
-              <h3 className="text-sm font-semibold text-gray-800 mb-2">Resumo</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Resumo do Relatório</h3>
 
               {relatorioAtual ? (
                 <div className="space-y-1 text-sm text-gray-600">
@@ -559,19 +603,19 @@ export default function RelatoriosPage() {
                     <strong>Formato:</strong> {formatoAtual.toUpperCase()}
                   </p>
                   <p>
-                    <strong>Empresa:</strong> {filtros.fkEmpresaId ?? "-"}
+                    <strong>Empresa:</strong> {nomeEmpresaResumo}
                   </p>
                   <p>
-                    <strong>Unidade:</strong> {filtros.fkUnidadeId ?? "Todas"}
+                    <strong>Unidade:</strong> {nomeUnidadeResumo}
                   </p>
                   <p>
-                    <strong>Setor:</strong> {filtros.fkSetorId ?? "Todos"}
+                    <strong>Setor:</strong> {nomeSetorResumo}
                   </p>
                   <p>
-                    <strong>Cargo:</strong> {filtros.fkCargoId ?? "Todos"}
+                    <strong>Cargo:</strong> {nomeCargoResumo}
                   </p>
                   <p>
-                    <strong>Funcionário:</strong> {filtros.fkFuncionarioId ?? "Todos"}
+                    <strong>Funcionário:</strong> {nomeFuncionarioResumo}
                   </p>
                   {["pendencias_cursos", "lista_presenca_cursos"].includes(relatorioSelecionado) && (
                     <>

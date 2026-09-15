@@ -19,16 +19,61 @@ interface EmpresaInput {
   editado_em?: Date;
   ativo?: number;
   idUsuario: number;
+
+  cursos?: { idCurso: number; ativo?: 0 | 1 }[];
+  medidas?: { idMedida: number; ativo?: 0 | 1 }[];
 }
+
+// Filtro usado para isolar os vínculos (curso/medida) que pertencem
+// diretamente à empresa, e não a uma unidade/setor/cargo/usuário dela.
+const escopoDiretoEmpresa = (idEmpresa: number) => ({
+  fkEmpresaId: idEmpresa,
+  fkUnidadeId: null,
+  fkSetorId: null,
+  fkCargoId: null,
+  fkUsuarioId: null,
+});
 
 export const buscarEmpresa = {
   async execute(id: number) {
-    return await prisma.empresa.findUnique({
+    const empresa = await prisma.empresa.findUnique({
       where: { idEmpresa: id },
       include: {
         funcionarios: true,
       }
     });
+
+    if (!empresa) return null;
+
+    const [acessosCursos, acessosMedidas] = await Promise.all([
+      prisma.cursoacesso.findMany({
+        where: escopoDiretoEmpresa(id),
+        include: { curso: { select: { idCurso: true, titulo: true, ativo: true } } },
+      }),
+      prisma.medidavinculo.findMany({
+        where: escopoDiretoEmpresa(id),
+        include: { medida: { select: { idMedida: true, nome: true, tipo: true, ativo: true } } },
+      }),
+    ]);
+
+    return {
+      ...empresa,
+      cursos: acessosCursos.map((a) => ({
+        idCursoAcesso: a.idCursoAcesso,
+        idCurso: a.curso.idCurso,
+        titulo: a.curso.titulo,
+        ativo: a.curso.ativo as 0 | 1,
+        origem: "EMPRESA" as const,
+      })),
+      medidas: acessosMedidas.map((a) => ({
+        idMedidaVinculo: a.idMedidaVinculo,
+        idMedida: a.medida.idMedida,
+        nome: a.medida.nome,
+        tipo: a.medida.tipo,
+        ativo: a.medida.ativo as 0 | 1,
+        origem: "EMPRESA" as const,
+      })),
+    };
   },
 };
 
@@ -60,15 +105,38 @@ export const listarEmpresas = {
 
 export const criarEmpresa = {
   async execute(data: EmpresaInput) {
+    const { idUsuario, cursos = [], medidas = [], ...dadosEmpresa } = data;
+
     try {
+      const empresa = await prisma.$transaction(async (tx) => {
+        const novaEmpresa = await tx.empresa.create({
+          data: {
+            ...dadosEmpresa,
+            tipoDocumento: dadosEmpresa.tipoDocumento as empresa_tipoDocumento,
+          },
+        });
 
-      const { idUsuario, ...dadosEmpresa } = data;
+        if (cursos.length > 0) {
+          await tx.cursoacesso.createMany({
+            data: cursos.map((c) => ({
+              fkCursoId: c.idCurso,
+              fkEmpresaId: novaEmpresa.idEmpresa,
+            })),
+            skipDuplicates: true,
+          });
+        }
 
-      const empresa = await prisma.empresa.create({
-        data: {
-          ...dadosEmpresa,
-          tipoDocumento: dadosEmpresa.tipoDocumento as empresa_tipoDocumento,
-        },
+        if (medidas.length > 0) {
+          await tx.medidavinculo.createMany({
+            data: medidas.map((m) => ({
+              fkMedidaId: m.idMedida,
+              fkEmpresaId: novaEmpresa.idEmpresa,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        return novaEmpresa;
       });
 
       await registrarEvento({
@@ -95,33 +163,67 @@ export const criarEmpresa = {
 
 export const editarEmpresa = {
   async execute(id: number, data: EmpresaInput) {
+    const { idUsuario, cursos = [], medidas = [], ...dadosEmpresa } = data;
+
     try {
-      const { idUsuario, ...dadosEmpresa } = data;
+      const { empresaAntes, empresaAtualizada } = await prisma.$transaction(async (tx) => {
+        const empresaAntes = await tx.empresa.findUnique({
+          where: { idEmpresa: id },
+        });
 
-      const empresaAntes = await prisma.empresa.findUnique({
-        where: { idEmpresa: id },
-      });
+        const empresaAtualizada = await tx.empresa.update({
+          where: { idEmpresa: id },
+          data: {
+            ...dadosEmpresa,
+            tipoDocumento: dadosEmpresa.tipoDocumento as empresa_tipoDocumento,
+            editado_em: new Date(),
+          },
+        });
 
-      const empresa = await prisma.empresa.update({
-        where: { idEmpresa: id },
-        data: {
-          ...dadosEmpresa,
-          tipoDocumento: dadosEmpresa.tipoDocumento as empresa_tipoDocumento,
-          editado_em: new Date(),
-        },
+        // Atualiza os vínculos de cursos diretos da empresa
+        await tx.cursoacesso.deleteMany({
+          where: escopoDiretoEmpresa(id),
+        });
+
+        if (cursos.length > 0) {
+          await tx.cursoacesso.createMany({
+            data: cursos.map((c) => ({
+              fkCursoId: c.idCurso,
+              fkEmpresaId: id,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        // Atualiza os vínculos de medidas diretos da empresa
+        await tx.medidavinculo.deleteMany({
+          where: escopoDiretoEmpresa(id),
+        });
+
+        if (medidas.length > 0) {
+          await tx.medidavinculo.createMany({
+            data: medidas.map((m) => ({
+              fkMedidaId: m.idMedida,
+              fkEmpresaId: id,
+            })),
+            skipDuplicates: true,
+          });
+        }
+
+        return { empresaAntes, empresaAtualizada };
       });
 
       await registrarEvento({
         idUsuario: idUsuario,
         tipo: "editar",
         entidade: "empresa",
-        entidadeId: empresa.idEmpresa,
-        descricao: `Empresa: ${empresa.razaoSocial} editada com sucesso!`,
+        entidadeId: empresaAtualizada.idEmpresa,
+        descricao: `Empresa: ${empresaAtualizada.razaoSocial} editada com sucesso!`,
         dadosAntes: empresaAntes,
-        dadosDepois: empresa,
+        dadosDepois: empresaAtualizada,
       });
 
-      return empresa;
+      return empresaAtualizada;
     } catch (e: any) {
       await registrarEvento({
         idUsuario: data.idUsuario,

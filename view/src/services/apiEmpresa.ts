@@ -30,6 +30,13 @@ export async function getFuncionarios(idCargo: number, fkEmpresaId: number): Pro
   return apiFetch(`/cargo/funcionariosCargo/${idCargo}?includeCursos=1&includeMedidas=1&fkEmpresaId=${fkEmpresaId}`);
 }
 
+// Todos os cargos da empresa (de qualquer unidade/setor), usado no seletor
+// de cargo do modal de funcionário quando aberto a partir da Lista de
+// Funcionários (visão plana, sem cargo pré-selecionado por drill-down).
+export async function getCargosPorEmpresa(fkEmpresaId: number, apenasAtivos = true): Promise<Cargo[]> {
+  return apiFetch(`/cargo/cargosEmpresa/${fkEmpresaId}?apenasAtivos=${apenasAtivos ? "1" : "0"}`);
+}
+
 export interface FiltroFuncionariosRelatorio {
   fkEmpresaId: number;
   fkUnidadeId?: number;
@@ -51,6 +58,19 @@ export async function buscarFuncionariosRelatorio(filtros: FiltroFuncionariosRel
   if (filtros.ativo !== undefined) params.append("ativo", String(filtros.ativo));
 
   return apiFetch<Funcionario[]>(`/cargo/funcionarios-relatorio?${params.toString()}`);
+}
+
+// Detalhes completos de UM funcionário (roles, horários, cursos/medidas),
+// usado pelo modal de edição pra não depender do resumo leve que a tela de
+// origem (ex.: Lista de Funcionários) já tinha em mãos.
+export async function getFuncionarioDetalhado(idUsuario: number): Promise<Funcionario> {
+  return apiFetch(`/usuario/${idUsuario}`);
+}
+
+// Gera o link de redefinição de senha do funcionário (Firebase), pra copiar
+// e mandar manualmente em vez de depender só do e-mail automático.
+export async function gerarLinkRedefinicaoSenha(idUsuario: number): Promise<{ link: string }> {
+  return apiFetch(`/usuario/${idUsuario}/link-redefinicao-senha`, { method: "POST" });
 }
 
 export async function getResumoCertificadoEmpresa(): Promise<CertificadosResumo> {

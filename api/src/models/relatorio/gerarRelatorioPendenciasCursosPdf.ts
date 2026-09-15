@@ -1,5 +1,5 @@
-import puppeteer from "puppeteer";
 import { prisma } from "../../config/prisma-client";
+import { gerarPdfDeHtml } from "../../shared/utils/puppeteerBrowser";
 
 interface Params {
   formato: string;
@@ -112,31 +112,19 @@ type ProgressoCursoMap = {
 };
 
 async function gerarPdf(html: string) {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  // Mesma otimização aplicada em gerarListaPresenca.ts: reusa o navegador
+  // compartilhado em vez de abrir/fechar um Chromium a cada relatório.
+  return gerarPdfDeHtml(html, {
+    format: "A4",
+    landscape: true,
+    printBackground: true,
+    margin: {
+      top: "5mm",
+      right: "8mm",
+      bottom: "10mm",
+      left: "8mm",
+    },
   });
-
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      landscape: true,
-      printBackground: true,
-      margin: {
-        top: "5mm",
-        right: "8mm",
-        bottom: "10mm",
-        left: "8mm",
-      },
-    });
-
-    return Buffer.from(pdfBuffer);
-  } finally {
-    await browser.close();
-  }
 }
 
 function gerarHtmlRelatorioPendencias(
