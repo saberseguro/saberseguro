@@ -1,0 +1,1 @@
+ALTER TABLE `setor` MODIFY `nome` VARCHAR(250) NOT NULL;

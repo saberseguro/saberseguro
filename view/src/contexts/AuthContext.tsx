@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { signInWithEmailAndPassword, RecaptchaVerifier, signInWithPhoneNumber, signOut, getAuth } from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithCustomToken, RecaptchaVerifier, signInWithPhoneNumber, signOut, getAuth } from "firebase/auth";
 import { auth } from "../services/firebase";
 import { apiFetch } from "../services/apiFetch";
 import type { Usuario, HorarioAcesso } from "../types/Usuario";
@@ -11,7 +11,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 interface AuthContextType {
   user: Usuario | null;
   loading: boolean;
-  login: (email: string, senha: string) => Promise<Usuario>;
+  login: (identificador: string, senha: string, tipo?: 'email' | 'cpf') => Promise<Usuario>;
   loginPorTelefone: (telefone: string) => Promise<Usuario>;
   atualizarTrocaSenha: (idUsuario: number) => Promise<void>;
   atualizarAssinatura: (url: string, idUsuario: number) => Promise<void>;
@@ -63,17 +63,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restaurarSessao();
   }, []);
 
-  const login = async (email: string, senha: string): Promise<Usuario> => {
+  const login = async (identificador: string, senha: string, tipo: 'email' | 'cpf' = 'email'): Promise<Usuario> => {
     try {
-      setLoading(true);
-      const cred = await signInWithEmailAndPassword(auth, email, senha);
-      const firebaseUser = cred.user;
-      const firebaseToken = await firebaseUser.getIdToken();
-
-      const res = await fetch(`${API_URL}/login`, {
+      let body;
+      if (tipo === 'cpf') {
+        body = { cpf: identificador.replace(/\D/g, ''), senha };
+      } else {
+        const cred = await signInWithEmailAndPassword(auth, identificador.trim(), senha);
+        body = { idToken: await cred.user.getIdToken() };
+      }
+      const res = await fetch(`${API_URL}${tipo === 'cpf' ? '/login/cpf' : '/login'}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken: firebaseToken }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -81,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         throw new Error(data.message || data.error || "Erro ao validar no backend.");
       }
+      if (tipo === 'cpf') await signInWithCustomToken(auth, data.customToken);
 
       if (data.usuario.fkEmpresaId) {
         setSelectedCompany({
@@ -100,10 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return data.usuario;
     } catch (err: any) {
-      console.error("Erro no login:", err);
+      await signOut(auth).catch(() => {});
       throw new Error(err.message || "Erro desconhecido");
-    } finally {
-      setLoading(false);
     }
   };
 

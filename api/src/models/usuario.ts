@@ -612,6 +612,7 @@ export async function buscarUsuarioDetalhado(idUsuario: number) {
     roles,
     permissoes,
     usuarioHorario,
+    acessoPendente: !usuario.firebaseId,
     cursos,
     medidas,
     cargo: usuario.cargo

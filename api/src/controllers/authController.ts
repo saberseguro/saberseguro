@@ -1,6 +1,26 @@
 import { Request, Response } from "express";
 import { atualizarAssinatura, loginUser, trocarSenha } from "../models/auth/loginUser";
 import { registrarEvento } from "../shared/utils/registrarEvento";
+import admin from '../infra/firebase/firebase';
+import { prisma } from '../config/prisma-client';
+import { env } from '../config/env';
+import { autenticarCpf, verificarSenhaFirebase } from '../models/auth/loginCpf';
+
+export async function loginCpf(req: Request, res: Response) {
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    const result = await autenticarCpf(req.body?.cpf, req.body?.senha, {
+      buscarUsuario: cpf => prisma.usuario.findUnique({ where: { cpf }, select: { firebaseId: true, ativo: true } }),
+      buscarConta: uid => admin.auth().getUser(uid),
+      verificarSenha: (email, senha) => verificarSenhaFirebase(email, senha, env.FIREBASE_WEB_API_KEY),
+      validarAcesso: loginUser,
+      criarToken: uid => admin.auth().createCustomToken(uid),
+    });
+    return res.json(result);
+  } catch (error) {
+    return res.status(401).json({ message: error instanceof Error ? error.message : 'Não foi possível entrar.' });
+  }
+}
 
 export async function login(req: Request, res: Response) {
   const { idToken } = req.body;

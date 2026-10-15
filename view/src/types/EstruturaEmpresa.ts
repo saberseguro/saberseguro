@@ -94,6 +94,7 @@ export interface HorarioAcesso {
 }
 
 export interface Funcionario {
+  acessoPendente?: boolean;
   idUsuario: number;
   nome: string;
   cpf: string;

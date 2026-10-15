@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
+    "test:importacao": "tsc && node --test tests/importacao.test.cjs tests/processos-importacao.test.cjs",
+    "test:auth": "tsc && node --test tests/login-cpf.test.cjs",
     "start": "node dist/server.js",
     "lint": "eslint . --ext .ts",
     "prisma:generate": "prisma generate",

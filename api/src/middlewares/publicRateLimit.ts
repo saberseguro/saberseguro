@@ -6,6 +6,7 @@ interface Registro {
 }
 
 const registros = new Map<string, Registro>();
+let sequencia = 0;
 
 /**
  * Limitador de requisições simples, em memória, sem dependências externas.
@@ -15,8 +16,9 @@ const registros = new Map<string, Registro>();
  * de pacotes novos nem alterar o comportamento normal da rota.
  */
 export function publicRateLimit(maxRequisicoes: number, janelaMs: number) {
+  const escopo = ++sequencia;
   return (req: Request, res: Response, next: NextFunction) => {
-    const chave = req.ip || 'desconhecido';
+    const chave = `${escopo}:${req.ip || 'desconhecido'}`;
     const agora = Date.now();
 
     const registro = registros.get(chave);
