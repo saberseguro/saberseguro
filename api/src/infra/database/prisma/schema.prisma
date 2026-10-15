@@ -9,15 +9,15 @@ datasource db {
 
 model usuario {
   idUsuario              Int                  @id @default(autoincrement())
-  nome                   String               @db.VarChar(45)
-  email                  String               @unique(map: "email_UNIQUE") @db.VarChar(45)
+  nome                   String               @db.VarChar(250)
+  email                  String?              @unique(map: "email_UNIQUE") @db.VarChar(250)
   criado_em              DateTime             @default(now()) @db.DateTime(0)
   editado_em             DateTime             @default(now()) @db.DateTime(0)
   ativo                  Int                  @default(1) @db.TinyInt
   fkEmpresaId            Int?
   fkResponsavelTecnicoId Int?
   fkCargoId              Int?
-  firebaseId             String               @unique
+  firebaseId             String?              @unique
   cpf                    String?              @unique(map: "cpf_UNIQUE") @db.VarChar(12)
   assinatura             String?
   trocarsenha            Boolean              @default(true)
@@ -57,7 +57,7 @@ model alternativa {
 
 model aula {
   idAula       Int                    @id @default(autoincrement())
-  titulo       String                 @db.VarChar(45)
+  titulo       String                 @db.VarChar(250)
   descricao    String?                @db.Text
   tipo         aula_tipo
   duracao      Int
@@ -146,7 +146,7 @@ model avaliacao {
   fkCursoId          Int?
   fkModuloId         Int?
   fkAulaId           Int?
-  titulo             String                  @db.VarChar(45)
+  titulo             String                  @db.VarChar(250)
   tempo_limite       Int
   tipoAplicacao      avaliacao_tipoAplicacao
   criado_em          DateTime                @default(now()) @db.DateTime(0)
@@ -182,7 +182,7 @@ model avaliacaousuario {
 
 model cargo {
   idCargo         Int             @id @default(autoincrement())
-  nome            String          @db.VarChar(45)
+  nome            String          @db.VarChar(250)
   descricao       String          @db.Text
   criado_em       DateTime        @default(now()) @db.DateTime(0)
   editado_em      DateTime        @default(now()) @db.DateTime(0)
@@ -198,7 +198,7 @@ model cargo {
 
 model categoria {
   idCategoria Int              @id @default(autoincrement())
-  nome        String           @db.VarChar(45)
+  nome        String           @db.VarChar(250)
   descricao   String           @db.Text
   cursos      categoriacurso[]
 }
@@ -216,7 +216,7 @@ model categoriacurso {
 
 model cnae {
   idCnae       Int           @id @default(autoincrement())
-  subclasse    String        @db.VarChar(45)
+  subclasse    String        @db.VarChar(250)
   descricao    String        @db.Text
   grauRisco    Int
   cnaevinculos cnaevinculo[]
@@ -238,7 +238,7 @@ model cnaevinculo {
 
 model curso {
   idCurso                Int                @id @default(autoincrement())
-  titulo                 String             @db.VarChar(45)
+  titulo                 String             @db.VarChar(250)
   descricao              String?            @db.Text
   cargaHoraria           Int
   criado_em              DateTime           @default(now()) @db.DateTime(0)
@@ -299,15 +299,15 @@ model cursoacesso {
 
 model empresa {
   idEmpresa           Int                   @id @default(autoincrement())
-  nomeFantasia        String                @db.VarChar(45)
-  razaoSocial         String                @db.VarChar(45)
+  nomeFantasia        String                @db.VarChar(255)
+  razaoSocial         String                @db.VarChar(255)
   tipoDocumento       empresa_tipoDocumento
   documento           String                @db.VarChar(20)
   cep                 String                @db.VarChar(10)
-  endereco            String                @db.VarChar(45)
+  endereco            String                @db.VarChar(250)
   numero              String?               @db.VarChar(10)
-  bairro              String                @db.VarChar(45)
-  cidade              String                @db.VarChar(45)
+  bairro              String                @db.VarChar(250)
+  cidade              String                @db.VarChar(250)
   uf                  String                @db.VarChar(2)
   logoUrl             String?               @db.Text
   criado_em           DateTime              @default(now()) @db.DateTime(0)
@@ -329,7 +329,7 @@ model empresa {
 
 model materialcomplementar {
   idMaterialComplementar Int                       @id @default(autoincrement())
-  titulo                 String                    @db.VarChar(45)
+  titulo                 String                    @db.VarChar(250)
   tipo                   materialcomplementar_tipo
   material               String                    @db.Text
   criado_em              DateTime                  @default(now()) @db.DateTime(0)
@@ -358,7 +358,7 @@ model materialacesso {
 
 model medida {
   idMedida       Int             @id @default(autoincrement())
-  nome           String          @db.VarChar(45)
+  nome           String          @db.VarChar(250)
   tipo           medida_tipo
   descricao      String?         @db.Text
   ativo          Int             @default(1) @db.TinyInt
@@ -406,7 +406,7 @@ model medidavinculo {
 
 model modulo {
   idModulo     Int            @id @default(autoincrement())
-  titulo       String         @db.VarChar(45)
+  titulo       String         @db.VarChar(250)
   cargaHoraria Int
   criado_em    DateTime       @default(now()) @db.DateTime(0)
   editado_em   DateTime       @updatedAt @db.DateTime(0)
@@ -454,19 +454,19 @@ model pergunta {
 
 model permissao {
   idPermissao   Int             @id @default(autoincrement())
-  nome          String          @db.VarChar(45)
+  nome          String          @db.VarChar(250)
   descricao     String?         @db.Text
   rolepermissao rolepermissao[]
 }
 
 model responsaveltecnico {
   idResponsavelTecnico Int                              @id @default(autoincrement())
-  nome                 String                           @db.VarChar(45)
+  nome                 String                           @db.VarChar(250)
   tipoDocumento        responsaveltecnico_tipoDocumento
-  documento            String                           @db.VarChar(45)
-  registro             String                           @db.VarChar(45)
-  funcao               String                           @db.VarChar(45)
-  telefone             String                           @db.VarChar(45)
+  documento            String                           @db.VarChar(250)
+  registro             String                           @db.VarChar(250)
+  funcao               String                           @db.VarChar(250)
+  telefone             String                           @db.VarChar(250)
   assinatura           String?                          @db.Text
   criado_em            DateTime                         @default(now()) @db.DateTime(0)
   editado_em           DateTime                         @default(now()) @db.DateTime(0)
@@ -492,7 +492,7 @@ model resposta {
 
 model role {
   idRole        Int             @id @default(autoincrement())
-  nome          String          @db.VarChar(45)
+  nome          String          @db.VarChar(250)
   rolepermissao rolepermissao[]
   usuariorole   usuariorole[]
 }
@@ -509,7 +509,7 @@ model rolepermissao {
 
 model setor {
   idSetor         Int             @id @default(autoincrement())
-  nome            String          @db.VarChar(45)
+  nome            String          @db.VarChar(250)
   descricao       String          @db.Text
   ambiente        String?         @db.Text
   criado_em       DateTime        @default(now()) @db.DateTime(0)
@@ -526,15 +526,15 @@ model setor {
 
 model unidade {
   idUnidade       Int                   @id @default(autoincrement())
-  nomeFantasia    String                @db.VarChar(45)
-  razaoSocial     String                @db.VarChar(45)
+  nomeFantasia    String                @db.VarChar(255)
+  razaoSocial     String                @db.VarChar(255)
   tipoDocumento   unidade_tipoDocumento
   documento       String                @db.VarChar(20)
   cep             String                @db.VarChar(10)
-  endereco        String                @db.VarChar(45)
+  endereco        String                @db.VarChar(250)
   numero          String?               @db.VarChar(10)
-  bairro          String                @db.VarChar(45)
-  cidade          String                @db.VarChar(45)
+  bairro          String                @db.VarChar(250)
+  cidade          String                @db.VarChar(250)
   uf              String                @db.VarChar(2)
   criado_em       DateTime              @default(now()) @db.DateTime(0)
   editado_em      DateTime              @default(now()) @db.DateTime(0)

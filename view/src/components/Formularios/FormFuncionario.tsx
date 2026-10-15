@@ -95,6 +95,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
   const [loadingCargos, setLoadingCargos] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [acessoPendente, setAcessoPendente] = useState(false);
   const [carregandoDetalhesFuncionario, setCarregandoDetalhesFuncionario] = useState(false);
 
   // Sempre busca os dados completos do funcionário direto na API, em vez de
@@ -110,6 +111,7 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
       setCarregandoDetalhesFuncionario(true);
       try {
         const detalhes = await getFuncionarioDetalhado(onEdit.idUsuario);
+        setAcessoPendente(!!detalhes.acessoPendente);
 
         setForm((prev) => ({
           ...prev,
@@ -288,6 +290,18 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
         throw new Error("Erro ao salvar funcionario");
       }
 
+      if (onEdit && acessoPendente) {
+        const acesso = await fetch(`${API_URL}/usuario/${onEdit.idUsuario}/configurar-acesso`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: form.email, senha: form.senha }),
+        });
+        if (!acesso.ok) {
+          const problema = await acesso.json();
+          throw new Error(`Cadastro salvo, mas o acesso não foi configurado: ${problema.error}`);
+        }
+      }
+
       toast.success("Funcionário salvo com sucesso!");
       setIsOpenFuncionario(false);
       handleClear();
@@ -361,9 +375,9 @@ export default function FormFuncionario({ initialData = {}, onEdit, setIsOpenFun
             </div>
 
             <div className={`grid gap-4 ${onEdit ? "grid-cols-2" : "md:grid-cols-3"}`}>
-              <Input label="Email" name="email" value={form.email} onChange={handleChange} disable={!!onEdit} />
-              {!onEdit && (
-                <Input label="Senha" type="password" name="senha" value={form.senha} onChange={handleChange} disable={!!onEdit} />
+              <Input label="Email" name="email" value={form.email} onChange={handleChange} disable={!!onEdit && !acessoPendente} />
+              {(!onEdit || acessoPendente) && (
+                <Input label="Senha" type="password" name="senha" value={form.senha} onChange={handleChange} />
               )}
               <Input label="Telefone" name="telefone" value={formatarTelefone(form.telefone || "")} onChange={handleChange} required={false} />
             </div>

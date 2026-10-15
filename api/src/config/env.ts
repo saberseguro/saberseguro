@@ -4,6 +4,7 @@ export const env = {
   PORT: process.env.PORT || 3333,
   DATABASE_URL: process.env.DATABASE_URL || '',
   JWT_SECRET: process.env.JWT_SECRET || '',
+  FIREBASE_WEB_API_KEY: process.env.FIREBASE_WEB_API_KEY || process.env.FIREBASE_API_KEY || '',
   EVOLUTION_API_URL: process.env.EVOLUTION_API_URL || '',
   EVOLUTION_API_KEY: process.env.EVOLUTION_API_KEY || '',
   EVOLUTION_INSTANCE: process.env.EVOLUTION_INSTANCE || '',

@@ -1,4 +1,6 @@
 import express from 'express';
+import importacaoRoutes from './routes/importacao.routes';
+import acessoImportadoRoutes from './routes/acessoImportado.routes';
 import cors from 'cors';
 import { env } from './config/env';
 
@@ -53,6 +55,7 @@ app.use(cors({
   credentials: true,
 }));
 
+app.use('/api/importacao', importacaoRoutes);
 app.use(express.json());
 
 // Auth
@@ -60,6 +63,7 @@ app.use("/api", authRoutes);
 
 // Usuario
 app.use("/api/usuario", usuarioRoutes);
+app.use('/api/usuario', acessoImportadoRoutes);
 
 // Empresa
 app.use("/api/empresa", empresaRoutes);

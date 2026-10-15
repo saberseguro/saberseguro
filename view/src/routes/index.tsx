@@ -20,6 +20,7 @@ const CertificadoPage = lazy(() => import('../pages/Curso/CertificadoPage'));
 const AjustesPage = lazy(() => import('../pages/Ajustes'))
 const RelatoriosPage = lazy(() => import('../pages/RelatoriosPage'))
 const RelatorioAgendadoPage = lazy(() => import('../pages/RelatorioAgendadoPage'))
+const ImportacaoPage = lazy(() => import('../pages/ImportacaoPage'));
 
 function PrivateRoute() {
   const { user } = useAuth();
@@ -97,6 +98,7 @@ export default function AppRoutes() {
 
               {/* Gestão */}
               <Route path="/gestao/relatorios" element={<RelatoriosPage />} />
+              <Route path="/gestao/importar" element={<ImportacaoPage />} />
               <Route path="/gestao/relatorios/envio-automatico" element={<RelatorioAgendadoPage />} />
 
               {/* Certificado */}

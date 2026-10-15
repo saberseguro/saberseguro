@@ -121,7 +121,7 @@ export async function loginUser(idToken: string) {
   const token = generateToken(
     {
       idUsuario: usuario.idUsuario,
-      email: usuario.email,
+      email: usuario.email ?? '',
       telefone: usuario.telefone ?? "",
       nome: usuario.nome ?? "",
       cpf: usuario.cpf ?? "",
